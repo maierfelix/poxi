@@ -1,17 +1,18 @@
-# Auto detect text files and perform LF normalization
+# Line endings: enforce LF in GitHub, convert to native on checkout.
+
 * text=auto
+*.js text
 
-# Custom for Visual Studio
-*.cs     diff=csharp
+# Make GitHub ignore vendor libraries while computing language stats.
+# See https://github.com/github/linguist#overrides.
 
-# Standard to msysgit
-*.doc	 diff=astextplain
-*.DOC	 diff=astextplain
-*.docx diff=astextplain
-*.DOCX diff=astextplain
-*.dot  diff=astextplain
-*.DOT  diff=astextplain
-*.pdf  diff=astextplain
-*.PDF	 diff=astextplain
-*.rtf	 diff=astextplain
-*.RTF	 diff=astextplain
+*.proto linguist-vendored=true
+*.sh linguist-vendored=true
+*.bat linguist-vendored=true
+*.css linguist-vendored=true
+*.html linguist-vendored=true
+
+# Explicitly specify language for non-standard extensions used under
+# ide/web/lib/templates to make GitHub correctly count their language stats.
+# 
+*.js_ linguist-language=JavaScript
