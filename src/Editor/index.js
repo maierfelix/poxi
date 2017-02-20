@@ -25,11 +25,11 @@ class Editor {
     this.commander = instance.commander;
   }
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
+  /**
+   * @param {Number} x
+   * @param {Number} y
    * @param {Boolean} state
-	 */
+   */
   select(x, y, state) {
     this.modes.drag = state;
     this.modes.draw = !!state;
@@ -63,11 +63,11 @@ class Editor {
     return ([r, g, b, 1]);
   }
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
+  /**
+   * @param {Number} x
+   * @param {Number} y
    * @return {Object}
-	 */
+   */
   getRelativeOffset(x, y) {
     let pos = this.camera.getRelativeOffset(x, y);
     pos.x = roundTo(pos.x - 4, 8);
@@ -75,10 +75,10 @@ class Editor {
     return (pos);
   }
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+  /**
+   * @param {Number} x
+   * @param {Number} y
+   */
   createTileByMouseOffset(x, y) {
     let position = this.getRelativeOffset(x, y);
     let tile = new Tile();
@@ -107,13 +107,13 @@ class Editor {
     });
   }
 
-	/**
+  /**
    * Clear earlier tile at given position
    * ==> update its color and old color value
-	 * @param {Number} x
-	 * @param {Number} y
+   * @param {Number} x
+   * @param {Number} y
    * @return {Number}
-	 */
+   */
   getTileFromMouseOffset(x, y) {
     let position = this.getRelativeOffset(x, y);
     let tile = this.findTileAt(position.x, position.y);
@@ -141,11 +141,11 @@ class Editor {
     return (target);
   }
 
-	/**
+  /**
    * Create, push and batch a new tile at x,y
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+   * @param {Number} x
+   * @param {Number} y
+   */
   pushTileBatch(x, y) {
     let otile = this.getTileFromMouseOffset(x, y);
     let tile = this.createTileByMouseOffset(x, y);
@@ -191,10 +191,10 @@ class Editor {
     );
   }
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+  /**
+   * @param {Number} x
+   * @param {Number} y
+   */
   drag(x, y) {
     if (this.modes.drag) {
       if (this.modes.draw) {
@@ -203,10 +203,10 @@ class Editor {
     }
   }
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+  /**
+   * @param {Number} x
+   * @param {Number} y
+   */
   hover(x, y) {
     //console.log("Hover", x, y);
   }
