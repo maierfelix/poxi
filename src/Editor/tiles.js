@@ -27,12 +27,17 @@ export function select(x, y, state) {
     this.pushTileBatch(x, y);
     this.clearLatestTileBatch();
   } else {
-    let offset = this.batches.tiles.length - 1;
-    this.enqueue({
-      batch: this.batches.tiles[offset],
-      index: offset
-    });
+    // finally push the created batch into the cmd stack
+    this.enqueueBatchOperation();
   }
+};
+
+export function enqueueBatchOperation() {
+  let offset = this.batches.tiles.length - 1;
+  this.enqueue({
+    batch: this.batches.tiles[offset],
+    index: offset
+  });
 };
 
 /**

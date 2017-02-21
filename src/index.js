@@ -1,5 +1,8 @@
 import Camera from "./Camera/index";
 import Editor from "./Editor/index";
+import Tile from "./Editor/Tile/index";
+
+import { TILE_SIZE } from "./cfg";
 
 import { inherit } from "./utils";
 
@@ -119,10 +122,50 @@ class Picaxo {
    * @param {Boolean} state
    */
   applyImageSmoothing(ctx, state) {
+    ctx.imageSmoothingEnabled = state;
     ctx.oImageSmoothingEnabled = state;
     ctx.msImageSmoothingEnabled = state;
     ctx.webkitImageSmoothingEnabled = state;
   };
+
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Number} x
+   * @param {Number} y
+   */
+  insertSpriteContextAt(ctx, x, y) {
+    let canvas = ctx.canvas;
+    let width = canvas.width;
+    let height = canvas.height;
+    let data = ctx.getImageData(0, 0, width, height).data;
+    let buffer = this.createCanvasBuffer(width, height);
+    let tiles = [];
+    let xx = 0;
+    let yy = 0;
+    let editor = this.editor;
+    let position = editor.getRelativeOffset(x, y);
+    let mx = position.x;
+    let my = position.y;
+    for (let yy = 0; yy < height; ++yy) {
+      for (let xx = 0; xx < width; ++xx) {
+        let idx = (xx+(yy*width))*4;
+        let a = data[idx+3];
+        if (a <= 0) continue;
+        let r = data[idx+0];
+        let g = data[idx+1];
+        let b = data[idx+2];
+        let tile = new Tile();
+        tile.x = mx + (xx * TILE_SIZE);
+        tile.y = my + (yy * TILE_SIZE);
+        tile.colors.unshift([r,g,b,a]);
+        tiles.push(tile);
+      };
+    };
+    if (tiles.length) {
+      editor.batches.tiles.push(tiles);
+      editor.enqueueBatchOperation();
+    }
+  }
 
 };
 

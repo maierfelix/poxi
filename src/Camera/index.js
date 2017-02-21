@@ -29,8 +29,8 @@ class Camera {
     x = (x * 42) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
     let oscale = this.s;
     if (this.s + x <= MIN_SCALE) this.s = MIN_SCALE;
-    if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;
-    this.s += x;
+    else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;
+    else this.s += x;
     this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
     this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
   }
