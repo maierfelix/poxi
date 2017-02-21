@@ -4,8 +4,10 @@
   (factory());
 }(this, (function () { 'use strict';
 
+var TILE_SIZE = 8;
 var MIN_SCALE = 1;
 var MAX_SCALE = 35;
+var BASE_TILE_COLOR = [0,0,0,0];
 
 /**
  * @param {Number} x
@@ -45,23 +47,23 @@ var Camera = function Camera(instance) {
   this.instance = instance;
 };
 
-	/**
-	 * @param {Number} x
-	 */
+/**
+ * @param {Number} x
+ */
 Camera.prototype.scale = function scale (x) {
   x = (x * 42) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
   var oscale = this.s;
   this.s += x;
   if (this.s + x <= MIN_SCALE) { this.s = MIN_SCALE; }
-  	if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
+  if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
   this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
   this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
 };
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
 Camera.prototype.click = function click (x, y) {
   var position = this.getRelativeOffset(x, y);
   this.dx = x;
@@ -70,28 +72,28 @@ Camera.prototype.click = function click (x, y) {
   this.ly = position.y;
 };
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
-	Camera.prototype.drag = function drag (x, y) {
-		this.x += x - this.dx;
-		this.y += y - this.dy;
-		this.dx = x;
-		this.dy = y;
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+Camera.prototype.drag = function drag (x, y) {
+  this.x += x - this.dx;
+  this.y += y - this.dy;
+  this.dx = x;
+  this.dy = y;
   // smooth dragging
   this.instance.clear();
-		this.instance.render();
-	};
+  this.instance.render();
+};
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
 Camera.prototype.getRelativeOffset = function getRelativeOffset (x, y) {
   var xx = (x - this.x) / this.s;
-		var yy = (y - this.y) / this.s;
-		return ({
+  var yy = (y - this.y) / this.s;
+  return ({
     x: xx,
     y: yy
   });
@@ -107,40 +109,138 @@ Camera.prototype.resize = function resize (width, height) {
 };
 
 /**
+ * @param {Class} cls
+ * @param {Array} prot
+ */
+function inherit(cls, prot) {
+  var key = null;
+  for (key in prot) {
+    if (prot[key] instanceof Function) {
+      cls.prototype[key] = prot[key];
+    }
+  }
+}
+
+/**
+ * Returns a unique integer
+ * @return {Number}
+ */
+var uidx = 0;
+function uid() {
+  return (uidx++);
+}
+
+/**
+ * @param {Object} op
+ */
+function enqueue(op) {
+  // we are out of position and need to clean up
+  if (this.sindex < this.stack.length - 1) {
+    this.dequeue(this.sindex, this.stack.length - 1);
+  }
+  this.stack.splice(this.sindex + 1, this.stack.length);
+  this.stack.push(op);
+  this.redo();
+  this.undo();
+  this.redo();
+}
+
+/**
+ * Dequeue items from stack
+ * @param {Number} from
+ * @param {Number} to
+ */
+function dequeue(from, to) {
+  var this$1 = this;
+
+  from = from + 1;
+  var count = (to - (from - 1));
+  var batches = this.batches.tiles;
+  // free all following (more recent) tile batches
+  for (var ii = 0; ii < count; ++ii) {
+    var idx = (from + ii);
+    var op = this$1.stack[idx];
+    batches.splice(op.index, 1);
+    // recalculate stack batch index because we removed something
+    // (we need valid stack indexes again after this iteration)
+    for (var jj = 0; jj < this.stack.length; ++jj) {
+      this$1.stack[jj].index -= 1;
+    }
+  }
+}
+
+/**
+ * @param {Array} op
+ * @param {Boolean} state
+ */
+function fire(op, state) {
+  op.batch.map(function (tile) {
+    var cindex = tile.cindex;
+    var colors = tile.colors.length - 1;
+    if (state === true) {
+      // redo
+      tile.cindex -= (cindex > 0 ? 1 : 0);
+    } else {
+      // undo
+      tile.cindex += (cindex < colors ? 1 : 0);
+    }
+  });
+}
+
+function currentStackOperation() {
+  return (this.stack[this.sindex]);
+}
+
+function undo() {
+  if (this.sindex >= 0) {
+    var op = this.currentStackOperation();
+    this.fire(op, false);
+    this.sindex--;
+  }
+}
+
+function redo() {
+  if (this.sindex < this.stack.length - 1) {
+    this.sindex++;
+    var op = this.currentStackOperation();
+    this.fire(op, true);
+  }
+}
+
+var _stack = Object.freeze({
+	enqueue: enqueue,
+	dequeue: dequeue,
+	fire: fire,
+	currentStackOperation: currentStackOperation,
+	undo: undo,
+	redo: redo
+});
+
+/**
  * @class Tile
  */
 var Tile = function Tile() {
   this.x = 0;
   this.y = 0;
-  /**
-   * color index to restore previous color states
-   */
+  this.id = uid();
   this.cindex = 0;
-  this.colors = [];
+  this.colors = [BASE_TILE_COLOR];
+  this.isHovered = false;
 };
 
 /**
- * @class Editor
+ * Set ctrl+a mode=true
  */
-var Editor = function Editor(instance) {
-  this.modes = {
-    draw: false,
-    drag: false
-  };
-  this.batches = {
-    tiles: []
-  };
-  this.colorTest = null;
-  this.camera = instance.camera;
-  this.commander = instance.commander;
-};
+function selectAll() {
+  this.modes.selectAll = true;
+}
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
+/**
+ * @param {Number} x
+ * @param {Number} y
  * @param {Boolean} state
-	 */
-Editor.prototype.select = function select (x, y, state) {
+ */
+function select(x, y, state) {
   this.modes.drag = state;
   this.modes.draw = !!state;
   if (state && this.modes.draw) {
@@ -148,87 +248,91 @@ Editor.prototype.select = function select (x, y, state) {
     this.pushTileBatchOperation();
     this.pushTileBatch(x, y);
     this.clearLatestTileBatch();
+  } else {
+    var offset = this.batches.tiles.length - 1;
+    this.enqueue({
+      batch: this.batches.tiles[offset],
+      index: offset
+    });
   }
-};
+}
 
 /**
  * Clear latest batch operation if empty
  */
-Editor.prototype.clearLatestTileBatch = function clearLatestTileBatch () {
+function clearLatestTileBatch() {
   var batch = this.getLatestTileBatchOperation();
   // latest batch operation is empty, remove so 
   if (batch.length <= 0) {
     var offset = this.batches.tiles.length - 1;
     this.batches.tiles.splice(offset, 1);
   }
-};
+}
 
 /**
  * @return {Array}
  */
-Editor.prototype.setRandomColor = function setRandomColor () {
+function setRandomColor() {
   var r = ((Math.random() * 255) + 1) | 0;
   var g = ((Math.random() * 255) + 1) | 0;
   var b = ((Math.random() * 255) + 1) | 0;
   return ([r, g, b, 1]);
-};
+}
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
+/**
+ * @param {Number} x
+ * @param {Number} y
  * @return {Object}
-	 */
-Editor.prototype.getRelativeOffset = function getRelativeOffset (x, y) {
+ */
+function getRelativeOffset$1(x, y) {
   var pos = this.camera.getRelativeOffset(x, y);
-  pos.x = roundTo(pos.x - 4, 8);
-  pos.y = roundTo(pos.y - 4, 8);
+  var half = TILE_SIZE / 2;
+  pos.x = roundTo(pos.x - half, TILE_SIZE);
+  pos.y = roundTo(pos.y - half, TILE_SIZE);
   return (pos);
-};
+}
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
-Editor.prototype.createTileByMouseOffset = function createTileByMouseOffset (x, y) {
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+function createTileByMouseOffset(x, y) {
   var position = this.getRelativeOffset(x, y);
   var tile = new Tile();
   tile.x = position.x;
   tile.y = position.y;
   return (tile);
-};
+}
 
 /**
  * @return {Array}
  */
-Editor.prototype.getLatestTileBatchOperation = function getLatestTileBatchOperation () {
+function getLatestTileBatchOperation() {
   var offset = this.batches.tiles.length - 1;
   var batch = this.batches.tiles;
   return (batch[offset]);
-};
+}
 
 /**
  * Push in a new batch operation
  */
-Editor.prototype.pushTileBatchOperation = function pushTileBatchOperation () {
+function pushTileBatchOperation() {
   var operation = [];
   this.batches.tiles.push(operation);
-  this.commander.push({
-    operation: operation
-  });
-};
+}
 
-	/**
+/**
  * Clear earlier tile at given position
- * ==> update its color and old color value
-	 * @param {Number} x
-	 * @param {Number} y
+ * => update its color and old color value
+ * @param {Number} x
+ * @param {Number} y
  * @return {Number}
-	 */
-Editor.prototype.getTileFromMouseOffset = function getTileFromMouseOffset (x, y) {
+ */
+function getTileFromMouseOffset(x, y) {
   var position = this.getRelativeOffset(x, y);
   var tile = this.findTileAt(position.x, position.y);
   return (tile);
-};
+}
 
 /**
  * Collect all tiles at given relative position
@@ -236,7 +340,7 @@ Editor.prototype.getTileFromMouseOffset = function getTileFromMouseOffset (x, y)
  * @param {Number} y
  * @return {Tile}
  */
-Editor.prototype.findTileAt = function findTileAt (x, y) {
+function findTileAt(x, y) {
   var target = null;
   var batches = this.batches.tiles;
   for (var ii = 0; ii < batches.length; ++ii) {
@@ -249,42 +353,45 @@ Editor.prototype.findTileAt = function findTileAt (x, y) {
     }
   }
   return (target);
-};
+}
 
-	/**
+/**
  * Create, push and batch a new tile at x,y
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
-Editor.prototype.pushTileBatch = function pushTileBatch (x, y) {
+ * @param {Number} x
+ * @param {Number} y
+ */
+function pushTileBatch(x, y) {
   var otile = this.getTileFromMouseOffset(x, y);
-  var tile = this.createTileByMouseOffset(x, y);
   var color = [
     this.colorTest[0],
     this.colorTest[1],
     this.colorTest[2],
     this.colorTest[3]
   ];
+  var batch = this.getLatestTileBatchOperation();
   // previous tile found, update it
   if (otile !== null) {
+    var ocolors = otile.colors[otile.cindex];
     // check if we have to overwrite the old tiles color
     // e.g => push in a new color state
     var matches = this.colorArraysMatch(
       color,
-      otile.colors[otile.cindex]
+      ocolors
     );
     // old and new colors doesnt match, insert new color values
     // into the old tile's color array to save its earlier state
-    if (!matches) {
+    // as well as push in a new stack operation
+    if (!matches && ocolors[3] !== 2) {
       otile.colors.unshift(color);
+      batch.push(otile);
     }
-  // if no tile found, push it into the batch
+  // if no tile found, create one and push it into the batch
   } else {
-    var batch = this.getLatestTileBatchOperation();
-    tile.colors.push(color);
+    var tile = this.createTileByMouseOffset(x, y);
+    tile.colors.unshift(color);
     batch.push(tile);
   }
-};
+}
 
 /**
  * Compare two color arrays if they match both
@@ -292,19 +399,86 @@ Editor.prototype.pushTileBatch = function pushTileBatch (x, y) {
  * @param {Array} b
  * @return {Boolean}
  */
-Editor.prototype.colorArraysMatch = function colorArraysMatch (a, b) {
+function colorArraysMatch(a, b) {
   return (
     a[0] === b[0] &&
     a[1] === b[1] &&
     a[2] === b[2] &&
     a[3] === b[3]
   );
+}
+
+/**
+ * Just set isHovered=false in hovered tiles array
+ */
+function unHoverAllTiles() {
+  var this$1 = this;
+
+  for (var ii = 0; ii < this.hovered.length; ++ii) {
+    this$1.hovered[ii].isHovered = false;
+    this$1.hovered.splice(ii, 1);
+  }
+}
+
+/**
+ * @param {Tile} tile
+ * @return {Boolean}
+ */
+function isTileInsideView(tile) {
+  var scale = this.camera.s;
+  var width = this.camera.width;
+  var height = this.camera.height;
+  var tilew = TILE_SIZE * scale;
+  var tileh = TILE_SIZE * scale;
+  var x = (tile.x * scale) + this.camera.x;
+  var y = (tile.y * scale) + this.camera.y;
+  return (
+    (x + tilew) >= 0 && x <= width &&
+    (y + tileh) >= 0 && y <= height
+  );
+}
+
+var _tiles = Object.freeze({
+	selectAll: selectAll,
+	select: select,
+	clearLatestTileBatch: clearLatestTileBatch,
+	setRandomColor: setRandomColor,
+	getRelativeOffset: getRelativeOffset$1,
+	createTileByMouseOffset: createTileByMouseOffset,
+	getLatestTileBatchOperation: getLatestTileBatchOperation,
+	pushTileBatchOperation: pushTileBatchOperation,
+	getTileFromMouseOffset: getTileFromMouseOffset,
+	findTileAt: findTileAt,
+	pushTileBatch: pushTileBatch,
+	colorArraysMatch: colorArraysMatch,
+	unHoverAllTiles: unHoverAllTiles,
+	isTileInsideView: isTileInsideView
+});
+
+/**
+ * @class Editor
+ */
+var Editor = function Editor(instance) {
+  this.modes = {
+    draw: false,
+    drag: false,
+    selectAll: false
+  };
+  this.batches = {
+    tiles: []
+  };
+  this.hovered = [];
+  this.colorTest = null;
+  this.camera = instance.camera;
+  // stack related
+  this.sindex = -1;
+  this.stack = [];
 };
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
 Editor.prototype.drag = function drag (x, y) {
   if (this.modes.drag) {
     if (this.modes.draw) {
@@ -313,65 +487,23 @@ Editor.prototype.drag = function drag (x, y) {
   }
 };
 
-	/**
-	 * @param {Number} x
-	 * @param {Number} y
-	 */
+/**
+ * Hover & unhover tiles
+ * @param {Number} x
+ * @param {Number} y
+ */
 Editor.prototype.hover = function hover (x, y) {
-  //console.log("Hover", x, y);
-};
-
-/**
- * @class Commander
- */
-var Commander = function Commander(instance) {
-  this.index = 0;
-  this.stack = [];
-  this.instance = instance;
-};
-
-/**
- * Update and secure stack index
- * TODO: Secure, remove throw error
- * @param {Number} idx
- */
-Commander.prototype.updateStackIndex = function updateStackIndex (idx) {
-  var value = this.index + idx;
-  if (value >= 0 && value <= this.stack.length - 1) {
-    this.index = value;
-  } else {
-    throw new Error("Stack index out of bounds!");
+  this.unHoverAllTiles();
+  var tile = this.getTileFromMouseOffset(x, y);
+  if (tile !== null) {
+    // set current tile as hovered
+    this.hovered.push(tile);
+    tile.isHovered = true;
   }
 };
 
-Commander.prototype.undo = function undo () {
-  this.updateStackIndex(-1);
-  return (this.stack[this.index]);
-};
-
-Commander.prototype.redo = function redo () {
-  this.updateStackIndex(-1);
-  return (this.stack[this.index]);
-};
-
-/**
- * @param {Array} op
- */
-Commander.prototype.push = function push (op) {
-  this.stack.push(op);
-};
-
-function inherit(cls, prot) {
-
-  var key = null;
-
-  for (key in prot) {
-    if (prot[key] instanceof Function) {
-      cls.prototype[key] = prot[key];
-    }
-  }
-
-}
+inherit(Editor, _stack);
+inherit(Editor, _tiles);
 
 /**
  * @param {Number} width
@@ -401,14 +533,20 @@ function renderFPS() {
   var now = Date.now();
   var delta = now - this.last;
   this.last = now;
+  this.ctx.fillStyle = "#fff";
   this.ctx.fillText((1e3 / delta) | 0, 16, 16);
 }
 
 function renderTiles() {
+  var this$1 = this;
+
   var ctx = this.ctx;
   var cx = this.camera.x;
   var cy = this.camera.y;
   var scale = this.camera.s;
+  var ww = (TILE_SIZE*scale)|0;
+  var hh = (TILE_SIZE*scale)|0;
+  var selectAll = this.editor.modes.selectAll;
   var batches = this.editor.batches.tiles;
   // all tile batch operations
   for (var ii = 0; ii < batches.length; ++ii) {
@@ -418,15 +556,18 @@ function renderTiles() {
       var tile = batch[jj];
       var x = (cx + (tile.x * scale))|0;
       var y = (cy + (tile.y * scale))|0;
-      var ww = (8*scale)|0;
-      var hh = (8*scale)|0;
       var color = tile.colors[tile.cindex];
       var r = color[0];
       var g = color[1];
       var b = color[2];
       var a = color[3];
-      ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
-      ctx.fillRect(x, y, ww, hh);
+      // apply selection effect
+      if (selectAll) { a = 0.1; }
+      else if (tile.isHovered) { a /= 1.5; }
+      if (this$1.editor.isTileInsideView(tile)) {
+        ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+        ctx.fillRect(x, y, ww, hh);
+      }
     }
   }
 }
@@ -434,7 +575,7 @@ function renderTiles() {
 function renderGrid() {
 
   var ctx = this.ctx;
-  var size = 8 * this.camera.s;
+  var size = (TILE_SIZE*this.camera.s)|0;
 
   var cx = this.camera.x;
   var cy = this.camera.y;
@@ -443,7 +584,7 @@ function renderGrid() {
 
   ctx.lineWidth = .25;
 
-  ctx.strokeStyle = "#8a8a8a";
+  ctx.strokeStyle = "#333333";
 
   ctx.beginPath();
   for (var xx = (cx%size)|0; xx < cw; xx += size) {
@@ -474,13 +615,17 @@ var _render = Object.freeze({
 var Picaxo = function Picaxo(obj) {
   this.ctx = null;
   this.view = null;
+  this.events = {};
   this.camera = new Camera(this);
-  this.commander = new Commander(this);
   this.editor = new Editor(this);
   // fps
   this.last = 0;
   this.width = 0;
   this.height = 0;
+  this.frames = 0;
+  this.states = {
+    paused: true
+  };
   // view only passed, skip options
   if (obj && this.isViewElement(obj)) {
     this.applyView(obj);
@@ -493,6 +638,26 @@ var Picaxo = function Picaxo(obj) {
     this.resize(obj.width, obj.height);
   } else {
     this.resize(view.width, view.height);
+  }
+  this.init();
+};
+
+Picaxo.prototype.init = function init () {
+  this.renderLoop();
+};
+
+Picaxo.prototype.renderLoop = function renderLoop () {
+    var this$1 = this;
+
+  // try again to render in 16ms
+  if (this.states.paused === true) {
+    setTimeout(function () { return this$1.renderLoop(); }, 16);
+  } else {
+    requestAnimationFrame(function () {
+      this$1.events["draw"].fn();
+      this$1.frames++;
+      this$1.renderLoop();
+    });
   }
 };
 
@@ -515,6 +680,36 @@ Picaxo.prototype.isViewElement = function isViewElement (el) {
   return (
     el && el instanceof HTMLCanvasElement
   );
+};
+
+/**
+ * Event emitter
+ * @param {String} kind
+ * @param {Function} fn
+ */
+Picaxo.prototype.on = function on (kind, fn) {
+  if (!(typeof kind === "string")) {
+    throw new Error("Expected emitter kind to be string");
+  }
+  if (!(fn instanceof Function)) {
+    throw new Error("Received emitter trigger is not a function");
+  }
+  if (this.events[kind]) { this.events[kind] = null; } // safely clean old emitters
+  this.events[kind] = {
+    fn: fn
+  };
+  this.processEmitter(kind, fn);
+};
+
+/**
+ * @param {String} kind
+ * @param {Function} fn
+ */
+Picaxo.prototype.processEmitter = function processEmitter (kind, fn) {
+  // begin drawing as soon as we got something to do there
+  if (this.frames === 0 && kind === "draw") {
+    this.states.paused = false;
+  }
 };
 
 inherit(Picaxo, _render);
