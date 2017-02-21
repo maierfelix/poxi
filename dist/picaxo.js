@@ -53,9 +53,9 @@ var Camera = function Camera(instance) {
 Camera.prototype.scale = function scale (x) {
   x = (x * 42) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
   var oscale = this.s;
-  this.s += x;
   if (this.s + x <= MIN_SCALE) { this.s = MIN_SCALE; }
   if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
+  this.s += x;
   this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
   this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
 };
@@ -134,7 +134,8 @@ function uid() {
  * @param {Object} op
  */
 function enqueue(op) {
-  // we are out of position and need to clean up
+  // our stack index is out of position
+  // => clean up all more recent batches
   if (this.sindex < this.stack.length - 1) {
     this.dequeue(this.sindex, this.stack.length - 1);
   }
@@ -206,6 +207,7 @@ function redo() {
     this.fire(op, true);
   }
 }
+
 
 var _stack = Object.freeze({
 	enqueue: enqueue,
@@ -438,6 +440,7 @@ function isTileInsideView(tile) {
   );
 }
 
+
 var _tiles = Object.freeze({
 	selectAll: selectAll,
 	select: select,
@@ -515,6 +518,8 @@ function resize$1(width, height) {
   this.view.width = width;
   this.view.height = height;
   this.camera.resize(width, height);
+  // re-generate our bg
+  this.generateBackground();
   this.clear();
   this.render();
 }
@@ -524,17 +529,51 @@ function clear() {
 }
 
 function render() {
-  this.renderGrid();
+  this.renderBackground();
+  if (this.camera.s > MIN_SCALE) {
+    this.renderGrid();
+  }
   this.renderTiles();
   this.renderFPS();
 }
 
-function renderFPS() {
-  var now = Date.now();
-  var delta = now - this.last;
-  this.last = now;
-  this.ctx.fillStyle = "#fff";
-  this.ctx.fillText((1e3 / delta) | 0, 16, 16);
+function renderBackground() {
+  var width = this.camera.width;
+  var height = this.camera.height;
+  this.ctx.drawImage(
+    this.bg,
+    0, 0,
+    width, height,
+    0, 0,
+    width, height
+  );
+}
+
+function renderGrid() {
+
+  var ctx = this.ctx;
+  var size = (TILE_SIZE*this.camera.s)|0;
+
+  var cx = this.camera.x;
+  var cy = this.camera.y;
+  var cw = this.camera.width;
+  var ch = this.camera.height;
+
+  ctx.lineWidth = .25;
+  ctx.strokeStyle = "#333333";
+
+  ctx.beginPath();
+  for (var xx = (cx%size)|0; xx < cw; xx += size) {
+    ctx.moveTo(xx, 0);
+    ctx.lineTo(xx, ch);
+  }
+  for (var yy = (cy%size)|0; yy < ch; yy += size) {
+    ctx.moveTo(0, yy);
+    ctx.lineTo(cw, yy);
+  }
+  ctx.stroke();
+  ctx.closePath();
+
 }
 
 function renderTiles() {
@@ -572,31 +611,51 @@ function renderTiles() {
   }
 }
 
-function renderGrid() {
+function renderFPS() {
+  var now = Date.now();
+  var delta = now - this.last;
+  this.last = now;
+  this.ctx.fillStyle = "#fff";
+  this.ctx.fillText((1e3 / delta) | 0, 16, 16);
+}
 
-  var ctx = this.ctx;
-  var size = (TILE_SIZE*this.camera.s)|0;
+/**
+ * Background grid as transparency placeholder
+ */
+function generateBackground() {
 
-  var cx = this.camera.x;
-  var cy = this.camera.y;
+  var size = 8;
+
   var cw = this.camera.width;
   var ch = this.camera.height;
 
-  ctx.lineWidth = .25;
+  var buffer = this.createCanvasBuffer(cw, ch);
 
-  ctx.strokeStyle = "#333333";
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
 
-  ctx.beginPath();
-  for (var xx = (cx%size)|0; xx < cw; xx += size) {
-    ctx.moveTo(xx, 0);
-    ctx.lineTo(xx, ch);
+  canvas.width = cw;
+  canvas.height = ch;
+
+  this.bg = canvas;
+
+  // dark rectangles
+  ctx.fillStyle = "#1f1f1f";
+  ctx.fillRect(0, 0, cw, ch);
+
+  // bright rectangles
+  ctx.fillStyle = "#212121";
+  for (var yy = 0; yy < ch; yy += size*2) {
+    for (var xx = 0; xx < cw; xx += size*2) {
+      ctx.fillRect(xx, yy, size, size);
+      ctx.fillRect(xx, yy, size, size);
+    }
   }
-  for (var yy = (cy%size)|0; yy < ch; yy += size) {
-    ctx.moveTo(0, yy);
-    ctx.lineTo(cw, yy);
+  for (var yy$1 = size; yy$1 < ch; yy$1 += size*2) {
+    for (var xx$1 = size; xx$1 < cw; xx$1 += size*2) {
+      ctx.fillRect(xx$1, yy$1, size, size);
+    }
   }
-  ctx.stroke();
-  ctx.closePath();
 
 }
 
@@ -604,15 +663,18 @@ var _render = Object.freeze({
 	resize: resize$1,
 	clear: clear,
 	render: render,
-	renderFPS: renderFPS,
+	renderBackground: renderBackground,
+	renderGrid: renderGrid,
 	renderTiles: renderTiles,
-	renderGrid: renderGrid
+	renderFPS: renderFPS,
+	generateBackground: generateBackground
 });
 
 /**
  * @class Picaxo
  */
 var Picaxo = function Picaxo(obj) {
+  this.bg = null;
   this.ctx = null;
   this.view = null;
   this.events = {};
@@ -626,13 +688,7 @@ var Picaxo = function Picaxo(obj) {
   this.states = {
     paused: true
   };
-  // view only passed, skip options
-  if (obj && this.isViewElement(obj)) {
-    this.applyView(obj);
-    return;
-  }
-  // apply view
-  this.applyView(obj.view);
+  this.createView();
   // apply sizing
   if (obj.width >= 0 && obj.height >= 0) {
     this.resize(obj.width, obj.height);
@@ -644,6 +700,12 @@ var Picaxo = function Picaxo(obj) {
 
 Picaxo.prototype.init = function init () {
   this.renderLoop();
+};
+
+Picaxo.prototype.createView = function createView () {
+  var buffer = this.createCanvasBuffer(this.width, this.height);
+  this.ctx = buffer;
+  this.view = buffer.canvas;
 };
 
 Picaxo.prototype.renderLoop = function renderLoop () {
@@ -658,18 +720,6 @@ Picaxo.prototype.renderLoop = function renderLoop () {
       this$1.frames++;
       this$1.renderLoop();
     });
-  }
-};
-
-/**
- * @param {HTMLCanvasElement} view
- */
-Picaxo.prototype.applyView = function applyView (view) {
-  if (this.isViewElement(view)) {
-    this.view = view;
-    this.ctx = view.getContext("2d");
-  } else {
-    throw new Error("Invalid view element provided");
   }
 };
 
@@ -712,13 +762,37 @@ Picaxo.prototype.processEmitter = function processEmitter (kind, fn) {
   }
 };
 
+/**
+ * @param {Number} width
+ * @param {Number} height
+ * @return {CanvasRenderingContext2D}
+ */
+Picaxo.prototype.createCanvasBuffer = function createCanvasBuffer (width, height) {
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
+  canvas.width = width;
+  canvas.height = height;
+  this.applyImageSmoothing(ctx, false);
+  return (ctx);
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Boolean} state
+ */
+Picaxo.prototype.applyImageSmoothing = function applyImageSmoothing (ctx, state) {
+  ctx.oImageSmoothingEnabled = state;
+  ctx.msImageSmoothingEnabled = state;
+  ctx.webkitImageSmoothingEnabled = state;
+};
+
 inherit(Picaxo, _render);
 
 // apply to window
 if (typeof window !== "undefined") {
   window.Picaxo = Picaxo;
 } else {
-  throw new Error("Picaxo needs to run as a website");
+  throw new Error("Please run Picaxo inside a browser");
 }
 
 })));

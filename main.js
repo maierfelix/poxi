@@ -5,18 +5,17 @@
   let canvas = document.createElement("canvas");
 
   let stage = new Picaxo({
-    view: canvas,
     width: window.innerWidth,
     height: window.innerHeight
   });
-  document.body.appendChild(canvas); // push view into body
+  document.body.appendChild(stage.view); // push view into body
 
   stage.on("draw", () => {
     stage.clear();
     stage.render();
   });
 
-  canvas.addEventListener("dragover", (e) => {
+  stage.view.addEventListener("dragover", (e) => {
     console.log(e);
   });
 
