@@ -14,6 +14,7 @@ class Picaxo {
    * @param {Object} obj
    */
   constructor(obj) {
+    this.bg = null;
     this.ctx = null;
     this.view = null;
     this.events = {};
@@ -27,13 +28,7 @@ class Picaxo {
     this.states = {
       paused: true
     };
-    // view only passed, skip options
-    if (obj && this.isViewElement(obj)) {
-      this.applyView(obj);
-      return;
-    }
-    // apply view
-    this.applyView(obj.view);
+    this.createView();
     // apply sizing
     if (obj.width >= 0 && obj.height >= 0) {
       this.resize(obj.width, obj.height);
@@ -47,6 +42,12 @@ class Picaxo {
     this.renderLoop();
   }
 
+  createView() {
+    let buffer = this.createCanvasBuffer(this.width, this.height);
+    this.ctx = buffer;
+    this.view = buffer.canvas;
+  }
+
   renderLoop() {
     // try again to render in 16ms
     if (this.states.paused === true) {
@@ -57,18 +58,6 @@ class Picaxo {
         this.frames++;
         this.renderLoop();
       });
-    }
-  }
-
-  /**
-   * @param {HTMLCanvasElement} view
-   */
-  applyView(view) {
-    if (this.isViewElement(view)) {
-      this.view = view;
-      this.ctx = view.getContext("2d");
-    } else {
-      throw new Error("Invalid view element provided");
     }
   }
 
@@ -111,6 +100,30 @@ class Picaxo {
     }
   }
 
+  /**
+   * @param {Number} width
+   * @param {Number} height
+   * @return {CanvasRenderingContext2D}
+   */
+  createCanvasBuffer(width, height) {
+    let canvas = document.createElement("canvas");
+    let ctx = canvas.getContext("2d");
+    canvas.width = width;
+    canvas.height = height;
+    this.applyImageSmoothing(ctx, false);
+    return (ctx);
+  };
+
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Boolean} state
+   */
+  applyImageSmoothing(ctx, state) {
+    ctx.oImageSmoothingEnabled = state;
+    ctx.msImageSmoothingEnabled = state;
+    ctx.webkitImageSmoothingEnabled = state;
+  };
+
 };
 
 inherit(Picaxo, _render);
@@ -119,5 +132,5 @@ inherit(Picaxo, _render);
 if (typeof window !== "undefined") {
   window.Picaxo = Picaxo;
 } else {
-  throw new Error("Picaxo needs to run as a website");
+  throw new Error("Please run Picaxo inside a browser");
 }
