@@ -1,6 +1,5 @@
 import Camera from "./Camera/index";
 import Editor from "./Editor/index";
-import Commander from "./Commander/index";
 
 import { inherit } from "./utils";
 
@@ -17,13 +16,17 @@ class Picaxo {
   constructor(obj) {
     this.ctx = null;
     this.view = null;
+    this.events = {};
     this.camera = new Camera(this);
-    this.commander = new Commander(this);
     this.editor = new Editor(this);
     // fps
     this.last = 0;
     this.width = 0;
     this.height = 0;
+    this.frames = 0;
+    this.states = {
+      paused: true
+    };
     // view only passed, skip options
     if (obj && this.isViewElement(obj)) {
       this.applyView(obj);
@@ -36,6 +39,24 @@ class Picaxo {
       this.resize(obj.width, obj.height);
     } else {
       this.resize(view.width, view.height);
+    }
+    this.init();
+  }
+
+  init() {
+    this.renderLoop();
+  }
+
+  renderLoop() {
+    // try again to render in 16ms
+    if (this.states.paused === true) {
+      setTimeout(() => this.renderLoop(), 16);
+    } else {
+      requestAnimationFrame(() => {
+        this.events["draw"].fn();
+        this.frames++;
+        this.renderLoop();
+      });
     }
   }
 
@@ -58,6 +79,36 @@ class Picaxo {
     return (
       el && el instanceof HTMLCanvasElement
     );
+  }
+
+  /**
+   * Event emitter
+   * @param {String} kind
+   * @param {Function} fn
+   */
+  on(kind, fn) {
+    if (!(typeof kind === "string")) {
+      throw new Error("Expected emitter kind to be string");
+    }
+    if (!(fn instanceof Function)) {
+      throw new Error("Received emitter trigger is not a function");
+    }
+    if (this.events[kind]) this.events[kind] = null; // safely clean old emitters
+    this.events[kind] = {
+      fn: fn
+    };
+    this.processEmitter(kind, fn);
+  }
+
+  /**
+   * @param {String} kind
+   * @param {Function} fn
+   */
+  processEmitter(kind, fn) {
+    // begin drawing as soon as we got something to do there
+    if (this.frames === 0 && kind === "draw") {
+      this.states.paused = false;
+    }
   }
 
 };

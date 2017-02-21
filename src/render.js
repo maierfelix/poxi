@@ -1,3 +1,5 @@
+import { TILE_SIZE } from "./cfg";
+
 /**
  * @param {Number} width
  * @param {Number} height
@@ -26,6 +28,7 @@ export function renderFPS() {
   let now = Date.now();
   let delta = now - this.last;
   this.last = now;
+  this.ctx.fillStyle = "#fff";
   this.ctx.fillText((1e3 / delta) | 0, 16, 16);
 };
 
@@ -34,6 +37,9 @@ export function renderTiles() {
   let cx = this.camera.x;
   let cy = this.camera.y;
   let scale = this.camera.s;
+  let ww = (TILE_SIZE*scale)|0;
+  let hh = (TILE_SIZE*scale)|0;
+  let selectAll = this.editor.modes.selectAll;
   let batches = this.editor.batches.tiles;
   // all tile batch operations
   for (let ii = 0; ii < batches.length; ++ii) {
@@ -43,15 +49,18 @@ export function renderTiles() {
       let tile = batch[jj];
       let x = (cx + (tile.x * scale))|0;
       let y = (cy + (tile.y * scale))|0;
-      let ww = (8*scale)|0;
-      let hh = (8*scale)|0;
       let color = tile.colors[tile.cindex];
       let r = color[0];
       let g = color[1];
       let b = color[2];
       let a = color[3];
-      ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
-      ctx.fillRect(x, y, ww, hh);
+      // apply selection effect
+      if (selectAll) a = 0.1;
+      else if (tile.isHovered) a /= 1.5;
+      if (this.editor.isTileInsideView(tile)) {
+        ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+        ctx.fillRect(x, y, ww, hh);
+      }
     };
   };
 };
@@ -59,7 +68,7 @@ export function renderTiles() {
 export function renderGrid() {
 
   let ctx = this.ctx;
-  let size = 8 * this.camera.s;
+  let size = (TILE_SIZE*this.camera.s)|0;
 
   let cx = this.camera.x;
   let cy = this.camera.y;
@@ -68,7 +77,7 @@ export function renderGrid() {
 
   ctx.lineWidth = .25;
 
-  ctx.strokeStyle = "#8a8a8a";
+  ctx.strokeStyle = "#333333";
 
   ctx.beginPath();
   for (let xx = (cx%size)|0; xx < cw; xx += size) {

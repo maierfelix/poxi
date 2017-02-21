@@ -9,16 +9,25 @@
     width: window.innerWidth,
     height: window.innerHeight
   });
+  document.body.appendChild(canvas); // push view into body
 
-  document.body.appendChild(canvas);
-
-  (function draw() {
+  stage.on("draw", () => {
     stage.clear();
     stage.render();
-    requestAnimationFrame(draw);
-  })();
+  });
+
+  canvas.addEventListener("dragover", (e) => {
+    console.log(e);
+  });
 
   window.stage = stage;
+
+  stage.on("windowresize", () => {
+
+  });
+  stage.on("mousescroll", () => {
+
+  });
 
   // ## input events
   let rpressed = false;
