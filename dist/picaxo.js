@@ -5,9 +5,21 @@
 }(this, (function () { 'use strict';
 
 var TILE_SIZE = 8;
-var MIN_SCALE = 1;
+var MIN_SCALE = 0.5;
 var MAX_SCALE = 35;
 var BASE_TILE_COLOR = [0,0,0,0];
+
+/**
+ * If a tile batch exceeds the min size,
+ * we buffer it inside a shadow canvas,
+ * exceeding max throws an out of bounds error
+ */
+var BATCH_BUFFER_SIZE = {
+  MIN_W: 128,
+  MIN_H: 128,
+  MAX_W: 1048,
+  MAX_H: 1048
+};
 
 /**
  * @param {Number} x
@@ -54,8 +66,8 @@ Camera.prototype.scale = function scale (x) {
   x = (x * 42) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
   var oscale = this.s;
   if (this.s + x <= MIN_SCALE) { this.s = MIN_SCALE; }
-  if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
-  this.s += x;
+  else if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
+  else { this.s += x; }
   this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
   this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
 };
@@ -82,7 +94,6 @@ Camera.prototype.drag = function drag (x, y) {
   this.dx = x;
   this.dy = y;
   // smooth dragging
-  this.instance.clear();
   this.instance.render();
 };
 
@@ -161,6 +172,7 @@ function dequeue(from, to) {
   for (var ii = 0; ii < count; ++ii) {
     var idx = (from + ii);
     var op = this$1.stack[idx];
+    // TODO: Fix error here
     batches.splice(op.index, 1);
     // recalculate stack batch index because we removed something
     // (we need valid stack indexes again after this iteration)
@@ -231,10 +243,27 @@ var Tile = function Tile() {
 };
 
 /**
- * Set ctrl+a mode=true
+ * @param {Number} x
+ * @param {Number} y
  */
-function selectAll() {
-  this.modes.selectAll = true;
+function drawTileAtMouseOffset(x, y) {
+  if (this.modes.draw) {
+    this.pushTileBatch(x, y, false);
+  }
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ * @return {Tile}
+ */
+function drawTileAt(x, y, color) {
+  var tile = this.createTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0);
+  tile.colors.unshift(color);
+  this.batches.tiles.push([tile]);
+  this.finalizeBatchOperation();
+  return (tile);
 }
 
 /**
@@ -246,17 +275,52 @@ function select(x, y, state) {
   this.modes.drag = state;
   this.modes.draw = !!state;
   if (state && this.modes.draw) {
-    this.colorTest = this.setRandomColor();
+    this.colorTest = this.getRandomRgbaColors();
     this.pushTileBatchOperation();
-    this.pushTileBatch(x, y);
+    this.pushTileBatch(x, y, false);
     this.clearLatestTileBatch();
   } else {
-    var offset = this.batches.tiles.length - 1;
-    this.enqueue({
-      batch: this.batches.tiles[offset],
-      index: offset
-    });
+    // finally push the created batch into the cmd stack
+    this.finalizeBatchOperation();
   }
+}
+
+/**
+ * Set ctrl+a mode=true
+ */
+function selectAll() {
+  this.modes.selectAll = true;
+}
+
+/**
+ * Hover & unhover tiles
+ * @param {Number} x
+ * @param {Number} y
+ */
+function hover(x, y) {
+  this.unHoverAllTiles();
+  var tile = this.getTileFromMouseOffset(x, y);
+  if (tile !== null) {
+    // set current tile as hovered
+    this.hovered.push(tile);
+    tile.isHovered = true;
+  }
+}
+
+/**
+ * Take the latest tile batch, buffers if necessary
+ * and finally pushes it into the operation stack
+ */
+function finalizeBatchOperation() {
+  var offset = this.batches.tiles.length - 1;
+  var batch = this.batches.tiles[offset];
+  if (this.batchSizeExceedsLimit(batch)) {
+    var buffer = this.createBufferFromBatch(batch);
+  }
+  this.enqueue({
+    batch: batch,
+    index: offset
+  });
 }
 
 /**
@@ -274,41 +338,6 @@ function clearLatestTileBatch() {
 /**
  * @return {Array}
  */
-function setRandomColor() {
-  var r = ((Math.random() * 255) + 1) | 0;
-  var g = ((Math.random() * 255) + 1) | 0;
-  var b = ((Math.random() * 255) + 1) | 0;
-  return ([r, g, b, 1]);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Object}
- */
-function getRelativeOffset$1(x, y) {
-  var pos = this.camera.getRelativeOffset(x, y);
-  var half = TILE_SIZE / 2;
-  pos.x = roundTo(pos.x - half, TILE_SIZE);
-  pos.y = roundTo(pos.y - half, TILE_SIZE);
-  return (pos);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- */
-function createTileByMouseOffset(x, y) {
-  var position = this.getRelativeOffset(x, y);
-  var tile = new Tile();
-  tile.x = position.x;
-  tile.y = position.y;
-  return (tile);
-}
-
-/**
- * @return {Array}
- */
 function getLatestTileBatchOperation() {
   var offset = this.batches.tiles.length - 1;
   var batch = this.batches.tiles;
@@ -321,6 +350,197 @@ function getLatestTileBatchOperation() {
 function pushTileBatchOperation() {
   var operation = [];
   this.batches.tiles.push(operation);
+}
+
+/**
+ * Create, push and batch a new tile at x,y
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Boolean} relative
+ */
+function pushTileBatch(x, y, relative) {
+  var otile = (
+    relative ? this.findTileAt(x, y) :
+    this.getTileFromMouseOffset(x, y)
+  );
+  var color = [
+    this.colorTest[0],
+    this.colorTest[1],
+    this.colorTest[2],
+    this.colorTest[3]
+  ];
+  var batch = this.getLatestTileBatchOperation();
+  // previous tile found, update it
+  if (otile !== null) {
+    var ocolors = otile.colors[otile.cindex];
+    // check if we have to overwrite the old tiles color
+    // e.g => push in a new color state
+    var matches = this.colorArraysMatch(
+      color,
+      ocolors
+    );
+    // old and new colors doesnt match, insert new color values
+    // into the old tile's color array to save its earlier state
+    // as well as push in a new stack operation
+    if (!matches && ocolors[3] !== 2) {
+      otile.colors.unshift(color);
+      batch.push(otile);
+    }
+  // if no tile found, create one and push it into the batch
+  } else {
+    var tile = (
+      relative ? this.createTileAt(x, y) :
+      this.createTileAtMouseOffset(x, y)
+    );
+    tile.colors.unshift(color);
+    batch.push(tile);
+  }
+}
+
+/**
+ * Returns rnd(0-255) rgba color array with a=1
+ * @return {Array}
+ */
+function getRandomRgbaColors() {
+  var cmax = 256;
+  var r = (Math.random() * cmax) | 0;
+  var g = (Math.random() * cmax) | 0;
+  var b = (Math.random() * cmax) | 0;
+  return ([r, g, b, 1]);
+}
+
+/**
+ * Compare two color arrays if they match both
+ * @param {Array} a
+ * @param {Array} b
+ * @return {Boolean}
+ */
+function colorArraysMatch(a, b) {
+  return (
+    a[0] === b[0] &&
+    a[1] === b[1] &&
+    a[2] === b[2] &&
+    a[3] === b[3]
+  );
+}
+
+/**
+ * Set isHovered=false in hovered tiles array
+ */
+function unHoverAllTiles() {
+  var this$1 = this;
+
+  for (var ii = 0; ii < this.hovered.length; ++ii) {
+    this$1.hovered[ii].isHovered = false;
+    this$1.hovered.splice(ii, 1);
+  }
+}
+
+/**
+ * Calculate cropped size of given batch
+ * @param {Array} batch
+ * @return {Object}
+ */
+function getBatchSize(batch) {
+  // min size we have to begin with and reach
+  var w = -TILE_SIZE;
+  var h = -TILE_SIZE;
+  // start position at maximum buffer size
+  var x = BATCH_BUFFER_SIZE.MAX_W;
+  var y = BATCH_BUFFER_SIZE.MAX_H;
+  for (var ii = 0; ii < batch.length; ++ii) {
+    var tile = batch[ii];
+    var tx = tile.x;
+    var ty = tile.y;
+    // x, y
+    if (tx < x) { x = tx; }
+    if (ty < y) { y = ty; }
+    // w, h
+    if (tx > w) { w = tx; }
+    if (ty > h) { h = ty; }
+  }
+  // calculate rectangle position
+  var xx = x / TILE_SIZE;
+  var yy = y / TILE_SIZE;
+  // calculate rectangle size
+  var ww = (w / TILE_SIZE) - xx;
+  var hh = (h / TILE_SIZE) - yy;
+  return ({
+    x: x / TILE_SIZE,
+    y: y / TILE_SIZE,
+    // much hax
+    w: ww + 1,
+    h: hh + 1
+  });
+}
+
+/**
+ * Creates a cropped canvas buffer from a tile batch
+ */
+function createBufferFromBatch(batch) {
+  var size = this.getBatchSize(batch);
+  console.log(size);
+}
+
+/**
+ * @param {Array} batch
+ * @return {Boolean}
+ */
+function batchSizeExceedsLimit(batch) {
+  var size = this.getBatchSize(batch); 
+  return (
+    size.w >= BATCH_BUFFER_SIZE.MIN_W &&
+    size.h >= BATCH_BUFFER_SIZE.MIN_W
+  );
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Object}
+ */
+function getRelativeOffset$1(x, y) {
+  var rpos = this.camera.getRelativeOffset(x, y);
+  var tpos = this.getTileOffsetAt(rpos.x, rpos.y);
+  return (tpos);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Object}
+ */
+function getTileOffsetAt(x, y) {
+  var half = TILE_SIZE / 2;
+  var xx = roundTo(x - half, TILE_SIZE);
+  var yy = roundTo(y - half, TILE_SIZE);
+  return ({
+    x: xx,
+    y: yy
+  });
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+function createTileAtMouseOffset(x, y) {
+  var position = this.getRelativeOffset(x, y);
+  var tile = this.createTileAt(position.x, position.y);
+  return (tile);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+function createTileAt(x, y) {
+  var tile = new Tile();
+  tile.x = x;
+  tile.y = y;
+  return (tile);
 }
 
 /**
@@ -358,71 +578,7 @@ function findTileAt(x, y) {
 }
 
 /**
- * Create, push and batch a new tile at x,y
- * @param {Number} x
- * @param {Number} y
- */
-function pushTileBatch(x, y) {
-  var otile = this.getTileFromMouseOffset(x, y);
-  var color = [
-    this.colorTest[0],
-    this.colorTest[1],
-    this.colorTest[2],
-    this.colorTest[3]
-  ];
-  var batch = this.getLatestTileBatchOperation();
-  // previous tile found, update it
-  if (otile !== null) {
-    var ocolors = otile.colors[otile.cindex];
-    // check if we have to overwrite the old tiles color
-    // e.g => push in a new color state
-    var matches = this.colorArraysMatch(
-      color,
-      ocolors
-    );
-    // old and new colors doesnt match, insert new color values
-    // into the old tile's color array to save its earlier state
-    // as well as push in a new stack operation
-    if (!matches && ocolors[3] !== 2) {
-      otile.colors.unshift(color);
-      batch.push(otile);
-    }
-  // if no tile found, create one and push it into the batch
-  } else {
-    var tile = this.createTileByMouseOffset(x, y);
-    tile.colors.unshift(color);
-    batch.push(tile);
-  }
-}
-
-/**
- * Compare two color arrays if they match both
- * @param {Array} a
- * @param {Array} b
- * @return {Boolean}
- */
-function colorArraysMatch(a, b) {
-  return (
-    a[0] === b[0] &&
-    a[1] === b[1] &&
-    a[2] === b[2] &&
-    a[3] === b[3]
-  );
-}
-
-/**
- * Just set isHovered=false in hovered tiles array
- */
-function unHoverAllTiles() {
-  var this$1 = this;
-
-  for (var ii = 0; ii < this.hovered.length; ++ii) {
-    this$1.hovered[ii].isHovered = false;
-    this$1.hovered.splice(ii, 1);
-  }
-}
-
-/**
+ * Checks if given tile is inside camera view
  * @param {Tile} tile
  * @return {Boolean}
  */
@@ -442,19 +598,28 @@ function isTileInsideView(tile) {
 
 
 var _tiles = Object.freeze({
-	selectAll: selectAll,
+	drawTileAtMouseOffset: drawTileAtMouseOffset,
+	drawTileAt: drawTileAt,
 	select: select,
+	selectAll: selectAll,
+	hover: hover,
+	finalizeBatchOperation: finalizeBatchOperation,
 	clearLatestTileBatch: clearLatestTileBatch,
-	setRandomColor: setRandomColor,
-	getRelativeOffset: getRelativeOffset$1,
-	createTileByMouseOffset: createTileByMouseOffset,
 	getLatestTileBatchOperation: getLatestTileBatchOperation,
 	pushTileBatchOperation: pushTileBatchOperation,
-	getTileFromMouseOffset: getTileFromMouseOffset,
-	findTileAt: findTileAt,
 	pushTileBatch: pushTileBatch,
+	getRandomRgbaColors: getRandomRgbaColors,
 	colorArraysMatch: colorArraysMatch,
 	unHoverAllTiles: unHoverAllTiles,
+	getBatchSize: getBatchSize,
+	createBufferFromBatch: createBufferFromBatch,
+	batchSizeExceedsLimit: batchSizeExceedsLimit,
+	getRelativeOffset: getRelativeOffset$1,
+	getTileOffsetAt: getTileOffsetAt,
+	createTileAtMouseOffset: createTileAtMouseOffset,
+	createTileAt: createTileAt,
+	getTileFromMouseOffset: getTileFromMouseOffset,
+	findTileAt: findTileAt,
 	isTileInsideView: isTileInsideView
 });
 
@@ -476,33 +641,6 @@ var Editor = function Editor(instance) {
   // stack related
   this.sindex = -1;
   this.stack = [];
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- */
-Editor.prototype.drag = function drag (x, y) {
-  if (this.modes.drag) {
-    if (this.modes.draw) {
-      this.pushTileBatch(x, y);
-    }
-  }
-};
-
-/**
- * Hover & unhover tiles
- * @param {Number} x
- * @param {Number} y
- */
-Editor.prototype.hover = function hover (x, y) {
-  this.unHoverAllTiles();
-  var tile = this.getTileFromMouseOffset(x, y);
-  if (tile !== null) {
-    // set current tile as hovered
-    this.hovered.push(tile);
-    tile.isHovered = true;
-  }
 };
 
 inherit(Editor, _stack);
@@ -781,9 +919,49 @@ Picaxo.prototype.createCanvasBuffer = function createCanvasBuffer (width, height
  * @param {Boolean} state
  */
 Picaxo.prototype.applyImageSmoothing = function applyImageSmoothing (ctx, state) {
+  ctx.imageSmoothingEnabled = state;
   ctx.oImageSmoothingEnabled = state;
   ctx.msImageSmoothingEnabled = state;
   ctx.webkitImageSmoothingEnabled = state;
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Number} x
+ * @param {Number} y
+ */
+Picaxo.prototype.insertSpriteContextAt = function insertSpriteContextAt (ctx, x, y) {
+  var canvas = ctx.canvas;
+  var width = canvas.width;
+  var height = canvas.height;
+  var data = ctx.getImageData(0, 0, width, height).data;
+  var buffer = this.createCanvasBuffer(width, height);
+  var tiles = [];
+  var xx = 0;
+  var yy = 0;
+  var editor = this.editor;
+  var position = editor.getRelativeOffset(x, y);
+  var mx = position.x;
+  var my = position.y;
+  for (var yy$1 = 0; yy$1 < height; ++yy$1) {
+    for (var xx$1 = 0; xx$1 < width; ++xx$1) {
+      var idx = (xx$1+(yy$1*width))*4;
+      var a = data[idx+3];
+      if (a <= 0) { continue; }
+      var r = data[idx+0];
+      var g = data[idx+1];
+      var b = data[idx+2];
+      var tile = new Tile();
+      tile.x = mx + (xx$1 * TILE_SIZE);
+      tile.y = my + (yy$1 * TILE_SIZE);
+      tile.colors.unshift([r,g,b,a]);
+      tiles.push(tile);
+    }
+  }
+  if (tiles.length) {
+    editor.batches.tiles.push(tiles);
+    editor.finalizeBatchOperation();
+  }
 };
 
 inherit(Picaxo, _render);

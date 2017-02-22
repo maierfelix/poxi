@@ -2,8 +2,37 @@
 
   "use strict";
 
-  let canvas = document.createElement("canvas");
+  // ## drag&drop images
+  let el = document.createElement("input");
+  el.style = `
+    width: 100%; height: 100%; opacity: 0; position: absolute; left: 0px; top: 0px; z-index: 999;
+  `;
+  el.setAttribute("type", "file");
+  el.onclick = (e) => { e.preventDefault(); };
+  el.setAttribute("title", " "); // invisible
+  el.onchange = (e) => {
+    let reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target.result.slice(11, 14) !== "png") {
+        throw new Error("Invalid image type!");
+      }
+      let img = new Image();
+      let canvas = document.createElement("canvas");
+      let ctx = canvas.getContext("2d");
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        stage.insertSpriteContextAt(ctx, mx, my);
+        el.value = ""; // reassign to allow second files
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  };
+  document.body.appendChild(el);
 
+  // ## relevant part
   let stage = new Picaxo({
     width: window.innerWidth,
     height: window.innerHeight
@@ -21,6 +50,12 @@
 
   window.stage = stage;
 
+  keyboardJS.bind("ctrl > z", () => {
+    stage.editor.undo();
+  });
+  keyboardJS.bind("ctrl > y", () => {
+    stage.editor.redo();
+  });
   stage.on("windowresize", () => {
 
   });
@@ -28,32 +63,24 @@
 
   });
 
+  // current mouse position
+  let mx = 0;
+  let my = 0;
+
   // ## input events
   let rpressed = false;
   let lpressed = false;
-  window.addEventListener("keydown", (e) => {
-    switch (e.keyCode) {
-      // arrow down
-      case 40:
-        stage.commander.undo();
-      return;
-      // arrow up
-      case 38:
-        stage.commander.redo();
-      return;
-    };
-    //e.preventDefault();
-    return;
-  });
   window.addEventListener("resize", (e) => {
     stage.resize(window.innerWidth, window.innerHeight);
   });
   window.addEventListener("mousemove", (e) => {
+    mx = e.clientX;
+    my = e.clientY;
     e.preventDefault();
-    stage.editor.hover(e.clientX, e.clientY);
-    if (lpressed) stage.editor.drag(e.clientX, e.clientY);
+    stage.editor.hover(mx, my);
+    if (lpressed) stage.editor.drawTileAtMouseOffset(mx, my);
     if (!rpressed) return;
-    stage.camera.drag(e.clientX, e.clientY);
+    stage.camera.drag(mx, my);
   });
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();
