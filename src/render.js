@@ -56,7 +56,7 @@ export function renderGrid() {
   let ch = this.camera.height;
 
   ctx.lineWidth = .25;
-  ctx.strokeStyle = "rgba(51,51,51,0.5)";
+  ctx.strokeStyle = "rgba(51,51,51,0.75)";
 
   ctx.beginPath();
   for (let xx = (cx%size)|0; xx < cw; xx += size) {

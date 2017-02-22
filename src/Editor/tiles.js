@@ -73,6 +73,16 @@ export function hover(x, y) {
 };
 
 /**
+ * Set isHovered=false in hovered tiles array
+ */
+export function unHoverAllTiles() {
+  for (let ii = 0; ii < this.hovered.length; ++ii) {
+    this.hovered[ii].isHovered = false;
+    this.hovered.splice(ii, 1);
+  };
+};
+
+/**
  * Take the latest tile batch, buffers if necessary
  * and finally pushes it into the operation stack
  */
@@ -187,16 +197,6 @@ export function colorArraysMatch(a, b) {
     a[2] === b[2] &&
     a[3] === b[3]
   );
-};
-
-/**
- * Set isHovered=false in hovered tiles array
- */
-export function unHoverAllTiles() {
-  for (let ii = 0; ii < this.hovered.length; ++ii) {
-    this.hovered[ii].isHovered = false;
-    this.hovered.splice(ii, 1);
-  };
 };
 
 /**

@@ -146,6 +146,8 @@ class Picaxo {
     let position = editor.getRelativeOffset(x, y);
     let mx = position.x;
     let my = position.y;
+    editor.pushTileBatchOperation();
+    let batch = editor.getLatestTileBatchOperation();
     for (let yy = 0; yy < height; ++yy) {
       for (let xx = 0; xx < width; ++xx) {
         let idx = (xx+(yy*width))*4;
@@ -154,17 +156,17 @@ class Picaxo {
         let r = data[idx+0];
         let g = data[idx+1];
         let b = data[idx+2];
-        let tile = new Tile();
-        tile.x = mx + (xx * TILE_SIZE);
-        tile.y = my + (yy * TILE_SIZE);
+        let tile = editor.createTileAt(
+          mx + (xx * TILE_SIZE),
+          my + (yy * TILE_SIZE)
+        );
+        a *= .00392; // alpha byte to rgb-alpha converstion
         tile.colors.unshift([r,g,b,a]);
-        tiles.push(tile);
+        batch.push(tile);
       };
     };
-    if (tiles.length) {
-      editor.batches.tiles.push(tiles);
-      editor.finalizeBatchOperation();
-    }
+    editor.clearLatestTileBatch();
+    if (batch.length) editor.finalizeBatchOperation();
   }
 
 };
