@@ -163,7 +163,7 @@ class Picaxo {
     };
     if (tiles.length) {
       editor.batches.tiles.push(tiles);
-      editor.enqueueBatchOperation();
+      editor.finalizeBatchOperation();
     }
   }
 

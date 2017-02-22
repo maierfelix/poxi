@@ -27,6 +27,7 @@ export function dequeue(from, to) {
   for (let ii = 0; ii < count; ++ii) {
     let idx = (from + ii);
     let op = this.stack[idx];
+    // TODO: Fix error here
     batches.splice(op.index, 1);
     // recalculate stack batch index because we removed something
     // (we need valid stack indexes again after this iteration)
