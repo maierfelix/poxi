@@ -26,10 +26,10 @@ export function clear() {
 
 export function render() {
   this.renderBackground();
+  this.renderTiles();
   if (this.camera.s > MIN_SCALE) {
     this.renderGrid();
   }
-  this.renderTiles();
   this.renderFPS();
 };
 
@@ -56,7 +56,7 @@ export function renderGrid() {
   let ch = this.camera.height;
 
   ctx.lineWidth = .25;
-  ctx.strokeStyle = "#333333";
+  ctx.strokeStyle = "rgba(51,51,51,0.5)";
 
   ctx.beginPath();
   for (let xx = (cx%size)|0; xx < cw; xx += size) {

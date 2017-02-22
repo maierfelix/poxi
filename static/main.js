@@ -50,6 +50,12 @@
 
   window.stage = stage;
 
+  keyboardJS.bind("ctrl > z", () => {
+    stage.editor.undo();
+  });
+  keyboardJS.bind("ctrl > y", () => {
+    stage.editor.redo();
+  });
   stage.on("windowresize", () => {
 
   });
@@ -64,20 +70,6 @@
   // ## input events
   let rpressed = false;
   let lpressed = false;
-  window.addEventListener("keydown", (e) => {
-    switch (e.keyCode) {
-      // arrow down
-      case 40:
-        stage.commander.undo();
-      return;
-      // arrow up
-      case 38:
-        stage.commander.redo();
-      return;
-    };
-    //e.preventDefault();
-    return;
-  });
   window.addEventListener("resize", (e) => {
     stage.resize(window.innerWidth, window.innerHeight);
   });
@@ -86,9 +78,9 @@
     my = e.clientY;
     e.preventDefault();
     stage.editor.hover(mx, my);
-    if (lpressed) stage.editor.drag(mx, my);
-    if (!rpressed) return;
-    stage.camera.drag(mx, my);
+    // drag before drawing to stay in position (drag+draw)
+    if (rpressed) stage.camera.drag(mx, my);
+    if (lpressed) stage.editor.drawTileAtMouseOffset(mx, my);
   });
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();

@@ -1,5 +1,5 @@
 import { MIN_SCALE, MAX_SCALE } from "../cfg";
-import { zoomScale } from "../math";
+import { roundTo, zoomScale } from "../math";
 
 /**
  * @class Camera
@@ -31,6 +31,7 @@ class Camera {
     if (this.s + x <= MIN_SCALE) this.s = MIN_SCALE;
     else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;
     else this.s += x;
+    this.s = roundTo(this.s, .125);
     this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
     this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
   }
