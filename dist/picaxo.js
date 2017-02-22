@@ -310,6 +310,18 @@ function hover(x, y) {
 }
 
 /**
+ * Set isHovered=false in hovered tiles array
+ */
+function unHoverAllTiles() {
+  var this$1 = this;
+
+  for (var ii = 0; ii < this.hovered.length; ++ii) {
+    this$1.hovered[ii].isHovered = false;
+    this$1.hovered.splice(ii, 1);
+  }
+}
+
+/**
  * Take the latest tile batch, buffers if necessary
  * and finally pushes it into the operation stack
  */
@@ -424,18 +436,6 @@ function colorArraysMatch(a, b) {
     a[2] === b[2] &&
     a[3] === b[3]
   );
-}
-
-/**
- * Set isHovered=false in hovered tiles array
- */
-function unHoverAllTiles() {
-  var this$1 = this;
-
-  for (var ii = 0; ii < this.hovered.length; ++ii) {
-    this$1.hovered[ii].isHovered = false;
-    this$1.hovered.splice(ii, 1);
-  }
 }
 
 /**
@@ -605,6 +605,7 @@ var _tiles = Object.freeze({
 	select: select,
 	selectAll: selectAll,
 	hover: hover,
+	unHoverAllTiles: unHoverAllTiles,
 	finalizeBatchOperation: finalizeBatchOperation,
 	clearLatestTileBatch: clearLatestTileBatch,
 	getLatestTileBatchOperation: getLatestTileBatchOperation,
@@ -612,7 +613,6 @@ var _tiles = Object.freeze({
 	pushTileBatch: pushTileBatch,
 	getRandomRgbaColors: getRandomRgbaColors,
 	colorArraysMatch: colorArraysMatch,
-	unHoverAllTiles: unHoverAllTiles,
 	getBatchSize: getBatchSize,
 	createBufferFromBatch: createBufferFromBatch,
 	batchSizeExceedsLimit: batchSizeExceedsLimit,
@@ -700,7 +700,7 @@ function renderGrid() {
   var ch = this.camera.height;
 
   ctx.lineWidth = .25;
-  ctx.strokeStyle = "rgba(51,51,51,0.5)";
+  ctx.strokeStyle = "rgba(51,51,51,0.75)";
 
   ctx.beginPath();
   for (var xx = (cx%size)|0; xx < cw; xx += size) {
@@ -945,6 +945,8 @@ Picaxo.prototype.insertSpriteContextAt = function insertSpriteContextAt (ctx, x,
   var position = editor.getRelativeOffset(x, y);
   var mx = position.x;
   var my = position.y;
+  editor.pushTileBatchOperation();
+  var batch = editor.getLatestTileBatchOperation();
   for (var yy$1 = 0; yy$1 < height; ++yy$1) {
     for (var xx$1 = 0; xx$1 < width; ++xx$1) {
       var idx = (xx$1+(yy$1*width))*4;
@@ -953,17 +955,17 @@ Picaxo.prototype.insertSpriteContextAt = function insertSpriteContextAt (ctx, x,
       var r = data[idx+0];
       var g = data[idx+1];
       var b = data[idx+2];
-      var tile = new Tile();
-      tile.x = mx + (xx$1 * TILE_SIZE);
-      tile.y = my + (yy$1 * TILE_SIZE);
+      var tile = editor.createTileAt(
+        mx + (xx$1 * TILE_SIZE),
+        my + (yy$1 * TILE_SIZE)
+      );
+      a *= .00392; // alpha byte to rgb-alpha converstion
       tile.colors.unshift([r,g,b,a]);
-      tiles.push(tile);
+      batch.push(tile);
     }
   }
-  if (tiles.length) {
-    editor.batches.tiles.push(tiles);
-    editor.finalizeBatchOperation();
-  }
+  editor.clearLatestTileBatch();
+  if (batch.length) { editor.finalizeBatchOperation(); }
 };
 
 inherit(Picaxo, _render);
