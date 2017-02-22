@@ -68,6 +68,7 @@ Camera.prototype.scale = function scale (x) {
   if (this.s + x <= MIN_SCALE) { this.s = MIN_SCALE; }
   else if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
   else { this.s += x; }
+  this.s = roundTo(this.s, .125);
   this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
   this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
 };
@@ -94,6 +95,7 @@ Camera.prototype.drag = function drag (x, y) {
   this.dx = x;
   this.dy = y;
   // smooth dragging
+  this.instance.clear();
   this.instance.render();
 };
 
@@ -668,10 +670,10 @@ function clear() {
 
 function render() {
   this.renderBackground();
+  this.renderTiles();
   if (this.camera.s > MIN_SCALE) {
     this.renderGrid();
   }
-  this.renderTiles();
   this.renderFPS();
 }
 
@@ -698,7 +700,7 @@ function renderGrid() {
   var ch = this.camera.height;
 
   ctx.lineWidth = .25;
-  ctx.strokeStyle = "#333333";
+  ctx.strokeStyle = "rgba(51,51,51,0.5)";
 
   ctx.beginPath();
   for (var xx = (cx%size)|0; xx < cw; xx += size) {

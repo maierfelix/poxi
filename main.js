@@ -78,9 +78,9 @@
     my = e.clientY;
     e.preventDefault();
     stage.editor.hover(mx, my);
+    // drag before drawing to stay in position (drag+draw)
+    if (rpressed) stage.camera.drag(mx, my);
     if (lpressed) stage.editor.drawTileAtMouseOffset(mx, my);
-    if (!rpressed) return;
-    stage.camera.drag(mx, my);
   });
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();
