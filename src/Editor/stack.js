@@ -22,13 +22,24 @@ export function enqueue(op) {
 export function dequeue(from, to) {
   from = from + 1;
   let count = (to - (from - 1));
+  console.log("Dequeue stack by", count, "operations");
   let batches = this.batches.tiles;
   // free all following (more recent) tile batches
   for (let ii = 0; ii < count; ++ii) {
     let idx = (from + ii);
     let op = this.stack[idx];
-    // TODO: Fix error here
-    batches.splice(op.index, 1);
+    // TODO: Stable, no memory leaks?
+    let sliced = batches.splice(op.index, 1);
+    for (let jj = 0; jj < sliced.length; ++jj) {
+      let batch = sliced[jj];
+      for (let kk = 0; kk < batch.length; ++kk) {
+        let tile = batch[kk];
+        if (!(tile.overwrite.length)) continue;
+        let ow = tile.overwrite.splice(0, 1)[0];
+        tile.colors.shift();
+        tile.cindex = ow.cindex - 1;
+      };
+    };
     // recalculate stack batch index because we removed something
     // (we need valid stack indexes again after this iteration)
     for (let jj = 0; jj < this.stack.length; ++jj) {

@@ -12,6 +12,7 @@ class Editor {
    * @param {Picaxo} instance
    */
   constructor(instance) {
+    this.instance = instance;
     this.modes = {
       draw: false,
       drag: false,
@@ -20,6 +21,9 @@ class Editor {
     this.batches = {
       tiles: []
     };
+    // mouse position
+    this.mx = 0;
+    this.my = 0;
     this.hovered = [];
     this.colorTest = null;
     this.camera = instance.camera;

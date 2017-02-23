@@ -27,10 +27,16 @@ export function clear() {
 export function render() {
   this.renderBackground();
   this.renderTiles();
+  if (this.rofl) {
+    this.ctx.drawImage(
+      this.rofl,
+      0, 0
+    );
+  }
   if (this.camera.s > MIN_SCALE) {
     this.renderGrid();
   }
-  this.renderFPS();
+  this.renderStats();
 };
 
 export function renderBackground() {
@@ -105,11 +111,31 @@ export function renderTiles() {
   };
 };
 
+export function renderStats() {
+  this.ctx.fillStyle = "#ffffff";
+  // render mouse hovered color
+  let mx = this.editor.mx;
+  let my = this.editor.my;
+  let relative = this.editor.getRelativeOffset(mx, my);
+  let rx = relative.x;
+  let ry = relative.y;
+  let tile = this.editor.getTileByPosition(rx, ry);
+  this.ctx.fillText(`x:${rx}, y:${ry}`, 16, 32);
+  if (tile !== null) {
+    let color = tile.colors[tile.cindex];
+    let r = color[0];
+    let g = color[1];
+    let b = color[2];
+    let a = color[3];
+    this.ctx.fillText(`${r},${g},${b},${a}`, 16, 48);
+  }
+  this.renderFPS();
+};
+
 export function renderFPS() {
   let now = Date.now();
   let delta = now - this.last;
   this.last = now;
-  this.ctx.fillStyle = "#fff";
   this.ctx.fillText((1e3 / delta) | 0, 16, 16);
 };
 

@@ -2,9 +2,14 @@ import Camera from "./Camera/index";
 import Editor from "./Editor/index";
 import Tile from "./Editor/Tile/index";
 
-import { TILE_SIZE } from "./cfg";
+import {
+  DRAW_HASH
+} from "./cfg";
 
-import { inherit } from "./utils";
+import {
+  inherit,
+  hashFromString
+} from "./utils";
 
 import * as _render from "./render";
 
@@ -57,7 +62,7 @@ class Picaxo {
       setTimeout(() => this.renderLoop(), 16);
     } else {
       requestAnimationFrame(() => {
-        this.events["draw"].fn();
+        this.events[DRAW_HASH].fn();
         this.frames++;
         this.renderLoop();
       });
@@ -85,20 +90,21 @@ class Picaxo {
     if (!(fn instanceof Function)) {
       throw new Error("Received emitter trigger is not a function");
     }
-    if (this.events[kind]) this.events[kind] = null; // safely clean old emitters
-    this.events[kind] = {
+    let hash = hashFromString(kind);
+    if (this.events[hash]) this.events[hash] = null; // safely clean old emitters
+    this.events[hash] = {
       fn: fn
     };
-    this.processEmitter(kind, fn);
+    this.processEmitter(hash, fn);
   }
 
   /**
-   * @param {String} kind
+   * @param {Number} hash
    * @param {Function} fn
    */
-  processEmitter(kind, fn) {
+  processEmitter(hash, fn) {
     // begin drawing as soon as we got something to do there
-    if (this.frames === 0 && kind === "draw") {
+    if (this.frames === 0 && hash === DRAW_HASH) {
       this.states.paused = false;
     }
   }
@@ -127,47 +133,6 @@ class Picaxo {
     ctx.msImageSmoothingEnabled = state;
     ctx.webkitImageSmoothingEnabled = state;
   };
-
-  /**
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {Number} x
-   * @param {Number} y
-   */
-  insertSpriteContextAt(ctx, x, y) {
-    let canvas = ctx.canvas;
-    let width = canvas.width;
-    let height = canvas.height;
-    let data = ctx.getImageData(0, 0, width, height).data;
-    let buffer = this.createCanvasBuffer(width, height);
-    let tiles = [];
-    let xx = 0;
-    let yy = 0;
-    let editor = this.editor;
-    let position = editor.getRelativeOffset(x, y);
-    let mx = position.x;
-    let my = position.y;
-    editor.pushTileBatchOperation();
-    let batch = editor.getLatestTileBatchOperation();
-    for (let yy = 0; yy < height; ++yy) {
-      for (let xx = 0; xx < width; ++xx) {
-        let idx = (xx+(yy*width))*4;
-        let a = data[idx+3];
-        if (a <= 0) continue;
-        let r = data[idx+0];
-        let g = data[idx+1];
-        let b = data[idx+2];
-        let tile = editor.createTileAt(
-          mx + (xx * TILE_SIZE),
-          my + (yy * TILE_SIZE)
-        );
-        a *= .00392; // alpha byte to rgb-alpha converstion
-        tile.colors.unshift([r,g,b,a]);
-        batch.push(tile);
-      };
-    };
-    editor.clearLatestTileBatch();
-    if (batch.length) editor.finalizeBatchOperation();
-  }
 
 };
 
