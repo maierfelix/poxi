@@ -42,13 +42,44 @@ function hashFromString(str) {
   return (hash);
 }
 
+/**
+ * @param {Number} width
+ * @param {Number} height
+ * @return {CanvasRenderingContext2D}
+ */
+function createCanvasBuffer(width, height) {
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
+  canvas.width = width;
+  canvas.height = height;
+  applyImageSmoothing(ctx, false);
+  return (ctx);
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Boolean} state
+ */
+function applyImageSmoothing(ctx, state) {
+  ctx.imageSmoothingEnabled = state;
+  ctx.oImageSmoothingEnabled = state;
+  ctx.msImageSmoothingEnabled = state;
+  ctx.webkitImageSmoothingEnabled = state;
+}
+
 var TILE_SIZE = 8;
 var MIN_SCALE = 0.5;
 var MAX_SCALE = 35;
-var BASE_TILE_COLOR = [0,0,0,0];
+
+
+// 32-bit ints are allowed at maximum
+var MAX_SAFE_INTEGER = (Math.pow( 2, 31 )) - 1;
 
 // alpha byte to rgb-alpha conversion
 var MAGIC_RGB_A_BYTE = 0.00392;
+
+// factor when to hide the grid
+var HIDE_GRID = 1;
 
 /**
  * If a tile batch exceeds the min size,
@@ -191,29 +222,38 @@ function dequeue(from, to) {
   from = from + 1;
   var count = (to - (from - 1));
   console.log("Dequeue stack by", count, "operations");
-  var batches = this.batches.tiles;
+  var batches = this.batches;
   // free all following (more recent) tile batches
   for (var ii = 0; ii < count; ++ii) {
     var idx = (from + ii);
     var op = this$1.stack[idx];
-    // TODO: Stable, no memory leaks?
-    var sliced = batches.splice(op.index, 1);
-    for (var jj = 0; jj < sliced.length; ++jj) {
-      var batch = sliced[jj];
-      for (var kk = 0; kk < batch.length; ++kk) {
-        var tile = batch[kk];
-        if (!(tile.overwrite.length)) { continue; }
-        var ow = tile.overwrite.splice(0, 1)[0];
-        tile.colors.shift();
-        tile.cindex = ow.cindex - 1;
-      }
+    var batch = batches.splice(0, 1)[0];
+    console.log(batch);
+    for (var jj = 0; jj < batch.length; ++jj) {
+      var tile = batch[jj];
+      if (!(tile.overwritten.length)) { continue; }
+      var ocindex = tile.overwritten.splice(0, 1)[0];
+      tile.colors.unshift(tile.colors[ocindex]);
     }
+    // TODO: Stable, no memory leaks?
+    /*let sliced = batches.splice(idx, 1);
+    for (let jj = 0; jj < sliced.length; ++jj) {
+      let batch = sliced[jj];
+      for (let kk = 0; kk < batch.length; ++kk) {
+        let tile = batch[kk];
+        if (!(tile.overwritten.length)) continue;
+        let ow = tile.overwritten.splice(0, 1)[0];
+        tile.colors.shift();
+        tile.cindex = ow.cindex - tile.cindex;
+      };
+    };*/
     // recalculate stack batch index because we removed something
     // (we need valid stack indexes again after this iteration)
     for (var jj$1 = 0; jj$1 < this.stack.length; ++jj$1) {
       this$1.stack[jj$1].index -= 1;
     }
   }
+  console.log("--");
 }
 
 /**
@@ -221,7 +261,7 @@ function dequeue(from, to) {
  * @param {Boolean} state
  */
 function fire(op, state) {
-  op.batch.map(function (tile) {
+  op.batch.tiles.map(function (tile) {
     var cindex = tile.cindex;
     var colors = tile.colors.length - 1;
     if (state === true) {
@@ -272,8 +312,8 @@ var Tile = function Tile() {
   this.y = 0;
   this.id = uid();
   this.cindex = 0;
-  this.colors = [BASE_TILE_COLOR];
-  this.overwrite = [];
+  this.colors = [];
+  this.overwritten = [];
   this.isHovered = false;
 };
 /**
@@ -281,16 +321,108 @@ var Tile = function Tile() {
  * @return {String}
  */
 Tile.prototype.getColorAsRgbaString = function getColorAsRgbaString (cindex) {
-  cindex = cindex || 0;
-  var color = this.colors[cindex];
-  var r = color[0];
-  var g = color[1];
-  var b = color[2];
-  var a = color[3];
+  var c = this.colors[cindex || 0];
+  var r = c[0];
+  var g = c[1];
+  var b = c[2];
+  var a = c[3];
   return (
     ("rgba(" + r + "," + g + "," + b + "," + a + ")")
   );
 };
+
+/**
+ * @class Batch
+ */
+var Batch = function Batch() {
+  this.tiles = [];
+  this.buffer = null;
+  this.isBuffered = false;
+};
+
+/**
+ * @class Texture
+ */
+var Texture = function Texture(ctx, x, y) {
+  this.x = x;
+  this.y = y;
+  var view = ctx.canvas;
+  this.view = view;
+  this.width = view.width;
+  this.height = view.height;
+  this.context = ctx;
+  this.tiles = [];
+};
+
+/**
+ * Push in a new batch operation
+ */
+function pushTileBatchOperation() {
+  var batch = new Batch();
+  this.batches.push(batch);
+}
+
+/**
+ * @return {Batch}
+ */
+function getLatestTileBatchOperation() {
+  var offset = this.batches.length - 1;
+  return (this.batches[offset]);
+}
+
+/**
+ * Take the latest tile batch, buffer it (if exceeds bound sizes)
+ * and finally push it into the operation stack
+ */
+function finalizeBatchOperation() {
+  var offset = this.batches.length - 1;
+  var batch = this.batches[offset];
+  //if (this.batchSizeExceedsBounds) {
+  {
+    var buffer = this.createBufferFromBatch(batch);
+    batch.buffer = buffer;
+    batch.isBuffered = true;
+  }
+  this.enqueue({
+    batch: batch,
+    index: offset
+  });
+}
+
+/**
+ * Clear latest batch operation if empty
+ */
+function clearLatestTileBatch() {
+  var batch = this.getLatestTileBatchOperation();
+  // latest batch operation is empty, remove so 
+  if (!batch.tiles.length) {
+    var offset = this.batches.length - 1;
+    this.batches.splice(offset, 1);
+  }
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+function startBatchedDrawing(x, y) {
+  this.modes.draw = true;
+  var position = this.getRelativeOffset(x, y);
+  this.colorTest = this.getRandomRgbaColors();
+  this.pushTileBatchOperation();
+  this.createBatchTileAt(position.x, position.y, this.colorTest);
+  this.clearLatestTileBatch();
+}
+
+/**
+ * Finally push the recently created batch into the stack
+ * @param {Number} x
+ * @param {Number} y
+ */
+function stopBatchedDrawing(x, y) {
+  this.modes.draw = false;
+  this.finalizeBatchOperation();
+}
 
 /**
  * @param {Number} x
@@ -298,7 +430,8 @@ Tile.prototype.getColorAsRgbaString = function getColorAsRgbaString (cindex) {
  */
 function drawTileAtMouseOffset(x, y) {
   if (this.modes.draw) {
-    this.pushTileBatch(x, y, false);
+    var position = this.getRelativeOffset(x, y);
+    this.createBatchTileAt(position.x, position.y, this.colorTest);
   }
 }
 
@@ -309,30 +442,10 @@ function drawTileAtMouseOffset(x, y) {
  * @return {Tile}
  */
 function drawTileAt(x, y, color) {
-  var tile = this.createTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0);
-  tile.colors.unshift(color);
-  this.batches.tiles.push([tile]);
+  this.pushTileBatchOperation();
+  this.createBatchTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0, color);
   this.finalizeBatchOperation();
   return (tile);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @param {Boolean} state
- */
-function select(x, y, state) {
-  this.modes.drag = state;
-  this.modes.draw = !!state;
-  if (state && this.modes.draw) {
-    this.colorTest = this.getRandomRgbaColors();
-    this.pushTileBatchOperation();
-    this.pushTileBatch(x, y, false);
-    this.clearLatestTileBatch();
-  } else {
-    // finally push the created batch into the cmd stack
-    this.finalizeBatchOperation();
-  }
 }
 
 /**
@@ -372,96 +485,36 @@ function unHoverAllTiles() {
 }
 
 /**
- * Take the latest tile batch, buffers if necessary
- * and finally pushes it into the operation stack
- */
-function finalizeBatchOperation() {
-  var offset = this.batches.tiles.length - 1;
-  var batch = this.batches.tiles[offset];
-  {
-    var buffer = this.createBufferFromBatch(batch);
-  }
-  this.enqueue({
-    batch: batch,
-    index: offset
-  });
-}
-
-/**
- * Clear latest batch operation if empty
- */
-function clearLatestTileBatch() {
-  var batch = this.getLatestTileBatchOperation();
-  // latest batch operation is empty, remove so 
-  if (batch.length <= 0) {
-    var offset = this.batches.tiles.length - 1;
-    this.batches.tiles.splice(offset, 1);
-  }
-}
-
-/**
- * @return {Array}
- */
-function getLatestTileBatchOperation() {
-  var offset = this.batches.tiles.length - 1;
-  var batch = this.batches.tiles;
-  return (batch[offset]);
-}
-
-/**
- * Push in a new batch operation
- */
-function pushTileBatchOperation() {
-  var operation = [];
-  this.batches.tiles.push(operation);
-}
-
-/**
- * Create, push and batch a new tile at x,y
+ * Main method to insert tiles into the active batch
  * @param {Number} x
  * @param {Number} y
- * @param {Boolean} relative
+ * @param {Array} color
  */
-function pushTileBatch(x, y, relative) {
-  var otile = (
-    relative ? this.getTileByPosition(x, y) :
-    this.getTileByMouseOffset(x, y)
-  );
-  var color = [
-    this.colorTest[0],
-    this.colorTest[1],
-    this.colorTest[2],
-    this.colorTest[3]
-  ];
+function createBatchTileAt(x, y, color) {
+  // try to overwrite older tiles color
+  var otile = this.getTileByPosition(x, y);
   var batch = this.getLatestTileBatchOperation();
-  // previous tile found, update it
+  // older tile at same position found, update it
   if (otile !== null) {
     var ocolors = otile.colors[otile.cindex];
     // check if we have to overwrite the old tiles color
-    // e.g => push in a new color state
-    var matches = this.colorArraysMatch(
+    var newOldColorMatches = this.colorArraysMatch(
       color,
       ocolors
     );
     // old and new colors doesnt match, insert new color values
     // into the old tile's color array to save its earlier state
     // as well as push in a new stack operation
-    if (!matches && ocolors[3] !== 2) {
+    if (!newOldColorMatches) {
+      otile.overwritten.unshift(otile.cindex);
       otile.colors.unshift(color);
-      otile.overwrite.unshift({
-        cindex: otile.cindex + 1, // shift by 1, since we unshifted before
-        tile: otile
-      });
-      batch.push(otile);
+      batch.tiles.push(otile);
     }
-  // if no tile found, create one and push it into the batch
+  // no older tile found, lets create one and push it into the batch
   } else {
-    var tile = (
-      relative ? this.createTileAt(x, y) :
-      this.createTileAtMouseOffset(x, y)
-    );
+    var tile = this.createTileAt(x, y);
     tile.colors.unshift(color);
-    batch.push(tile);
+    batch.tiles.push(tile);
   }
 }
 
@@ -494,17 +547,18 @@ function colorArraysMatch(a, b) {
 
 /**
  * Calculate cropped size of given batch
- * @param {Array} batch
+ * @param {Batch} batch
  * @return {Object}
  */
-function getBatchSize(batch) {
+function getBatchBoundings(batch) {
   // start position at maximum buffer size
   var x = BATCH_BUFFER_SIZE.MAX_W;
   var y = BATCH_BUFFER_SIZE.MAX_H;
   var px = [];
   var py = [];
-  for (var ii = 0; ii < batch.length; ++ii) {
-    var tile = batch[ii];
+  var tiles = batch.tiles;
+  for (var ii = 0; ii < tiles.length; ++ii) {
+    var tile = tiles[ii];
     px.push(tile.x);
     py.push(tile.y);
   }
@@ -527,42 +581,38 @@ function getBatchSize(batch) {
 
 /**
  * Creates a cropped canvas buffer from a tile batch
+ * @param {Batch} batch
+ * @return {Texture}
  */
 function createBufferFromBatch(batch) {
-  var info = this.getBatchSize(batch);
-  var obj = {
-    x: info.x,
-    y: info.y,
-    width: info.w,
-    height: info.h,
-    buffer: null
-  };
-  var buffer = this.instance.createCanvasBuffer(info.w, info.h);
+  var tiles = batch.tiles;
+  var info = this.getBatchBoundings(batch);
+  var buffer = createCanvasBuffer(info.w, info.h);
+  buffer.clearRect(0, 0, info.w, info.h);
   var ww = info.w;
-  for (var ii = 0; ii < batch.length; ++ii) {
-    var tile = batch[ii];
+  var bx = info.x;
+  var by = info.y;
+  for (var ii = 0; ii < tiles.length; ++ii) {
+    var tile = tiles[ii];
     var color = tile.colors[tile.cindex];
-    var r = color[0];
-    var g = color[1];
-    var b = color[2];
-    var a = color[3];
-    var xx = ii % ww;
-    var yy = Math.floor(ii / ww);
-    buffer.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    var xx = (tile.x / TILE_SIZE) - bx;
+    var yy = (tile.y / TILE_SIZE) - by;
+    buffer.fillStyle = tile.getColorAsRgbaString();
     buffer.fillRect(
       xx, yy,
       1, 1
     );
   }
-  this.instance.rofl = buffer.canvas;
+  var texture = new Texture(buffer, bx, by);
+  return (texture);
 }
 
 /**
- * @param {Array} batch
+ * @param {Batch} batch
  * @return {Boolean}
  */
-function batchSizeExceedsLimit(batch) {
-  var size = this.getBatchSize(batch); 
+function batchSizeExceedsBounds(batch) {
+  var size = this.getBatchBoundings(batch); 
   return (
     size.w >= BATCH_BUFFER_SIZE.MIN_W &&
     size.h >= BATCH_BUFFER_SIZE.MIN_W
@@ -583,21 +633,6 @@ function getRelativeOffset$1(x, y) {
 /**
  * @param {Number} x
  * @param {Number} y
- * @return {Object}
- */
-function getTileOffsetAt(x, y) {
-  var half = TILE_SIZE / 2;
-  var xx = roundTo(x - half, TILE_SIZE);
-  var yy = roundTo(y - half, TILE_SIZE);
-  return ({
-    x: xx,
-    y: yy
-  });
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
  * @return {Tile}
  */
 function createTileAtMouseOffset(x, y) {
@@ -613,9 +648,24 @@ function createTileAtMouseOffset(x, y) {
  */
 function createTileAt(x, y) {
   var tile = new Tile();
-  tile.x = x;
-  tile.y = y;
+  if (!this.offsetExceedsIntegerLimit(x, y)) {
+    tile.x = x;
+    tile.y = y;
+  } else {
+    throw new Error("Tile position exceeds 32-bit integer limit!");
+  }
   return (tile);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Boolean}
+ */
+function offsetExceedsIntegerLimit(x, y) {
+  return (
+    Math.abs(x) > MAX_SAFE_INTEGER || Math.abs(y) > MAX_SAFE_INTEGER
+  );
 }
 
 /**
@@ -638,10 +688,11 @@ function getTileByMouseOffset(x, y) {
  * @return {Tile}
  */
 function getTileByPosition(x, y) {
+  // TODO: go backwards? TODO: fix tile overwrite bug
   var target = null;
-  var batches = this.batches.tiles;
+  var batches = this.batches;
   for (var ii = 0; ii < batches.length; ++ii) {
-    var batch = batches[ii];
+    var batch = batches[ii].tiles;
     for (var jj = 0; jj < batch.length; ++jj) {
       var tile = batch[jj];
       if (tile.x === x && tile.y === y) {
@@ -653,12 +704,27 @@ function getTileByPosition(x, y) {
 }
 
 /**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Object}
+ */
+function getTileOffsetAt(x, y) {
+  var half = TILE_SIZE / 2;
+  var xx = roundTo(x - half, TILE_SIZE);
+  var yy = roundTo(y - half, TILE_SIZE);
+  return ({
+    x: xx,
+    y: yy
+  });
+}
+
+/**
  * Get tile by it's id
  * @param {Number} id
  * @return {Tile}
  */
 function getTileById(id) {
-  var batches = this.batches.tiles;
+  var batches = this.batches;
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
     for (var jj = 0; jj < batch.length; ++jj) {
@@ -688,6 +754,29 @@ function isTileInsideView(tile) {
 }
 
 /**
+ * Inserts rectangle at given position
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} width
+ * @param {Number} height
+ * @param {Array} color
+ */
+function insertRectangleAt(x, y, width, height, color) {
+  var this$1 = this;
+
+  x = x * TILE_SIZE;
+  y = y * TILE_SIZE;
+  this.pushTileBatchOperation();
+  var batch = this.getLatestTileBatchOperation();
+  for (var yy = 0; yy < height; ++yy) {
+    for (var xx = 0; xx < width; ++xx) {
+      this$1.createBatchTileAt(x + (xx * TILE_SIZE), y + (yy * TILE_SIZE), color);
+    }
+  }
+  this.finalizeBatchOperation();
+}
+
+/**
  * Transforms passed canvas ctx into a single batch operation
  * @param {CanvasRenderingContext2D} ctx
  * @param {Number} x
@@ -708,7 +797,6 @@ function insertSpriteContextAt(ctx, x, y) {
   var my = position.y;
   this.pushTileBatchOperation();
   var batch = this.getLatestTileBatchOperation();
-  var tiles = [];
   for (var yy$1 = 0; yy$1 < height; ++yy$1) {
     for (var xx$1 = 0; xx$1 < width; ++xx$1) {
       var idx = (xx$1+(yy$1*width))*4;
@@ -717,47 +805,48 @@ function insertSpriteContextAt(ctx, x, y) {
       var r = data[idx+0];
       var g = data[idx+1];
       var b = data[idx+2];
-      // create relative batched tile
-      var tile = this$1.createTileAt(
-        mx + (xx$1 * TILE_SIZE),
-        my + (yy$1 * TILE_SIZE)
-      );
       // 0-255 => 0-1 with precision 1
       a = Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10;
-      tile.colors.unshift([r,g,b,a]);
-      batch.push(tile);
+      // create relative batched tile
+      var tile = this$1.createBatchTileAt(
+        mx + (xx$1 * TILE_SIZE),
+        my + (yy$1 * TILE_SIZE),
+        [r,g,b,a]
+      );
     }
   }
-  this.clearLatestTileBatch();
-  if (batch.length) { this.finalizeBatchOperation(); }
+  this.finalizeBatchOperation();
 }
 
 
 var _tiles = Object.freeze({
+	pushTileBatchOperation: pushTileBatchOperation,
+	getLatestTileBatchOperation: getLatestTileBatchOperation,
+	finalizeBatchOperation: finalizeBatchOperation,
+	clearLatestTileBatch: clearLatestTileBatch,
+	startBatchedDrawing: startBatchedDrawing,
+	stopBatchedDrawing: stopBatchedDrawing,
 	drawTileAtMouseOffset: drawTileAtMouseOffset,
 	drawTileAt: drawTileAt,
-	select: select,
 	selectAll: selectAll,
 	hover: hover,
 	unHoverAllTiles: unHoverAllTiles,
-	finalizeBatchOperation: finalizeBatchOperation,
-	clearLatestTileBatch: clearLatestTileBatch,
-	getLatestTileBatchOperation: getLatestTileBatchOperation,
-	pushTileBatchOperation: pushTileBatchOperation,
-	pushTileBatch: pushTileBatch,
+	createBatchTileAt: createBatchTileAt,
 	getRandomRgbaColors: getRandomRgbaColors,
 	colorArraysMatch: colorArraysMatch,
-	getBatchSize: getBatchSize,
+	getBatchBoundings: getBatchBoundings,
 	createBufferFromBatch: createBufferFromBatch,
-	batchSizeExceedsLimit: batchSizeExceedsLimit,
+	batchSizeExceedsBounds: batchSizeExceedsBounds,
 	getRelativeOffset: getRelativeOffset$1,
-	getTileOffsetAt: getTileOffsetAt,
 	createTileAtMouseOffset: createTileAtMouseOffset,
 	createTileAt: createTileAt,
+	offsetExceedsIntegerLimit: offsetExceedsIntegerLimit,
 	getTileByMouseOffset: getTileByMouseOffset,
 	getTileByPosition: getTileByPosition,
+	getTileOffsetAt: getTileOffsetAt,
 	getTileById: getTileById,
 	isTileInsideView: isTileInsideView,
+	insertRectangleAt: insertRectangleAt,
 	insertSpriteContextAt: insertSpriteContextAt
 });
 
@@ -768,15 +857,12 @@ var Editor = function Editor(instance) {
   this.instance = instance;
   this.modes = {
     draw: false,
-    drag: false,
     selectAll: false
   };
-  this.batches = {
-    tiles: []
-  };
-  // mouse position
-  this.mx = 0;
-  this.my = 0;
+  this.batches = [];
+  // mouse position, negative to be hidden initially
+  this.mx = -TILE_SIZE;
+  this.my = -TILE_SIZE;
   this.hovered = [];
   this.colorTest = null;
   this.camera = instance.camera;
@@ -797,6 +883,7 @@ function resize$1(width, height) {
   if (height >= 0) { this.height = height; }
   this.view.width = width;
   this.view.height = height;
+  applyImageSmoothing(this.ctx, false);
   this.camera.resize(width, height);
   // re-generate our bg
   this.generateBackground();
@@ -810,14 +897,8 @@ function clear() {
 
 function render() {
   this.renderBackground();
-  this.renderTiles();
-  if (this.rofl) {
-    this.ctx.drawImage(
-      this.rofl,
-      0, 0
-    );
-  }
-  if (this.camera.s > MIN_SCALE) {
+  this.renderTileBatches();
+  if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
     this.renderGrid();
   }
   this.renderStats();
@@ -836,18 +917,14 @@ function renderBackground() {
 }
 
 function renderGrid() {
-
   var ctx = this.ctx;
   var size = (TILE_SIZE*this.camera.s)|0;
-
   var cx = this.camera.x;
   var cy = this.camera.y;
   var cw = this.camera.width;
   var ch = this.camera.height;
-
   ctx.lineWidth = .25;
   ctx.strokeStyle = "rgba(51,51,51,0.75)";
-
   ctx.beginPath();
   for (var xx = (cx%size)|0; xx < cw; xx += size) {
     ctx.moveTo(xx, 0);
@@ -859,10 +936,9 @@ function renderGrid() {
   }
   ctx.stroke();
   ctx.closePath();
-
 }
 
-function renderTiles() {
+function renderTileBatches() {
   var this$1 = this;
 
   var ctx = this.ctx;
@@ -871,30 +947,76 @@ function renderTiles() {
   var scale = this.camera.s;
   var ww = (TILE_SIZE*scale)|0;
   var hh = (TILE_SIZE*scale)|0;
-  var selectAll = this.editor.modes.selectAll;
-  var batches = this.editor.batches.tiles;
+  var all = this.editor.modes.selectAll;
+
+  var batches = this.editor.batches;
+  var length = batches.length;
+
   // all tile batch operations
-  for (var ii = 0; ii < batches.length; ++ii) {
+  for (var ii = 0; ii < length; ++ii) {
     var batch = batches[ii];
-    // process each batched tiles
-    for (var jj = 0; jj < batch.length; ++jj) {
-      var tile = batch[jj];
-      var x = (cx + (tile.x * scale))|0;
-      var y = (cy + (tile.y * scale))|0;
+    // draw batch buffer (faster)
+    if (!(batch.isBuffered)) { continue; }
+    var bx = batch.buffer.x * TILE_SIZE;
+    var by = batch.buffer.y * TILE_SIZE;
+    var x = (cx + (bx * scale)) | 0;
+    var y = (cy + (by * scale)) | 0;
+    var width = batch.buffer.width * TILE_SIZE;
+    var height = batch.buffer.height * TILE_SIZE;
+    ctx.drawImage(
+      batch.buffer.view,
+      0, 0,
+      width | 0, height | 0,
+      x, y,
+      (width * TILE_SIZE * scale) | 0, (height * TILE_SIZE * scale) | 0
+    );
+  }
+
+  // draw each tile (e.g. when in drawing state, slower)
+  for (var ii$1 = 0; ii$1 < length; ++ii$1) {
+    var batch$1 = batches[ii$1];
+    if (batch$1.isBuffered) { continue; }
+    var tiles = batch$1.tiles;
+    for (var jj = 0; jj < tiles.length; ++jj) {
+      var tile = tiles[jj];
+      if (!this$1.editor.isTileInsideView(tile)) { continue; }
+      var x$1 = (cx + (tile.x * scale)) | 0;
+      var y$1 = (cy + (tile.y * scale)) | 0;
       var color = tile.colors[tile.cindex];
-      var r = color[0];
-      var g = color[1];
-      var b = color[2];
-      var a = color[3];
-      // apply selection effect
-      if (selectAll) { a = 0.1; }
-      else if (tile.isHovered) { a /= 1.5; }
-      if (this$1.editor.isTileInsideView(tile)) {
-        ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
-        ctx.fillRect(x, y, ww, hh);
-      }
+      ctx.fillStyle = "rgba(" + (color[0]) + "," + (color[1]) + "," + (color[2]) + "," + (color[3]) + ")";
+      ctx.fillRect(x$1, y$1, ww, hh);
     }
   }
+
+  // draw hovered tile
+  var hovered = this.editor.hovered;
+  for (var ii$2 = 0; ii$2 < hovered.length; ++ii$2) {
+    var tile$1 = hovered[ii$2];
+    var x$2 = (cx + (tile$1.x * scale)) | 0;
+    var y$2 = (cy + (tile$1.y * scale)) | 0;
+    var color$1 = tile$1.colors[tile$1.cindex];
+    var r = color$1[0];
+    var g = color$1[1];
+    var b = color$1[2];
+    var a = color$1[3] / 1.5;
+    ctx.clearRect(x$2, y$2, ww, hh);
+    ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    ctx.fillRect(x$2, y$2, ww, hh);
+  }
+
+  // apply empty tile hover color
+  if (!hovered.length) {
+    var mx = this.editor.mx;
+    var my = this.editor.my;
+    var relative = this.editor.getRelativeOffset(mx, my);
+    var rx = relative.x;
+    var ry = relative.y;
+    var x$3 = (cx + (rx * scale)) | 0;
+    var y$3 = (cy + (ry * scale)) | 0;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.fillRect(x$3, y$3, ww, hh);
+  }
+
 }
 
 function renderStats() {
@@ -932,10 +1054,10 @@ function generateBackground() {
 
   var size = 8;
 
-  var cw = this.camera.width;
-  var ch = this.camera.height;
+  var cw = this.width;
+  var ch = this.height;
 
-  var buffer = this.createCanvasBuffer(cw, ch);
+  var buffer = createCanvasBuffer(cw, ch);
 
   var canvas = document.createElement("canvas");
   var ctx = canvas.getContext("2d");
@@ -971,7 +1093,7 @@ var _render = Object.freeze({
 	render: render,
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
-	renderTiles: renderTiles,
+	renderTileBatches: renderTileBatches,
 	renderStats: renderStats,
 	renderFPS: renderFPS,
 	generateBackground: generateBackground
@@ -1010,7 +1132,7 @@ Picaxo.prototype.init = function init () {
 };
 
 Picaxo.prototype.createView = function createView () {
-  var buffer = this.createCanvasBuffer(this.width, this.height);
+  var buffer = createCanvasBuffer(this.width, this.height);
   this.ctx = buffer;
   this.view = buffer.canvas;
 };
@@ -1068,31 +1190,6 @@ Picaxo.prototype.processEmitter = function processEmitter (hash, fn) {
   if (this.frames === 0 && hash === DRAW_HASH) {
     this.states.paused = false;
   }
-};
-
-/**
- * @param {Number} width
- * @param {Number} height
- * @return {CanvasRenderingContext2D}
- */
-Picaxo.prototype.createCanvasBuffer = function createCanvasBuffer (width, height) {
-  var canvas = document.createElement("canvas");
-  var ctx = canvas.getContext("2d");
-  canvas.width = width;
-  canvas.height = height;
-  this.applyImageSmoothing(ctx, false);
-  return (ctx);
-};
-
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {Boolean} state
- */
-Picaxo.prototype.applyImageSmoothing = function applyImageSmoothing (ctx, state) {
-  ctx.imageSmoothingEnabled = state;
-  ctx.oImageSmoothingEnabled = state;
-  ctx.msImageSmoothingEnabled = state;
-  ctx.webkitImageSmoothingEnabled = state;
 };
 
 inherit(Picaxo, _render);
