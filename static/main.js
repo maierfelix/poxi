@@ -39,6 +39,9 @@
   });
   document.body.appendChild(stage.view); // push view into body
 
+  stage.camera.x = (window.innerWidth / 2) | 0;
+  stage.camera.y = (window.innerHeight / 2) | 0;
+
   stage.on("draw", () => {
     stage.clear();
     stage.render();
@@ -50,9 +53,10 @@
 
   window.stage = stage;
 
-  stage.camera.x = (window.innerWidth / 2) | 0;
-  stage.camera.y = (window.innerHeight / 2) | 0;
-  stage.editor.drawTileAt(0, 0, [255,255,255,1]);
+  //stage.editor.insertRectangleAt(-3, -3, 3, 3, stage.editor.getRandomRgbaColors());
+  //stage.editor.insertRectangleAt(-2, -2, 3, 3, stage.editor.getRandomRgbaColors());
+  //stage.editor.insertRectangleAt(-1, -1, 3, 3, stage.editor.getRandomRgbaColors());
+  //stage.editor.insertRectangleAt(0, 0, 3, 3, stage.editor.getRandomRgbaColors());
 
   keyboardJS.bind("ctrl > z", () => {
     stage.editor.undo();
@@ -95,7 +99,7 @@
     }
     // left key to select
     if (e.which === 1) {
-      stage.editor.select(e.clientX, e.clientY, true);
+      stage.editor.startBatchedDrawing(e.clientX, e.clientY);
       lpressed = true;
     }
   });
@@ -107,7 +111,7 @@
     }
     // stop selecting
     if (e.which === 1) {
-      stage.editor.select(e.clientX, e.clientY, false);
+      stage.editor.stopBatchedDrawing(e.clientX, e.clientY);
       lpressed = false;
     }
   });

@@ -5,8 +5,14 @@ export const MIN_SCALE = 0.5;
 export const MAX_SCALE = 35;
 export const BASE_TILE_COLOR = [0,0,0,0];
 
+// 32-bit ints are allowed at maximum
+export const MAX_SAFE_INTEGER = (2 ** 31) - 1;
+
 // alpha byte to rgb-alpha conversion
 export const MAGIC_RGB_A_BYTE = 0.00392;
+
+// factor when to hide the grid
+export const HIDE_GRID = 1;
 
 /**
  * If a tile batch exceeds the min size,

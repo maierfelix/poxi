@@ -1,12 +1,86 @@
 import {
   TILE_SIZE,
+  MAX_SAFE_INTEGER,
   MAGIC_RGB_A_BYTE,
   BATCH_BUFFER_SIZE,
 } from "../cfg";
 
 import { roundTo } from "../math";
+import { createCanvasBuffer } from "../utils";
 
 import Tile from "./Tile/index";
+import Batch from "./Batch/index";
+import Texture from "./Texture/index";
+
+/**
+ * Push in a new batch operation
+ */
+export function pushTileBatchOperation() {
+  let batch = new Batch();
+  this.batches.push(batch);
+};
+
+/**
+ * @return {Batch}
+ */
+export function getLatestTileBatchOperation() {
+  let offset = this.batches.length - 1;
+  return (this.batches[offset]);
+};
+
+/**
+ * Take the latest tile batch, buffer it (if exceeds bound sizes)
+ * and finally push it into the operation stack
+ */
+export function finalizeBatchOperation() {
+  let offset = this.batches.length - 1;
+  let batch = this.batches[offset];
+  //if (this.batchSizeExceedsBounds) {
+  if (true) {
+    let buffer = this.createBufferFromBatch(batch);
+    batch.buffer = buffer;
+    batch.isBuffered = true;
+  }
+  this.enqueue({
+    batch: batch,
+    index: offset
+  });
+};
+
+/**
+ * Clear latest batch operation if empty
+ */
+export function clearLatestTileBatch() {
+  let batch = this.getLatestTileBatchOperation();
+  // latest batch operation is empty, remove so 
+  if (!batch.tiles.length) {
+    let offset = this.batches.length - 1;
+    this.batches.splice(offset, 1);
+  }
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function startBatchedDrawing(x, y) {
+  this.modes.draw = true;
+  let position = this.getRelativeOffset(x, y);
+  this.colorTest = this.getRandomRgbaColors();
+  this.pushTileBatchOperation();
+  this.createBatchTileAt(position.x, position.y, this.colorTest);
+  this.clearLatestTileBatch();
+};
+
+/**
+ * Finally push the recently created batch into the stack
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function stopBatchedDrawing(x, y) {
+  this.modes.draw = false;
+  this.finalizeBatchOperation();
+};
 
 /**
  * @param {Number} x
@@ -14,7 +88,8 @@ import Tile from "./Tile/index";
  */
 export function drawTileAtMouseOffset(x, y) {
   if (this.modes.draw) {
-    this.pushTileBatch(x, y, false);
+    let position = this.getRelativeOffset(x, y);
+    this.createBatchTileAt(position.x, position.y, this.colorTest);
   }
 };
 
@@ -25,30 +100,10 @@ export function drawTileAtMouseOffset(x, y) {
  * @return {Tile}
  */
 export function drawTileAt(x, y, color) {
-  let tile = this.createTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0);
-  tile.colors.unshift(color);
-  this.batches.tiles.push([tile]);
+  this.pushTileBatchOperation();
+  this.createBatchTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0, color);
   this.finalizeBatchOperation();
   return (tile);
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @param {Boolean} state
- */
-export function select(x, y, state) {
-  this.modes.drag = state;
-  this.modes.draw = !!state;
-  if (state && this.modes.draw) {
-    this.colorTest = this.getRandomRgbaColors();
-    this.pushTileBatchOperation();
-    this.pushTileBatch(x, y, false);
-    this.clearLatestTileBatch();
-  } else {
-    // finally push the created batch into the cmd stack
-    this.finalizeBatchOperation();
-  }
 };
 
 /**
@@ -86,96 +141,36 @@ export function unHoverAllTiles() {
 };
 
 /**
- * Take the latest tile batch, buffers if necessary
- * and finally pushes it into the operation stack
- */
-export function finalizeBatchOperation() {
-  let offset = this.batches.tiles.length - 1;
-  let batch = this.batches.tiles[offset];
-  if (true) {
-    let buffer = this.createBufferFromBatch(batch);
-  }
-  this.enqueue({
-    batch: batch,
-    index: offset
-  });
-};
-
-/**
- * Clear latest batch operation if empty
- */
-export function clearLatestTileBatch() {
-  let batch = this.getLatestTileBatchOperation();
-  // latest batch operation is empty, remove so 
-  if (batch.length <= 0) {
-    let offset = this.batches.tiles.length - 1;
-    this.batches.tiles.splice(offset, 1);
-  }
-};
-
-/**
- * @return {Array}
- */
-export function getLatestTileBatchOperation() {
-  let offset = this.batches.tiles.length - 1;
-  let batch = this.batches.tiles;
-  return (batch[offset]);
-};
-
-/**
- * Push in a new batch operation
- */
-export function pushTileBatchOperation() {
-  let operation = [];
-  this.batches.tiles.push(operation);
-};
-
-/**
- * Create, push and batch a new tile at x,y
+ * Main method to insert tiles into the active batch
  * @param {Number} x
  * @param {Number} y
- * @param {Boolean} relative
+ * @param {Array} color
  */
-export function pushTileBatch(x, y, relative) {
-  let otile = (
-    relative ? this.getTileByPosition(x, y) :
-    this.getTileByMouseOffset(x, y)
-  );
-  let color = [
-    this.colorTest[0],
-    this.colorTest[1],
-    this.colorTest[2],
-    this.colorTest[3]
-  ];
+export function createBatchTileAt(x, y, color) {
+  // try to overwrite older tiles color
+  let otile = this.getTileByPosition(x, y);
   let batch = this.getLatestTileBatchOperation();
-  // previous tile found, update it
+  // older tile at same position found, update it
   if (otile !== null) {
     let ocolors = otile.colors[otile.cindex];
     // check if we have to overwrite the old tiles color
-    // e.g => push in a new color state
-    let matches = this.colorArraysMatch(
+    let newOldColorMatches = this.colorArraysMatch(
       color,
       ocolors
     );
     // old and new colors doesnt match, insert new color values
     // into the old tile's color array to save its earlier state
     // as well as push in a new stack operation
-    if (!matches && ocolors[3] !== 2) {
+    if (!newOldColorMatches) {
+      otile.overwritten.unshift(otile.cindex);
       otile.colors.unshift(color);
-      otile.overwrite.unshift({
-        cindex: otile.cindex + 1, // shift by 1, since we unshifted before
-        tile: otile
-      });
-      batch.push(otile);
+      batch.tiles.push(otile);
     }
-  // if no tile found, create one and push it into the batch
+  // no older tile found, lets create one and push it into the batch
   } else {
-    let tile = (
-      relative ? this.createTileAt(x, y) :
-      this.createTileAtMouseOffset(x, y)
-    );
+    let tile = this.createTileAt(x, y);
     tile.colors.unshift(color);
-    batch.push(tile);
+    batch.tiles.push(tile);
   }
 };
 
@@ -208,17 +203,18 @@ export function colorArraysMatch(a, b) {
 
 /**
  * Calculate cropped size of given batch
- * @param {Array} batch
+ * @param {Batch} batch
  * @return {Object}
  */
-export function getBatchSize(batch) {
+export function getBatchBoundings(batch) {
   // start position at maximum buffer size
   let x = BATCH_BUFFER_SIZE.MAX_W;
   let y = BATCH_BUFFER_SIZE.MAX_H;
   let px = [];
   let py = [];
-  for (let ii = 0; ii < batch.length; ++ii) {
-    let tile = batch[ii];
+  let tiles = batch.tiles;
+  for (let ii = 0; ii < tiles.length; ++ii) {
+    let tile = tiles[ii];
     px.push(tile.x);
     py.push(tile.y);
   };
@@ -241,42 +237,38 @@ export function getBatchSize(batch) {
 
 /**
  * Creates a cropped canvas buffer from a tile batch
+ * @param {Batch} batch
+ * @return {Texture}
  */
 export function createBufferFromBatch(batch) {
-  let info = this.getBatchSize(batch);
-  let obj = {
-    x: info.x,
-    y: info.y,
-    width: info.w,
-    height: info.h,
-    buffer: null
-  };
-  let buffer = this.instance.createCanvasBuffer(info.w, info.h);
+  let tiles = batch.tiles;
+  let info = this.getBatchBoundings(batch);
+  let buffer = createCanvasBuffer(info.w, info.h);
+  buffer.clearRect(0, 0, info.w, info.h);
   let ww = info.w;
-  for (let ii = 0; ii < batch.length; ++ii) {
-    let tile = batch[ii];
+  let bx = info.x;
+  let by = info.y;
+  for (let ii = 0; ii < tiles.length; ++ii) {
+    let tile = tiles[ii];
     let color = tile.colors[tile.cindex];
-    let r = color[0];
-    let g = color[1];
-    let b = color[2];
-    let a = color[3];
-    let xx = ii % ww;
-    let yy = Math.floor(ii / ww);
-    buffer.fillStyle = `rgba(${r},${g},${b},${a})`;
+    let xx = (tile.x / TILE_SIZE) - bx;
+    let yy = (tile.y / TILE_SIZE) - by;
+    buffer.fillStyle = tile.getColorAsRgbaString();
     buffer.fillRect(
       xx, yy,
       1, 1
     );
   };
-  this.instance.rofl = buffer.canvas;
+  let texture = new Texture(buffer, bx, by);
+  return (texture);
 };
 
 /**
- * @param {Array} batch
+ * @param {Batch} batch
  * @return {Boolean}
  */
-export function batchSizeExceedsLimit(batch) {
-  let size = this.getBatchSize(batch); 
+export function batchSizeExceedsBounds(batch) {
+  let size = this.getBatchBoundings(batch); 
   return (
     size.w >= BATCH_BUFFER_SIZE.MIN_W &&
     size.h >= BATCH_BUFFER_SIZE.MIN_W
@@ -297,21 +289,6 @@ export function getRelativeOffset(x, y) {
 /**
  * @param {Number} x
  * @param {Number} y
- * @return {Object}
- */
-export function getTileOffsetAt(x, y) {
-  let half = TILE_SIZE / 2;
-  let xx = roundTo(x - half, TILE_SIZE);
-  let yy = roundTo(y - half, TILE_SIZE);
-  return ({
-    x: xx,
-    y: yy
-  });
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
  * @return {Tile}
  */
 export function createTileAtMouseOffset(x, y) {
@@ -327,9 +304,24 @@ export function createTileAtMouseOffset(x, y) {
  */
 export function createTileAt(x, y) {
   let tile = new Tile();
-  tile.x = x;
-  tile.y = y;
+  if (!this.offsetExceedsIntegerLimit(x, y)) {
+    tile.x = x;
+    tile.y = y;
+  } else {
+    throw new Error("Tile position exceeds 32-bit integer limit!");
+  }
   return (tile);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Boolean}
+ */
+export function offsetExceedsIntegerLimit(x, y) {
+  return (
+    Math.abs(x) > MAX_SAFE_INTEGER || Math.abs(y) > MAX_SAFE_INTEGER
+  );
 };
 
 /**
@@ -352,10 +344,11 @@ export function getTileByMouseOffset(x, y) {
  * @return {Tile}
  */
 export function getTileByPosition(x, y) {
+  // TODO: go backwards? TODO: fix tile overwrite bug
   let target = null;
-  let batches = this.batches.tiles;
+  let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii];
+    let batch = batches[ii].tiles;
     for (let jj = 0; jj < batch.length; ++jj) {
       let tile = batch[jj];
       if (tile.x === x && tile.y === y) {
@@ -367,12 +360,27 @@ export function getTileByPosition(x, y) {
 };
 
 /**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Object}
+ */
+export function getTileOffsetAt(x, y) {
+  let half = TILE_SIZE / 2;
+  let xx = roundTo(x - half, TILE_SIZE);
+  let yy = roundTo(y - half, TILE_SIZE);
+  return ({
+    x: xx,
+    y: yy
+  });
+};
+
+/**
  * Get tile by it's id
  * @param {Number} id
  * @return {Tile}
  */
 export function getTileById(id) {
-  let batches = this.batches.tiles;
+  let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
     let batch = batches[ii];
     for (let jj = 0; jj < batch.length; ++jj) {
@@ -402,6 +410,27 @@ export function isTileInsideView(tile) {
 };
 
 /**
+ * Inserts rectangle at given position
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} width
+ * @param {Number} height
+ * @param {Array} color
+ */
+export function insertRectangleAt(x, y, width, height, color) {
+  x = x * TILE_SIZE;
+  y = y * TILE_SIZE;
+  this.pushTileBatchOperation();
+  let batch = this.getLatestTileBatchOperation();
+  for (let yy = 0; yy < height; ++yy) {
+    for (let xx = 0; xx < width; ++xx) {
+      this.createBatchTileAt(x + (xx * TILE_SIZE), y + (yy * TILE_SIZE), color);
+    };
+  };
+  this.finalizeBatchOperation();
+};
+
+/**
  * Transforms passed canvas ctx into a single batch operation
  * @param {CanvasRenderingContext2D} ctx
  * @param {Number} x
@@ -420,7 +449,6 @@ export function insertSpriteContextAt(ctx, x, y) {
   let my = position.y;
   this.pushTileBatchOperation();
   let batch = this.getLatestTileBatchOperation();
-  let tiles = [];
   for (let yy = 0; yy < height; ++yy) {
     for (let xx = 0; xx < width; ++xx) {
       let idx = (xx+(yy*width))*4;
@@ -429,17 +457,15 @@ export function insertSpriteContextAt(ctx, x, y) {
       let r = data[idx+0];
       let g = data[idx+1];
       let b = data[idx+2];
-      // create relative batched tile
-      let tile = this.createTileAt(
-        mx + (xx * TILE_SIZE),
-        my + (yy * TILE_SIZE)
-      );
       // 0-255 => 0-1 with precision 1
       a = Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10;
-      tile.colors.unshift([r,g,b,a]);
-      batch.push(tile);
+      // create relative batched tile
+      let tile = this.createBatchTileAt(
+        mx + (xx * TILE_SIZE),
+        my + (yy * TILE_SIZE),
+        [r,g,b,a]
+      );
     };
   };
-  this.clearLatestTileBatch();
-  if (batch.length) this.finalizeBatchOperation();
+  this.finalizeBatchOperation();
 };

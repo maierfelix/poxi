@@ -35,3 +35,28 @@ export function hashFromString(str) {
   }
   return (hash);
 };
+
+/**
+ * @param {Number} width
+ * @param {Number} height
+ * @return {CanvasRenderingContext2D}
+ */
+export function createCanvasBuffer(width, height) {
+  let canvas = document.createElement("canvas");
+  let ctx = canvas.getContext("2d");
+  canvas.width = width;
+  canvas.height = height;
+  applyImageSmoothing(ctx, false);
+  return (ctx);
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Boolean} state
+ */
+export function applyImageSmoothing(ctx, state) {
+  ctx.imageSmoothingEnabled = state;
+  ctx.oImageSmoothingEnabled = state;
+  ctx.msImageSmoothingEnabled = state;
+  ctx.webkitImageSmoothingEnabled = state;
+};

@@ -1,3 +1,4 @@
+import { TILE_SIZE } from "../cfg";
 import { inherit } from "../utils";
 
 import * as _stack from "./stack";
@@ -15,15 +16,12 @@ class Editor {
     this.instance = instance;
     this.modes = {
       draw: false,
-      drag: false,
       selectAll: false
     };
-    this.batches = {
-      tiles: []
-    };
-    // mouse position
-    this.mx = 0;
-    this.my = 0;
+    this.batches = [];
+    // mouse position, negative to be hidden initially
+    this.mx = -TILE_SIZE;
+    this.my = -TILE_SIZE;
     this.hovered = [];
     this.colorTest = null;
     this.camera = instance.camera;

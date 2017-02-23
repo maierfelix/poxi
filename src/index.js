@@ -8,7 +8,8 @@ import {
 
 import {
   inherit,
-  hashFromString
+  hashFromString,
+  createCanvasBuffer
 } from "./utils";
 
 import * as _render from "./render";
@@ -51,7 +52,7 @@ class Picaxo {
   }
 
   createView() {
-    let buffer = this.createCanvasBuffer(this.width, this.height);
+    let buffer = createCanvasBuffer(this.width, this.height);
     this.ctx = buffer;
     this.view = buffer.canvas;
   }
@@ -108,31 +109,6 @@ class Picaxo {
       this.states.paused = false;
     }
   }
-
-  /**
-   * @param {Number} width
-   * @param {Number} height
-   * @return {CanvasRenderingContext2D}
-   */
-  createCanvasBuffer(width, height) {
-    let canvas = document.createElement("canvas");
-    let ctx = canvas.getContext("2d");
-    canvas.width = width;
-    canvas.height = height;
-    this.applyImageSmoothing(ctx, false);
-    return (ctx);
-  };
-
-  /**
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {Boolean} state
-   */
-  applyImageSmoothing(ctx, state) {
-    ctx.imageSmoothingEnabled = state;
-    ctx.oImageSmoothingEnabled = state;
-    ctx.msImageSmoothingEnabled = state;
-    ctx.webkitImageSmoothingEnabled = state;
-  };
 
 };
 

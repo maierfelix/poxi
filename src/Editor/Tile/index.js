@@ -10,8 +10,8 @@ class Tile {
     this.y = 0;
     this.id = uid();
     this.cindex = 0;
-    this.colors = [BASE_TILE_COLOR];
-    this.overwrite = [];
+    this.colors = [];
+    this.overwritten = [];
     this.isHovered = false;
   }
   /**
@@ -19,12 +19,11 @@ class Tile {
    * @return {String}
    */
   getColorAsRgbaString(cindex) {
-    cindex = cindex || 0;
-    let color = this.colors[cindex];
-    let r = color[0];
-    let g = color[1];
-    let b = color[2];
-    let a = color[3];
+    let c = this.colors[cindex || 0];
+    let r = c[0];
+    let g = c[1];
+    let b = c[2];
+    let a = c[3];
     return (
       `rgba(${r},${g},${b},${a})`
     );
