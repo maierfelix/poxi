@@ -23,7 +23,7 @@
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0, img.width, img.height);
-        stage.insertSpriteContextAt(ctx, mx, my);
+        stage.editor.insertSpriteContextAt(ctx, mx, my);
         el.value = ""; // reassign to allow second files
       };
       img.src = e.target.result;
@@ -49,6 +49,9 @@
   });
 
   window.stage = stage;
+
+  stage.camera.x = (window.innerWidth / 2) | 0;
+  stage.camera.y = (window.innerHeight / 2) | 0;
 
   keyboardJS.bind("ctrl > z", () => {
     stage.editor.undo();
