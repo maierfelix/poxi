@@ -1,0 +1,25 @@
+canvas {  
+  image-rendering: optimizeSpeed;
+  image-rendering: crisp-edges;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -o-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#file {
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  z-index: 999;
+  display: none;
+}

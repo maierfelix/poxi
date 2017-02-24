@@ -5,6 +5,7 @@ import {
 
 import { createCanvasBuffer } from "../utils";
 
+import Tile from "./Tile/index";
 import Batch from "./Batch/index";
 
 /**
@@ -30,7 +31,7 @@ export function getLatestTileBatchOperation() {
 export function finalizeBatchOperation() {
   let offset = this.batches.length - 1;
   let batch = this.batches[offset];
-  if (batch.exceedsBounds()) {
+  if (batch.exceedsBounds() && !batch.isRawBuffer) {
     batch.renderBuffer();
   }
   this.enqueue({
@@ -61,7 +62,6 @@ export function startBatchedDrawing(x, y) {
   this.colorTest = this.getRandomRgbaColors();
   this.pushTileBatchOperation();
   this.createBatchTileAt(position.x, position.y, this.colorTest);
-  this.clearLatestTileBatch();
 };
 
 /**
@@ -72,6 +72,7 @@ export function startBatchedDrawing(x, y) {
 export function stopBatchedDrawing(x, y) {
   this.modes.draw = false;
   this.finalizeBatchOperation();
+  this.clearLatestTileBatch();
 };
 
 /**
@@ -84,28 +85,9 @@ export function createBatchTileAt(x, y, color) {
   // try to overwrite older tiles color
   let otile = this.getTileByPosition(x, y);
   let batch = this.getLatestTileBatchOperation();
-  // older tile at same position found, update it
-  if (otile !== null) {
-    let ocolors = otile.colors[otile.cindex];
-    // check if we have to overwrite the old tiles color
-    let newOldColorMatches = this.colorArraysMatch(
-      color,
-      ocolors
-    );
-    // old and new colors doesnt match, insert new color values
-    // into the old tile's color array to save its earlier state
-    // as well as push in a new stack operation
-    if (!newOldColorMatches) {
-      // original tile color index before overwriting
-      let cindex = otile.cindex;
-      otile.colors.unshift(color);
-      otile.overwritten.push([cindex, otile.colors[cindex]]);
-      batch.tiles.push(otile);
-    }
-  // no older tile found, lets create one and push it into the batch
-  } else {
-    let tile = this.createTileAt(x, y);
-    tile.colors.unshift(color);
-    batch.tiles.push(tile);
-  }
+  // only push tile if necessary
+  if (otile !== null && otile.colorMatchesWithTile(color)) return;
+  let tile = this.createTileAt(x, y);
+  tile.colors.unshift(color);
+  batch.tiles.push(tile);
 };

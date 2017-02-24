@@ -4,16 +4,28 @@
   </h3>
 </div>
 
-<br/>
-
 <div align="center">
-  <a href="#">
-    <img src="https://img.shields.io/badge/Patreon-Donate-E6461A.svg?style=flat-square" alt="Patreon Donation" />
-  </a>
   <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
+  </a>
+  <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
+    <img src="https://img.shields.io/badge/Dependencies-None-green.svg?style=flat-square" alt="No dependencies" />
   </a>
   <a href="https://nodejs.org/api/documentation.html#documentation_stability_index">
     <img src="https://img.shields.io/badge/stability-unstable-orange.svg?style=flat-square" alt="Stability" />
   </a>
 </div>
+
+### Left features:
+ - Layers
+ - Animations
+ - Ellipse insertion
+
+### Left tools:
+ - Eraser (Delete tiles)
+ - Bucket (Fill enclosed tile area)
+ - Dropper (Extract tile color)
+ - Cropper (Crop out tile area)
+
+### License
+[BSD-2](https://github.com/maierfelix/picaxo/blob/master/LICENSE)

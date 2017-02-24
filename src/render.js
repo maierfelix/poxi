@@ -165,7 +165,7 @@ export function renderStats() {
   let rx = relative.x;
   let ry = relative.y;
   let tile = this.editor.getTileByPosition(rx, ry);
-  this.ctx.fillText(`x:${rx}, y:${ry}`, 16, 32);
+  this.ctx.fillText(`x:${rx / TILE_SIZE}, y:${ry / TILE_SIZE}`, 16, 32);
   if (tile !== null) {
     let color = tile.colors[tile.cindex];
     let r = color[0];

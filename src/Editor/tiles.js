@@ -75,21 +75,6 @@ export function getRandomRgbaColors() {
 };
 
 /**
- * Compare two color arrays if they match both
- * @param {Array} a
- * @param {Array} b
- * @return {Boolean}
- */
-export function colorArraysMatch(a, b) {
-  return (
-    a[0] === b[0] &&
-    a[1] === b[1] &&
-    a[2] === b[2] &&
-    a[3] === b[3]
-  );
-};
-
-/**
  * @param {Number} x
  * @param {Number} y
  * @return {Object}

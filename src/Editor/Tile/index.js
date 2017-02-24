@@ -10,9 +10,21 @@ class Tile {
     this.y = 0;
     this.id = uid();
     this.cindex = 0;
-    this.colors = [];
-    this.overwritten = [];
+    this.colors = [BASE_TILE_COLOR];
     this.isHovered = false;
+  }
+  /**
+   * @param {Array} color
+   * @return {Boolean}
+   */
+  colorMatchesWithTile(color) {
+    let owncolor = this.colors[this.cindex];
+    return (
+      owncolor[0] === color[0] &&
+      owncolor[1] === color[1] &&
+      owncolor[2] === color[2] &&
+      owncolor[3] === color[3]
+    );
   }
   /**
    * @param {Number} cindex

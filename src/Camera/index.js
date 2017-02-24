@@ -28,10 +28,10 @@ class Camera {
   }
 
   /**
-   * @param {Number} x
+   * @param {Number} dir
    */
-  scale(x) {
-    x = (x * ZOOM_SPEED) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
+  scale(dir) {
+    let x = (dir * ZOOM_SPEED) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
     let oscale = this.s;
     if (this.s + x <= MIN_SCALE) this.s = MIN_SCALE;
     else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;

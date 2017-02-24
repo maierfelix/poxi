@@ -66,7 +66,6 @@ Batch.prototype.getBoundings = function() {
 Batch.prototype.renderBuffer = function() {
   let info = this.getBoundings();
   let buffer = createCanvasBuffer(info.w, info.h);
-  buffer.clearRect(0, 0, info.w, info.h);
   let ww = info.w;
   let bx = info.x;
   let by = info.y;

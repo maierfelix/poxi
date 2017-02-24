@@ -5,9 +5,11 @@ export function enqueue(op) {
   // our stack index is out of position
   // => clean up all more recent batches
   if (this.sindex < this.stack.length - 1) {
+    console.log(this.sindex, op.index, this.stack.length);
     this.dequeue(this.sindex, this.stack.length - 1);
+  } else {
+    this.stack.splice(this.sindex + 1, this.stack.length);
   }
-  this.stack.splice(this.sindex + 1, this.stack.length);
   this.stack.push(op);
   this.redo();
   this.undo();
@@ -22,44 +24,12 @@ export function enqueue(op) {
 export function dequeue(from, to) {
   from = from + 1;
   let count = (to - (from - 1));
-  console.log("Dequeue stack by", count, "operations");
   let batches = this.batches;
   // free all following (more recent) tile batches
-  for (let ii = 0; ii < count; ++ii) {
-    let idx = (from + ii);
-    let op = this.stack[idx];
-    let batch = batches.splice(0, 1)[0];
-    console.log(batch);
-    for (let jj = 0; jj < batch.length; ++jj) {
-      let tile = batch[jj];
-      if (!(tile.overwritten.length)) continue;
-      let ocindex = tile.overwritten.splice(0, 1)[0];
-      tile.colors.unshift(tile.colors[ocindex]);
-    };
-    // TODO: Stable, no memory leaks?
-    /**
-     * TODO: Seperate stack from tile batches:
-     * Only record real tile actions (insert color, overwrite of old tile color)
-     * We can inject undo&redo changes later into our tile batch buffers (texture)
-     */
-    /*let sliced = batches.splice(idx, 1);
-    for (let jj = 0; jj < sliced.length; ++jj) {
-      let batch = sliced[jj];
-      for (let kk = 0; kk < batch.length; ++kk) {
-        let tile = batch[kk];
-        if (!(tile.overwritten.length)) continue;
-        let ow = tile.overwritten.splice(0, 1)[0];
-        tile.colors.shift();
-        tile.cindex = ow.cindex - tile.cindex;
-      };
-    };*/
-    // recalculate stack batch index because we removed something
-    // (we need valid stack indexes again after this iteration)
-    for (let jj = 0; jj < this.stack.length; ++jj) {
-      this.stack[jj].index -= 1;
-    };
+  for (let ii = count; ii > 0; --ii) {
+    this.batches.splice(from + ii - 1, 1);
+    this.stack.splice(from + ii - 1, 1);
   };
-  console.log("--");
 };
 
 /**
@@ -69,13 +39,12 @@ export function dequeue(from, to) {
 export function fire(op, state) {
   op.batch.tiles.map((tile) => {
     let cindex = tile.cindex;
-    let colors = tile.colors.length - 1;
-    if (state === true) {
+    if (state) {
       // redo
-      tile.cindex -= (cindex > 0 ? 1 : 0);
+      tile.cindex -= (tile.cindex > 0 ? 1 : 0);
     } else {
       // undo
-      tile.cindex += (cindex < colors ? 1 : 0);
+      tile.cindex += (tile.cindex < tile.colors.length - 1 ? 1 : 0);
     }
   });
 };
