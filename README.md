@@ -16,6 +16,8 @@
   </a>
 </div>
 
+[Demo](http://maierfelix.github.io/picaxo/)
+
 ### Left features:
  - Layers
  - Animations
