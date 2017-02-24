@@ -1,4 +1,9 @@
-import { MIN_SCALE, MAX_SCALE } from "../cfg";
+import {
+  MIN_SCALE,
+  MAX_SCALE,
+  ZOOM_SPEED
+} from "../cfg";
+
 import { roundTo, zoomScale } from "../math";
 
 /**
@@ -26,7 +31,7 @@ class Camera {
    * @param {Number} x
    */
   scale(x) {
-    x = (x * 42) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
+    x = (x * ZOOM_SPEED) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
     let oscale = this.s;
     if (this.s + x <= MIN_SCALE) this.s = MIN_SCALE;
     else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;

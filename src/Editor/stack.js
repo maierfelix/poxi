@@ -37,6 +37,11 @@ export function dequeue(from, to) {
       tile.colors.unshift(tile.colors[ocindex]);
     };
     // TODO: Stable, no memory leaks?
+    /**
+     * TODO: Seperate stack from tile batches:
+     * Only record real tile actions (insert color, overwrite of old tile color)
+     * We can inject undo&redo changes later into our tile batch buffers (texture)
+     */
     /*let sliced = batches.splice(idx, 1);
     for (let jj = 0; jj < sliced.length; ++jj) {
       let batch = sliced[jj];

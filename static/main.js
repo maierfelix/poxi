@@ -5,12 +5,13 @@
   // ## drag&drop images
   let el = document.createElement("input");
   el.style = `
-    width: 100%; height: 100%; opacity: 0; position: absolute; left: 0px; top: 0px; z-index: 999;
+    width: 100%; height: 100%; opacity: 0; position: absolute; left: 0px; top: 0px; z-index: 999; display: none;
   `;
   el.setAttribute("type", "file");
   el.onclick = (e) => { e.preventDefault(); };
   el.setAttribute("title", " "); // invisible
   el.onchange = (e) => {
+    el.style.display = "none";
     let reader = new FileReader();
     reader.onload = (e) => {
       if (e.target.result.slice(11, 14) !== "png") {
@@ -42,13 +43,17 @@
   stage.camera.x = (window.innerWidth / 2) | 0;
   stage.camera.y = (window.innerHeight / 2) | 0;
 
+  // hidy things for drag & drop input
+  stage.view.addEventListener("dragenter", (e) => {
+    el.style.display = "block";
+  });
+  el.addEventListener("dragleave", (e) => {
+    el.style.display = "none";
+  });
+
   stage.on("draw", () => {
     stage.clear();
     stage.render();
-  });
-
-  stage.view.addEventListener("dragover", (e) => {
-    console.log(e);
   });
 
   window.stage = stage;
@@ -115,14 +120,20 @@
       lpressed = false;
     }
   });
-  window.addEventListener("mousewheel", (e) => {
+  window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+
+  // chrome
+  window.addEventListener("mousewheel", onScroll);
+  // ff etc
+  window.addEventListener("wheel", onScroll);
+
+  function onScroll(e) {
     e.preventDefault();
     let x = e.deltaY > 0 ? -1 : 1;
     stage.camera.click(e.clientX, e.clientY);
     stage.camera.scale(x);
-  });
-  window.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-  });
+  };
 
 })();

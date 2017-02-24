@@ -75,32 +75,35 @@ export function renderGrid() {
 };
 
 export function renderTileBatches() {
+
   let ctx = this.ctx;
   let cx = this.camera.x;
   let cy = this.camera.y;
   let scale = this.camera.s;
-  let ww = (TILE_SIZE*scale)|0;
-  let hh = (TILE_SIZE*scale)|0;
+  let ww = (TILE_SIZE * scale) | 0;
+  let hh = (TILE_SIZE * scale) | 0;
+  let sIndex = this.editor.sindex;
   let all = this.editor.modes.selectAll;
 
   let batches = this.editor.batches;
   let length = batches.length;
 
-  // all tile batch operations
+  // draw batch buffer (faster)
   for (let ii = 0; ii < length; ++ii) {
     let batch = batches[ii];
-    // draw batch buffer (faster)
     if (!(batch.isBuffered)) continue;
+    // batch index is higher than stack index, so ignore this batch
+    if (sIndex - ii < 0) continue;
     let bx = batch.buffer.x * TILE_SIZE;
     let by = batch.buffer.y * TILE_SIZE;
     let x = (cx + (bx * scale)) | 0;
     let y = (cy + (by * scale)) | 0;
-    let width = batch.buffer.width * TILE_SIZE;
-    let height = batch.buffer.height * TILE_SIZE;
+    let width = (batch.buffer.width * TILE_SIZE) | 0;
+    let height = (batch.buffer.height * TILE_SIZE) | 0;
     ctx.drawImage(
       batch.buffer.view,
       0, 0,
-      width | 0, height | 0,
+      width, height,
       x, y,
       (width * TILE_SIZE * scale) | 0, (height * TILE_SIZE * scale) | 0
     );

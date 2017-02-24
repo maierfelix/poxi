@@ -1,3 +1,5 @@
+import { MAGIC_RGB_A_BYTE } from "./cfg";
+
 /**
  * @param {Class} cls
  * @param {Array} prot
@@ -59,4 +61,13 @@ export function applyImageSmoothing(ctx, state) {
   ctx.oImageSmoothingEnabled = state;
   ctx.msImageSmoothingEnabled = state;
   ctx.webkitImageSmoothingEnabled = state;
+};
+
+/**
+ * 0-255 => 0-1 with precision 1
+ * @param {Number} a
+ * @return {Number}
+ */
+export function alphaByteToRgbAlpha(a) {
+  return (Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10);
 };

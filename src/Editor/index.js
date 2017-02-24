@@ -1,8 +1,15 @@
-import { TILE_SIZE } from "../cfg";
+import {
+  TILE_SIZE,
+  MAX_SAFE_INTEGER
+} from "../cfg";
+
 import { inherit } from "../utils";
 
 import * as _stack from "./stack";
 import * as _tiles from "./tiles";
+import * as _batch from "./batch";
+import * as _insert from "./insert";
+import * as _transform from "./transform";
 
 /**
  * @class Editor
@@ -30,9 +37,23 @@ class Editor {
     this.stack = [];
   }
 
+  /**
+   * @param {Number} x
+   * @param {Number} y
+   * @return {Boolean}
+   */
+  offsetExceedsIntegerLimit(x, y) {
+    return (
+      Math.abs(x) > MAX_SAFE_INTEGER || Math.abs(y) > MAX_SAFE_INTEGER
+    );
+  }
+
 };
 
 inherit(Editor, _stack);
 inherit(Editor, _tiles);
+inherit(Editor, _batch);
+inherit(Editor, _insert);
+inherit(Editor, _transform);
 
 export default Editor;

@@ -1,7 +1,7 @@
 {
   "name": "picaxo",
-  "version": "0.1.5",
-  "description": "A hackable pixel art editor",
+  "version": "0.1.6",
+  "description": "A hackable pixel editor",
   "license": "MIT",
   "repository": {
     "type": "git",

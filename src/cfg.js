@@ -1,8 +1,8 @@
 import { hashFromString } from "./utils";
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 0.5;
-export const MAX_SCALE = 35;
+export const MIN_SCALE = 0.25;
+export const MAX_SCALE = 32;
 export const BASE_TILE_COLOR = [0,0,0,0];
 
 // 32-bit ints are allowed at maximum
@@ -12,18 +12,19 @@ export const MAX_SAFE_INTEGER = (2 ** 31) - 1;
 export const MAGIC_RGB_A_BYTE = 0.00392;
 
 // factor when to hide the grid
-export const HIDE_GRID = 1;
+export const HIDE_GRID = 0.0;
+
+export const ZOOM_SPEED = 56;
 
 /**
  * If a tile batch exceeds the min size,
  * we buffer it inside a shadow canvas,
- * exceeding max throws an out of bounds error
+ * exceeding limit throws an out of bounds error
  */
 export const BATCH_BUFFER_SIZE = {
-  MIN_W: 128,
-  MIN_H: 128,
-  MAX_W: 1048,
-  MAX_H: 1048
+  MIN_W: 8,
+  MIN_H: 8,
+  MIN_L: 32
 };
 
 export const DRAW_HASH = hashFromString("draw");
