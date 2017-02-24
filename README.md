@@ -1,6 +1,6 @@
 <div align="center">
   <h3>
-    Picaxo is a modern, hackable pixel art editor for the browser, with focus on elegance, simplicity and productivity.
+    Picaxo is a modern, hackable pixel art editor for the browser with focus on elegance, simplicity and productivity.
   </h3>
 </div>
 
