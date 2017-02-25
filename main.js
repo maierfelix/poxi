@@ -102,13 +102,7 @@
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0, img.width, img.height);
-        let e = new MouseEvent("mousemove", {
-          bubbles: true,
-          cancelable: true,
-          view: window
-        });
-        console.log(e);
-        stage.editor.insertSpriteContextAt(ctx, window.mx, window.my);
+        stage.editor.drawImage(ctx, window.mx, window.my);
         file.value = ""; // reassign to allow second files
       };
       img.src = e.target.result;
