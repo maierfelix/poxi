@@ -1,7 +1,4 @@
-import {
-  TILE_SIZE,
-  BATCH_BUFFER_SIZE
-} from "../../cfg";
+import { BATCH_BUFFER_SIZE } from "../../cfg";
 
 import {
   createCanvasBuffer,
@@ -48,11 +45,11 @@ Batch.prototype.getBoundings = function() {
   py.sort((a, b) => { return a - b; });
   let idx = px.length-1;
   // calculate rectangle position
-  let xx = (px[0] / TILE_SIZE) | 0;
-  let yy = (py[0] / TILE_SIZE) | 0;
+  let xx = px[0]|0;
+  let yy = py[0]|0;
   // calculate rectangle size
-  let ww = (((px[idx] - px[0]) / TILE_SIZE) | 0) + 1;
-  let hh = (((py[idx] - py[0]) / TILE_SIZE) | 0) + 1;
+  let ww = ((px[idx] - px[0]) | 0) + 1;
+  let hh = ((py[idx] - py[0]) | 0) + 1;
   return ({
     x: xx,
     y: yy,
@@ -73,11 +70,11 @@ Batch.prototype.renderBuffer = function() {
   for (let ii = 0; ii < tiles.length; ++ii) {
     let tile = tiles[ii];
     let color = tile.colors[tile.cindex];
-    let xx = (tile.x / TILE_SIZE) - bx;
-    let yy = (tile.y / TILE_SIZE) - by;
+    let xx = (tile.x - bx) | 0;
+    let yy = (tile.y - by) | 0;
     buffer.fillStyle = tile.getColorAsRgbaString();
     buffer.fillRect(
-      xx|0, yy|0,
+      xx, yy,
       1|0, 1|0
     );
   };
@@ -107,7 +104,7 @@ Batch.prototype.exceedsBounds = function() {
  * @return {Array}
  */
 Batch.prototype.getTileColorAt = function(x, y) {
-  if (!this.isBuffered) return ([0,0,0,0]);
+  if (!this.isBuffered) return ([0,0,0,2]);
   let data = this.buffer.context.getImageData(x, y, 1, 1).data;
   let alpha = alphaByteToRgbAlpha(data[3]);
   let color = [data[0], data[1], data[2], alpha];

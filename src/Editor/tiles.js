@@ -25,6 +25,31 @@ export function hover(x, y) {
 };
 
 /**
+ * Erase a tile by mouse offset
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function eraseTileAtMouseOffset(x, y) {
+  let position = this.getRelativeOffset(x, y);
+  this.eraseTileAt(position.x, position.y);
+};
+
+/**
+ * Erase a tile at given relative position
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function eraseTileAt(x, y) {
+  let tile = this.getStackRelativeTileAt(x, y);
+  this.pushTileBatchOperation();
+  if (tile !== null) {
+    let color = tile.colors.shift();
+    this.createBatchTileAt(tile.x, tile.y, [0,0,0,0]);
+  }
+  this.finalizeBatchOperation();
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  */
@@ -43,7 +68,7 @@ export function drawTileAtMouseOffset(x, y) {
  */
 export function drawTileAt(x, y, color) {
   this.pushTileBatchOperation();
-  this.createBatchTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0, color);
+  this.createBatchTileAt(x|0, y|0, color);
   this.finalizeBatchOperation();
   return (tile);
 };
@@ -112,8 +137,8 @@ export function createTileAtMouseOffset(x, y) {
 export function createTileAt(x, y) {
   let tile = new Tile();
   if (!this.offsetExceedsIntegerLimit(x, y)) {
-    tile.x = x;
-    tile.y = y;
+    tile.x = x | 0;
+    tile.y = y | 0;
   } else {
     throw new Error("Tile position exceeds 32-bit integer limit!");
   }
@@ -196,8 +221,8 @@ export function getTileOffsetAt(x, y) {
   let xx = roundTo(x - half, TILE_SIZE);
   let yy = roundTo(y - half, TILE_SIZE);
   return ({
-    x: xx,
-    y: yy
+    x: xx / TILE_SIZE,
+    y: yy / TILE_SIZE
   });
 };
 
@@ -227,8 +252,8 @@ export function isTileInsideView(tile) {
   let scale = this.camera.s;
   let width = this.camera.width;
   let height = this.camera.height;
-  let tilew = TILE_SIZE * scale;
-  let tileh = TILE_SIZE * scale;
+  let tilew = 1 * scale;
+  let tileh = 1 * scale;
   let x = (tile.x * scale) + this.camera.x;
   let y = (tile.y * scale) + this.camera.y;
   return (

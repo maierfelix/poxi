@@ -1,7 +1,34 @@
-import { TILE_SIZE } from "../cfg";
 import { alphaByteToRgbAlpha } from "../utils";
 
 import Texture from "./Batch/Texture/index";
+
+/**
+ * Fill enclosed tile area
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+export function fillBucket(x, y, color) {
+  color = color || [255, 255, 255, 1];
+  if (color[3] > 1) throw new Error("Invalid alpha color!");
+  let queue = [{x, y}];
+  this.pushTileBatchOperation();
+  let batch = this.getLatestTileBatchOperation();
+  while (queue.length) {
+    let point = queue.pop();
+    let x = point.x;
+    let y = point.y;
+    // tile not colored yet
+    if (batch.getTileColorAt(x, y)[3] === 2) {
+      this.createBatchTileAt(x, y, color);
+    }
+    if (!this.getTileAt(x+1, y)) queue.push({x:x+1, y:y});
+    if (!this.getTileAt(x-1, y)) queue.push({x:x-1, y:y});
+    if (!this.getTileAt(x, y+1)) queue.push({x:x, y:y+1});
+    if (!this.getTileAt(x, y-1)) queue.push({x:x, y:y-1});
+  };
+  this.finalizeBatchOperation();
+};
 
 /**
  * Inserts filled rectangle at given position
@@ -52,8 +79,8 @@ export function insertRectangleAt(x1, y1, x2, y2, color, filled) {
   this.pushTileBatchOperation();
   let dx = (x2 < 0 ? -1 : 1);
   let dy = (y2 < 0 ? -1 : 1);
-  let x = x1 * TILE_SIZE;
-  let y = y1 * TILE_SIZE;
+  let bx = x1;
+  let by = y1;
   for (let yy = 0; yy < height; ++yy) {
     for (let xx = 0; xx < width; ++xx) {
       // ignore inner tiles if rectangle not filled
@@ -63,7 +90,7 @@ export function insertRectangleAt(x1, y1, x2, y2, color, filled) {
           (yy === 0 || yy >= height-1))
         ) continue;
       }
-      this.createBatchTileAt(x + ((xx * TILE_SIZE)) * dx, y + ((yy * TILE_SIZE)) * dy, color);
+      this.createBatchTileAt(bx + xx * dx, by + yy * dy, color);
     };
   };
   this.finalizeBatchOperation();
@@ -92,6 +119,6 @@ export function drawImage(ctx, x, y) {
   let batch = this.getLatestTileBatchOperation();
   batch.isBuffered = true;
   batch.isRawBuffer = true;
-  batch.buffer = new Texture(ctx, mx / TILE_SIZE, my / TILE_SIZE);
+  batch.buffer = new Texture(ctx, mx, my);
   this.finalizeBatchOperation();
 };

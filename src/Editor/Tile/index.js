@@ -11,7 +11,6 @@ class Tile {
     this.id = uid();
     this.cindex = 0;
     this.colors = [BASE_TILE_COLOR];
-    this.isHovered = false;
   }
   /**
    * @param {Array} color

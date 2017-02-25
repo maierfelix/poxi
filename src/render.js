@@ -109,8 +109,8 @@ export function drawBatchedTiles(batch) {
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
     if (!this.editor.isTileInsideView(tile)) continue;
-    let x = (cx + (tile.x * scale)) | 0;
-    let y = (cy + (tile.y * scale)) | 0;
+    let x = (cx + ((tile.x * TILE_SIZE) * scale)) | 0;
+    let y = (cy + ((tile.y * TILE_SIZE) * scale)) | 0;
     let color = tile.colors[tile.cindex];
     let r = color[0];
     let g = color[1];
@@ -128,10 +128,10 @@ export function drawBatchedBuffer(batch) {
   let cx = this.camera.x | 0;
   let cy = this.camera.y | 0;
   let scale = this.camera.s;
-  let bx = batch.buffer.x;
-  let by = batch.buffer.y;
-  let x = (cx + (bx * scale) * TILE_SIZE) | 0;
-  let y = (cy + (by * scale) * TILE_SIZE) | 0;
+  let bx = batch.buffer.x * TILE_SIZE;
+  let by = batch.buffer.y * TILE_SIZE;
+  let x = (cx + (bx * scale)) | 0;
+  let y = (cy + (by * scale)) | 0;
   let width = (batch.buffer.width * TILE_SIZE) | 0;
   let height = (batch.buffer.height * TILE_SIZE) | 0;
   this.ctx.drawImage(
@@ -154,8 +154,8 @@ export function drawHoveredTile() {
   let mx = this.editor.mx;
   let my = this.editor.my;
   let relative = this.editor.getRelativeOffset(mx, my);
-  let rx = relative.x;
-  let ry = relative.y;
+  let rx = relative.x * TILE_SIZE;
+  let ry = relative.y * TILE_SIZE;
   let x = ((cx + GRID_LINE_WIDTH/2) + (rx * scale)) | 0;
   let y = ((cy + GRID_LINE_WIDTH/2) + (ry * scale)) | 0;
   ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
@@ -171,7 +171,7 @@ export function renderStats() {
   let rx = relative.x;
   let ry = relative.y;
   let tile = this.editor.getTileAt(rx, ry);
-  this.ctx.fillText(`x:${rx / TILE_SIZE}, y:${ry / TILE_SIZE}`, 16, 32);
+  this.ctx.fillText(`x:${rx}, y:${ry}`, 16, 32);
   if (tile !== null) {
     let color = tile.colors[tile.cindex];
     let r = color[0];

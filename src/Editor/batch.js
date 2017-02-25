@@ -1,8 +1,4 @@
-import {
-  TILE_SIZE,
-  BATCH_BUFFER_SIZE
-} from "../cfg";
-
+import { BATCH_BUFFER_SIZE } from "../cfg";
 import { createCanvasBuffer } from "../utils";
 
 import Tile from "./Tile/index";
@@ -14,23 +10,17 @@ import Batch from "./Batch/index";
 export function pushTileBatchOperation() {
   let batch = new Batch();
   this.batches.push(batch);
-  this.refreshBatches();
 };
 
+/**
+ * Refreshes all batch indexes
+ */
 export function refreshBatches() {
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
     let batch = batches[ii];
     batch.index = ii;
   };
-};
-
-/**
- * @return {Batch}
- */
-export function getLatestTileBatchOperation() {
-  let offset = this.batches.length - 1;
-  return (this.batches[offset]);
 };
 
 /**
@@ -44,9 +34,17 @@ export function finalizeBatchOperation() {
     batch.renderBuffer();
   }
   this.enqueue({
-    batch: batch,
-    index: offset
+    batch: batch
   });
+  this.refreshBatches();
+};
+
+/**
+ * @return {Batch}
+ */
+export function getLatestTileBatchOperation() {
+  let offset = this.batches.length - 1;
+  return (this.batches[offset]);
 };
 
 /**
@@ -95,7 +93,12 @@ export function createBatchTileAt(x, y, color) {
   let otile = this.getTileAt(x, y);
   let batch = this.getLatestTileBatchOperation();
   // only push tile if necessary
-  if (otile !== null && otile.colorMatchesWithTile(color)) return;
+  if (otile !== null) {
+    if (
+      otile.colorMatchesWithTile(color) ||
+      otile.colors[otile.cindex][3] === 2
+    ) return;
+  }
   let tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
   batch.tiles.push(tile);

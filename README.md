@@ -23,7 +23,6 @@
  - Animations
  - Ellipse insertion
  - Eraser (Delete tiles)
- - Bucket (Fill enclosed tile area)
  - Dropper (Extract tile color)
  - Cropper (Crop out tile area)
 

@@ -1,5 +1,3 @@
-import { TILE_SIZE } from "../cfg";
-
 import { roundTo } from "../math";
 import { createCanvasBuffer } from "../utils";
 

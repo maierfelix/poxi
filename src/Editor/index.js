@@ -1,7 +1,4 @@
-import {
-  TILE_SIZE,
-  MAX_SAFE_INTEGER
-} from "../cfg";
+import { MAX_SAFE_INTEGER } from "../cfg";
 
 import { inherit } from "../utils";
 
@@ -27,8 +24,8 @@ class Editor {
     };
     this.batches = [];
     // mouse position, negative to be hidden initially
-    this.mx = -TILE_SIZE;
-    this.my = -TILE_SIZE;
+    this.mx = -1;
+    this.my = -1;
     this.colorTest = null;
     this.camera = instance.camera;
     // stack related
