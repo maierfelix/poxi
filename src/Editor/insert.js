@@ -92,13 +92,13 @@ export function insertArc(x1, y1, radius, color) {
   this.pushTileBatchOperation();
   while (x2 >= y2) {
     this.createBatchTileAt(x2 + x1, y2 + y1, color);
-		this.createBatchTileAt(y2 + x1, x2 + y1, color);
-		this.createBatchTileAt(-x2 + x1, y2 + y1, color);
-		this.createBatchTileAt(-y2 + x1, x2 + y1, color);
-		this.createBatchTileAt(-x2 + x1, -y2 + y1, color);
-		this.createBatchTileAt(-y2 + x1, -x2 + y1, color);
-		this.createBatchTileAt(x2 + x1, -y2 + y1, color);
-		this.createBatchTileAt(y2 + x1, -x2 + y1, color);
+    this.createBatchTileAt(y2 + x1, x2 + y1, color);
+    this.createBatchTileAt(-x2 + x1, y2 + y1, color);
+    this.createBatchTileAt(-y2 + x1, x2 + y1, color);
+    this.createBatchTileAt(-x2 + x1, -y2 + y1, color);
+    this.createBatchTileAt(-y2 + x1, -x2 + y1, color);
+    this.createBatchTileAt(x2 + x1, -y2 + y1, color);
+    this.createBatchTileAt(y2 + x1, -x2 + y1, color);
     y2++;
     if (err <= 0) {
       err += 2 * y2 + 1;
