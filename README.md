@@ -30,6 +30,7 @@
   - drawImage (ctx, x, y)
   - strokeRect (x, y, width, height, color)
   - fillRect (x, y, width, height, color)
+  - fillBucket (x, y, color)
   - applyColorLightness (batch, factor)
   - applyPixelSmoothing (batch)
   - getRandomRgbaColors () => Array
