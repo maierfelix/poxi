@@ -6,7 +6,7 @@
 
 <div align="center">
   <a href="http://maierfelix.github.io/picaxo/">Demo</a>
-  
+  <br/>
   <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
   </a>
