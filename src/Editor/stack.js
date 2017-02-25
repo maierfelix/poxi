@@ -5,7 +5,6 @@ export function enqueue(op) {
   // our stack index is out of position
   // => clean up all more recent batches
   if (this.sindex < this.stack.length - 1) {
-    console.log(this.sindex, op.index, this.stack.length);
     this.dequeue(this.sindex, this.stack.length - 1);
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
@@ -28,6 +27,7 @@ export function dequeue(from, to) {
   // free all following (more recent) tile batches
   for (let ii = count; ii > 0; --ii) {
     this.batches.splice(from + ii - 1, 1);
+    this.refreshBatches();
     this.stack.splice(from + ii - 1, 1);
   };
 };

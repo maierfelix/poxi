@@ -2,7 +2,8 @@ import {
   TILE_SIZE,
   MIN_SCALE,
   MAX_SCALE,
-  HIDE_GRID
+  HIDE_GRID,
+  GRID_LINE_WIDTH
 } from "./cfg";
 
 import {
@@ -33,7 +34,7 @@ export function clear() {
 
 export function render() {
   this.renderBackground();
-  this.renderTileBatches();
+  this.renderBatches();
   if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
     this.renderGrid();
   }
@@ -59,7 +60,7 @@ export function renderGrid() {
   let cy = this.camera.y;
   let cw = this.camera.width;
   let ch = this.camera.height;
-  ctx.lineWidth = .25;
+  ctx.lineWidth = GRID_LINE_WIDTH;
   ctx.strokeStyle = "rgba(51,51,51,0.75)";
   ctx.beginPath();
   for (let xx = (cx%size)|0; xx < cw; xx += size) {
@@ -74,86 +75,91 @@ export function renderGrid() {
   ctx.closePath();
 };
 
-export function renderTileBatches() {
+export function renderBatches() {
+  let sIndex = this.editor.sindex;
+  let batches = this.editor.stack;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii].batch;
+    // batch index is higher than stack index, so ignore this batch
+    if (sIndex - ii < 0) continue;
+    // draw batched buffer (faster, drawImage)
+    if (batch.isBuffered) this.drawBatchedBuffer(batch);
+    // draw batched tiles (slower, fillRect)
+    else this.drawBatchedTiles(batch);
+  };
+  // draw currently drawn tiles
+  if (this.editor.modes.draw) {
+    let length = this.editor.batches.length;
+    if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
+  }
+  this.drawHoveredTile();
+};
 
-  let ctx = this.ctx;
+/**
+ * @param {Batch} batch
+ */
+export function drawBatchedTiles(batch) {
   let cx = this.camera.x;
   let cy = this.camera.y;
   let scale = this.camera.s;
   let ww = (TILE_SIZE * scale) | 0;
   let hh = (TILE_SIZE * scale) | 0;
-  let sIndex = this.editor.sindex;
-  let all = this.editor.modes.selectAll;
-
-  let batches = this.editor.batches;
-  let length = batches.length;
-
-  // draw batch buffer (faster)
-  for (let ii = 0; ii < length; ++ii) {
-    let batch = batches[ii];
-    if (!(batch.isBuffered)) continue;
-    // batch index is higher than stack index, so ignore this batch
-    if (sIndex - ii < 0) continue;
-    let bx = batch.buffer.x * TILE_SIZE;
-    let by = batch.buffer.y * TILE_SIZE;
-    let x = (cx + (bx * scale)) | 0;
-    let y = (cy + (by * scale)) | 0;
-    let width = (batch.buffer.width * TILE_SIZE) | 0;
-    let height = (batch.buffer.height * TILE_SIZE) | 0;
-    ctx.drawImage(
-      batch.buffer.view,
-      0, 0,
-      width, height,
-      x, y,
-      (width * TILE_SIZE * scale) | 0, (height * TILE_SIZE * scale) | 0
-    );
-  };
-
-  // draw each tile (e.g. when in drawing state, slower)
-  for (let ii = 0; ii < length; ++ii) {
-    let batch = batches[ii];
-    if (batch.isBuffered) continue;
-    let tiles = batch.tiles;
-    for (let jj = 0; jj < tiles.length; ++jj) {
-      let tile = tiles[jj];
-      if (!this.editor.isTileInsideView(tile)) continue;
-      let x = (cx + (tile.x * scale)) | 0;
-      let y = (cy + (tile.y * scale)) | 0;
-      let color = tile.colors[tile.cindex];
-      ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${color[3]})`;
-      ctx.fillRect(x, y, ww, hh);
-    };
-  };
-
-  // draw hovered tile
-  let hovered = this.editor.hovered;
-  for (let ii = 0; ii < hovered.length; ++ii) {
-    let tile = hovered[ii];
+  let ctx = this.ctx;
+  let tiles = batch.tiles;
+  for (let jj = 0; jj < tiles.length; ++jj) {
+    let tile = tiles[jj];
+    if (!this.editor.isTileInsideView(tile)) continue;
     let x = (cx + (tile.x * scale)) | 0;
     let y = (cy + (tile.y * scale)) | 0;
     let color = tile.colors[tile.cindex];
     let r = color[0];
     let g = color[1];
     let b = color[2];
-    let a = color[3] / 1.5;
-    ctx.clearRect(x, y, ww, hh);
+    let a = color[3];
     ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
     ctx.fillRect(x, y, ww, hh);
   };
+};
 
+/**
+ * @param {Batch} batch
+ */
+export function drawBatchedBuffer(batch) {
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
+  let scale = this.camera.s;
+  let bx = batch.buffer.x;
+  let by = batch.buffer.y;
+  let x = (cx + (bx * scale) * TILE_SIZE) | 0;
+  let y = (cy + (by * scale) * TILE_SIZE) | 0;
+  let width = (batch.buffer.width * TILE_SIZE) | 0;
+  let height = (batch.buffer.height * TILE_SIZE) | 0;
+  this.ctx.drawImage(
+    batch.buffer.view,
+    0, 0,
+    width, height,
+    x, y,
+    (width * TILE_SIZE * scale) | 0, (height * TILE_SIZE * scale) | 0
+  );
+};
+
+export function drawHoveredTile() {
+  let ctx = this.ctx;
+  let cx = this.camera.x;
+  let cy = this.camera.y;
+  let scale = this.camera.s;
+  let ww = (TILE_SIZE * scale) | 0;
+  let hh = (TILE_SIZE * scale) | 0;
   // apply empty tile hover color
-  if (!hovered.length) {
-    let mx = this.editor.mx;
-    let my = this.editor.my;
-    let relative = this.editor.getRelativeOffset(mx, my);
-    let rx = relative.x;
-    let ry = relative.y;
-    let x = (cx + (rx * scale)) | 0;
-    let y = (cy + (ry * scale)) | 0;
-    ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
-    ctx.fillRect(x, y, ww, hh);
-  }
-
+  let mx = this.editor.mx;
+  let my = this.editor.my;
+  let relative = this.editor.getRelativeOffset(mx, my);
+  let rx = relative.x;
+  let ry = relative.y;
+  let x = ((cx + GRID_LINE_WIDTH/2) + (rx * scale)) | 0;
+  let y = ((cy + GRID_LINE_WIDTH/2) + (ry * scale)) | 0;
+  ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
+  ctx.fillRect(x, y, ww, hh);
 };
 
 export function renderStats() {
@@ -164,7 +170,7 @@ export function renderStats() {
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x;
   let ry = relative.y;
-  let tile = this.editor.getTileByPosition(rx, ry);
+  let tile = this.editor.getTileAt(rx, ry);
   this.ctx.fillText(`x:${rx / TILE_SIZE}, y:${ry / TILE_SIZE}`, 16, 32);
   if (tile !== null) {
     let color = tile.colors[tile.cindex];

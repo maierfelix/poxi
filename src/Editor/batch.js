@@ -14,6 +14,15 @@ import Batch from "./Batch/index";
 export function pushTileBatchOperation() {
   let batch = new Batch();
   this.batches.push(batch);
+  this.refreshBatches();
+};
+
+export function refreshBatches() {
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii];
+    batch.index = ii;
+  };
 };
 
 /**
@@ -83,11 +92,29 @@ export function stopBatchedDrawing(x, y) {
  */
 export function createBatchTileAt(x, y, color) {
   // try to overwrite older tiles color
-  let otile = this.getTileByPosition(x, y);
+  let otile = this.getTileAt(x, y);
   let batch = this.getLatestTileBatchOperation();
   // only push tile if necessary
   if (otile !== null && otile.colorMatchesWithTile(color)) return;
   let tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
   batch.tiles.push(tile);
+};
+
+/**
+ * Get batch by the given tile
+ * @param {Tile} tile
+ * @return {Batch}
+ */
+export function getBatchByTile(tile) {
+  let id = tile.id;
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let tiles = batches[ii].tiles;
+    for (let jj = 0; jj < tiles.length; ++jj) {
+      let tile = tiles[jj];
+      if (tile.id === id) return (batches[ii]);
+    };
+  };
+  return null;
 };

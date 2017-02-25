@@ -5,6 +5,9 @@
 </div>
 
 <div align="center">
+
+  [Demo](http://maierfelix.github.io/picaxo/)
+
   <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
   </a>
@@ -16,18 +19,22 @@
   </a>
 </div>
 
-[Demo](http://maierfelix.github.io/picaxo/)
-
-### Left features:
+### Coming soon:
  - Layers
  - Animations
  - Ellipse insertion
-
-### Left tools:
  - Eraser (Delete tiles)
  - Bucket (Fill enclosed tile area)
  - Dropper (Extract tile color)
  - Cropper (Crop out tile area)
+
+### API:
+  - drawImage (ctx, x, y)
+  - strokeRect (x, y, width, height, color)
+  - fillRect (x, y, width, height, color)
+  - applyColorLightness (batch, factor)
+  - applyPixelSmoothing (batch)
+  - getRandomRgbaColors () => Array
 
 ### License
 [BSD-2](https://github.com/maierfelix/picaxo/blob/master/LICENSE)

@@ -15,6 +15,7 @@ import Texture from "./Texture/index";
  */
 class Batch {
   constructor() {
+    this.index = 0;
     this.tiles = [];
     this.buffer = null;
     this.isBuffered = false;
@@ -66,9 +67,8 @@ Batch.prototype.getBoundings = function() {
 Batch.prototype.renderBuffer = function() {
   let info = this.getBoundings();
   let buffer = createCanvasBuffer(info.w, info.h);
-  let ww = info.w;
-  let bx = info.x;
-  let by = info.y;
+  let bx = info.x | 0;
+  let by = info.y | 0;
   let tiles = this.tiles;
   for (let ii = 0; ii < tiles.length; ++ii) {
     let tile = tiles[ii];
@@ -77,8 +77,8 @@ Batch.prototype.renderBuffer = function() {
     let yy = (tile.y / TILE_SIZE) - by;
     buffer.fillStyle = tile.getColorAsRgbaString();
     buffer.fillRect(
-      xx, yy,
-      1, 1
+      xx|0, yy|0,
+      1|0, 1|0
     );
   };
   this.buffer = new Texture(buffer, bx, by);

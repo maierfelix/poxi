@@ -13,6 +13,7 @@ import Batch from "./Batch/index";
  */
 export function applyColorLightness(batch, factor) {
   let tiles = batch.tiles;
+  this.pushTileBatchOperation();
   for (let ii = 0; ii < tiles.length; ++ii) {
     let tile = tiles[ii];
     let color = tile.colors[tile.cindex];
@@ -22,8 +23,9 @@ export function applyColorLightness(batch, factor) {
     let g = (Math.round((t - color[1]) * p) + color[1]);
     let b = (Math.round((t - color[2]) * p) + color[2]);
     let a = color[3];
-    tile.colors.unshift([r,g,b,a]);
+    this.createBatchTileAt(tile.x, tile.y, [r,g,b,a]);
   };
+  this.finalizeBatchOperation();
 };
 
 /**

@@ -13,6 +13,7 @@ export const MAGIC_RGB_A_BYTE = 0.00392;
 
 // factor when to hide the grid
 export const HIDE_GRID = 0.0;
+export const GRID_LINE_WIDTH = 0.25;
 
 export const ZOOM_SPEED = 56;
 

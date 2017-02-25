@@ -62,7 +62,7 @@ class Picaxo {
     if (this.states.paused === true) {
       setTimeout(() => this.renderLoop(), 16);
     } else {
-      setImmediate(() => {
+      requestAnimationFrame(() => {
         this.events[DRAW_HASH].fn();
         this.frames++;
         this.renderLoop();

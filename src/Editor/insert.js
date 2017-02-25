@@ -50,7 +50,6 @@ export function insertRectangleAt(x1, y1, x2, y2, color, filled) {
   let width = Math.abs(x2);
   let height = Math.abs(y2);
   this.pushTileBatchOperation();
-  let batch = this.getLatestTileBatchOperation();
   let dx = (x2 < 0 ? -1 : 1);
   let dy = (y2 < 0 ? -1 : 1);
   let x = x1 * TILE_SIZE;
@@ -78,7 +77,7 @@ export function insertRectangleAt(x1, y1, x2, y2, color, filled) {
  * @param {Number} x
  * @param {Number} y
  */
-export function insertSpriteContextAt(ctx, x, y) {
+export function drawImage(ctx, x, y) {
   let canvas = ctx.canvas;
   let width = canvas.width;
   let height = canvas.height;

@@ -1,8 +1,28 @@
-import { TILE_SIZE } from "../cfg";
+import {
+  TILE_SIZE,
+  BASE_TILE_COLOR
+} from "../cfg";
 
 import { roundTo } from "../math";
 
 import Tile from "./Tile/index";
+
+/**
+ * Set ctrl+a mode=true
+ */
+export function selectAll() {
+  this.modes.selectAll = true;
+};
+
+/**
+ * Hover & unhover tiles
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function hover(x, y) {
+  this.mx = x;
+  this.my = y;
+};
 
 /**
  * @param {Number} x
@@ -29,40 +49,6 @@ export function drawTileAt(x, y, color) {
 };
 
 /**
- * Set ctrl+a mode=true
- */
-export function selectAll() {
-  this.modes.selectAll = true;
-};
-
-/**
- * Hover & unhover tiles
- * @param {Number} x
- * @param {Number} y
- */
-export function hover(x, y) {
-  this.mx = x;
-  this.my = y;
-  this.unHoverAllTiles();
-  let tile = this.getTileByMouseOffset(x, y);
-  if (tile !== null) {
-    // set current tile as hovered
-    this.hovered.push(tile);
-    tile.isHovered = true;
-  }
-};
-
-/**
- * Set isHovered=false in hovered tiles array
- */
-export function unHoverAllTiles() {
-  for (let ii = 0; ii < this.hovered.length; ++ii) {
-    this.hovered[ii].isHovered = false;
-    this.hovered.splice(ii, 1);
-  };
-};
-
-/**
  * Returns rnd(0-255) rgba color array with a=1
  * @return {Array}
  */
@@ -72,6 +58,28 @@ export function getRandomRgbaColors() {
   let g = (Math.random() * cmax) | 0;
   let b = (Math.random() * cmax) | 0;
   return ([r, g, b, 1]);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getStackRelativeTileColorByMouseOffset(x, y) {
+  let tile = this.getStackRelativeTileByMouseOffset(x, y);
+  if (tile !== null) return (tile.color[tile.cindex]);
+  return (BASE_TILE_COLOR);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getStackRelativeTileColorAt(x, y) {
+  let tile = this.getStackRelativeTileAt(x, y);
+  if (tile !== null) return (tile.color[tile.cindex]);
+  return (BASE_TILE_COLOR);
 };
 
 /**
@@ -113,30 +121,61 @@ export function createTileAt(x, y) {
 };
 
 /**
- * Clear earlier tile at given position
- * => update its color and old color value
- * @param {Number} x
- * @param {Number} y
- * @return {Number}
- */
-export function getTileByMouseOffset(x, y) {
-  let position = this.getRelativeOffset(x, y);
-  let tile = this.getTileByPosition(position.x, position.y);
-  return (tile);
-};
-
-/**
- * Collect all tiles at given relative position
  * @param {Number} x
  * @param {Number} y
  * @return {Tile}
  */
-export function getTileByPosition(x, y) {
-  // TODO: go backwards? TODO: fix tile overwrite bug
+export function getTileByMouseOffset(x, y) {
+  let position = this.getRelativeOffset(x, y);
+  let tile = this.getTileAt(position.x, position.y);
+  return (tile);
+};
+
+/**
+ * Gets non-relative (stack independant) tile by given position
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+export function getTileAt(x, y) {
   let target = null;
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
     let batch = batches[ii].tiles;
+    for (let jj = 0; jj < batch.length; ++jj) {
+      let tile = batch[jj];
+      if (tile.x === x && tile.y === y) {
+        target = tile;
+      }
+    };
+  };
+  return (target);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+export function getStackRelativeTileByMouseOffset(x, y) {
+  let position = this.getRelativeOffset(x, y);
+  let tile = this.getStackRelativeTileAt(position.x, position.y);
+  return (tile);
+};
+
+/**
+ * Gets stack relative (absolute) tile by given position
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+export function getStackRelativeTileAt(x, y) {
+  let target = null;
+  let sIndex = this.sindex;
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii].tiles;
+    if (sIndex - ii < 0) continue;
     for (let jj = 0; jj < batch.length; ++jj) {
       let tile = batch[jj];
       if (tile.x === x && tile.y === y) {
@@ -170,9 +209,10 @@ export function getTileOffsetAt(x, y) {
 export function getTileById(id) {
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii];
-    for (let jj = 0; jj < batch.length; ++jj) {
-      if (batch[jj].id === id) return (tile);
+    let tiles = batches[ii].tiles;
+    for (let jj = 0; jj < tiles.length; ++jj) {
+      let tile = tiles[jj];
+      if (tile.id === id) return (tile);
     };
   };
   return null;

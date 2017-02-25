@@ -29,7 +29,6 @@ class Editor {
     // mouse position, negative to be hidden initially
     this.mx = -TILE_SIZE;
     this.my = -TILE_SIZE;
-    this.hovered = [];
     this.colorTest = null;
     this.camera = instance.camera;
     // stack related
