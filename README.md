@@ -5,9 +5,8 @@
 </div>
 
 <div align="center">
-
-  [Demo](http://maierfelix.github.io/picaxo/)
-
+  <a href="http://maierfelix.github.io/picaxo/">Demo</a>
+  
   <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
   </a>
