@@ -1,5 +1,5 @@
 import { BASE_TILE_COLOR } from "../../cfg";
-import { uid } from "../../utils";
+import { uid, colorsMatch } from "../../utils";
 
 /**
  * @class Tile
@@ -17,12 +17,8 @@ class Tile {
    * @return {Boolean}
    */
   colorMatchesWithTile(color) {
-    let owncolor = this.colors[this.cindex];
     return (
-      owncolor[0] === color[0] &&
-      owncolor[1] === color[1] &&
-      owncolor[2] === color[2] &&
-      owncolor[3] === color[3]
+      colorsMatch(this.colors[this.cindex], color)
     );
   }
   /**

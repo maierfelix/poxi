@@ -1,4 +1,8 @@
-import { BATCH_BUFFER_SIZE } from "../cfg";
+import {
+  UNSET_TILE_COLOR,
+  BATCH_BUFFER_SIZE
+} from "../cfg";
+
 import { createCanvasBuffer } from "../utils";
 
 import Tile from "./Tile/index";
@@ -32,6 +36,13 @@ export function finalizeBatchOperation() {
   let batch = this.batches[offset];
   if (batch.exceedsBounds() && !batch.isRawBuffer) {
     batch.renderBuffer();
+  } else {
+    // dont push into stack, if nothing has changed
+    if (!batch.tiles.length) {
+      this.batches.splice(offset, 1);
+      this.refreshBatches();
+      return;
+    }
   }
   this.enqueue({
     batch: batch
@@ -96,7 +107,7 @@ export function createBatchTileAt(x, y, color) {
   if (otile !== null) {
     if (
       otile.colorMatchesWithTile(color) ||
-      otile.colors[otile.cindex][3] === 2
+      otile.colors[otile.cindex][3] === UNSET_TILE_COLOR
     ) return;
   }
   let tile = this.createTileAt(x, y);

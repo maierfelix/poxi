@@ -71,3 +71,18 @@ export function applyImageSmoothing(ctx, state) {
 export function alphaByteToRgbAlpha(a) {
   return (Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10);
 };
+
+/**
+ * Do rgba color arrays match
+ * @param {Array} a
+ * @param {Array} a
+ * @return {Boolean}
+ */
+export function colorsMatch(a, b) {
+  return (
+    a[0] === b[0] &&
+    a[1] === b[1] &&
+    a[2] === b[2] &&
+    a[3] === b[3]
+  );
+};

@@ -23,6 +23,9 @@
     stage.editor.redo();
   });
 
+  stage.editor.strokeRect(0, 0, 6, 6, [45, 67, 154, 1]);
+  stage.editor.fillBucket(2, 2, [64, 64, 48, 1]);
+
   // ## input events
   let rpressed = false;
   let lpressed = false;

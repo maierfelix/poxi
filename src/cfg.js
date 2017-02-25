@@ -3,6 +3,8 @@ import { hashFromString } from "./utils";
 export const TILE_SIZE = 8;
 export const MIN_SCALE = 0.25;
 export const MAX_SCALE = 32;
+// trace ghost tiles by alpha=^2
+export const UNSET_TILE_COLOR = 2;
 export const BASE_TILE_COLOR = [0,0,0,0];
 
 // 32-bit ints are allowed at maximum
