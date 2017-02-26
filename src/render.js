@@ -24,6 +24,8 @@ export function resize(width, height) {
   this.camera.resize(width, height);
   // re-generate our bg
   this.generateBackground();
+  // re-generate background batches
+  this.editor.resizeBackgroundBatches(width, height);
   this.clear();
   this.render();
 };
@@ -82,8 +84,9 @@ export function renderBatches() {
     let batch = batches[ii].batch;
     // batch index is higher than stack index, so ignore this batch
     if (sIndex - ii < 0) continue;
+    if (batch.isBackground) this.drawBackgroundBatch(batch);
     // draw batched buffer (faster, drawImage)
-    if (batch.isBuffered) this.drawBatchedBuffer(batch);
+    else if (batch.isBuffered) this.drawBatchedBuffer(batch);
     // draw batched tiles (slower, fillRect)
     else this.drawBatchedTiles(batch);
   };
@@ -93,6 +96,23 @@ export function renderBatches() {
     if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
   }
   this.drawHoveredTile();
+};
+
+/**
+ * @param {Batch} batch
+ */
+export function drawBackgroundBatch(batch) {
+  let ctx = this.ctx;
+  let buffer = batch.bgbuffer;
+  let width = buffer.width;
+  let height = buffer.height;
+  ctx.drawImage(
+    buffer,
+    0, 0,
+    width, height,
+    0, 0,
+    width, height
+  );
 };
 
 /**

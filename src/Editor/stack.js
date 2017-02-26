@@ -4,15 +4,23 @@
 export function enqueue(op) {
   // our stack index is out of position
   // => clean up all more recent batches
+  this.refreshStack();
+  this.stack.push(op);
+  this.redo();
+  this.undo();
+  this.redo();
+};
+
+/**
+ * Manually refresh the stack,
+ * clear future operations etc.
+ */
+export function refreshStack() {
   if (this.sindex < this.stack.length - 1) {
     this.dequeue(this.sindex, this.stack.length - 1);
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
   }
-  this.stack.push(op);
-  this.redo();
-  this.undo();
-  this.redo();
 };
 
 /**

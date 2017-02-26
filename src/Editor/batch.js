@@ -3,7 +3,15 @@ import {
   BATCH_BUFFER_SIZE
 } from "../cfg";
 
-import { createCanvasBuffer } from "../utils";
+import {
+  colorsMatch,
+  sortAscending,
+  createCanvasBuffer
+} from "../utils";
+
+import {
+  intersectRectangles
+} from "../math";
 
 import Tile from "./Tile/index";
 import Batch from "./Batch/index";
@@ -38,10 +46,18 @@ export function finalizeBatchOperation() {
     batch.renderBuffer();
   } else {
     // dont push into stack, if nothing has changed
-    if (!batch.tiles.length) {
+    if (!batch.tiles.length && !batch.isBackground) {
       this.batches.splice(offset, 1);
       this.refreshBatches();
       return;
+    }
+    // got a background fill batch, check if we have to push it into the stack
+    if (batch.isBackground) {
+      let last = this.currentStackOperation();
+      // last operation was a background fill too, check if their colors match
+      if (last && last.batch.isBackground) {
+        if (colorsMatch(batch.bgcolor, last.batch.bgcolor)) return;
+      }
     }
   }
   this.enqueue({
@@ -112,7 +128,7 @@ export function createBatchTileAt(x, y, color) {
   }
   let tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
-  batch.tiles.push(tile);
+  batch.addTile(tile);
 };
 
 /**
@@ -131,4 +147,65 @@ export function getBatchByTile(tile) {
     };
   };
   return null;
+};
+
+/**
+ * Resize all background batches to stay smoothy
+ * @param {Number} width
+ * @param {Number} height
+ */
+export function resizeBackgroundBatches(width, height) {
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii];
+    if (!batch.isBackground) continue;
+    batch.renderBackground(width, height, batch.bgcolor);
+  };
+};
+
+/**
+ * Check whether a point lies inside the used editor area
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Boolean}
+ */
+export function pointInsideAbsoluteBoundings(x, y) {
+  let info = this.getAbsoluteBoundings(this.batches);
+  let state = intersectRectangles(
+    info.x, info.y, info.w, info.h,
+    x, y, 0, 0
+  );
+  return (state);
+};
+
+/**
+ * @param {Array} batches
+ */
+export function getAbsoluteBoundings(batches) {
+  let px = []; let py = []; let pw = []; let ph = [];
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii];
+    let info = batch.getBoundings();
+    px.push(info.x);
+    py.push(info.y);
+    pw.push(info.x + info.w);
+    ph.push(info.y + info.h);
+  };
+  px.sort(sortAscending);
+  py.sort(sortAscending);
+  pw.sort(sortAscending);
+  ph.sort(sortAscending);
+  // calculate rectangle position
+  let xx = px[0]|0;
+  let yy = py[0]|0;
+  // calculate rectangle size
+  let idx = pw.length-1;
+  let ww = (-xx + pw[idx]);
+  let hh = (-yy + ph[idx]);
+  return ({
+    x: xx,
+    y: yy,
+    w: ww,
+    h: hh
+  });
 };

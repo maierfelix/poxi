@@ -86,3 +86,31 @@ export function colorsMatch(a, b) {
     a[3] === b[3]
   );
 };
+
+/**
+ * Checks if a color array is fully transparent
+ * @param {Array} color
+ * @return {Boolean}
+ */
+const transparent = [0, 0, 0, 0];
+export function isGhostColor(color) {
+  return (colorsMatch(color, transparent));
+};
+
+/**
+ * @param {Number} a
+ * @param {Number} b
+ * @return {Number}
+ */
+export function sortAscending(a, b) {
+  return (a - b);
+};
+
+/**
+ * @param {Number} a
+ * @param {Number} b
+ * @return {Number}
+ */
+export function sortDescending(a, b) {
+  return (b - a);
+};

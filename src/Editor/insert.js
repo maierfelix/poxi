@@ -1,7 +1,23 @@
 import { UNSET_TILE_COLOR } from "../cfg";
-import { colorsMatch } from "../utils";
+import {
+  colorsMatch,
+  isGhostColor
+} from "../utils";
 
 import Texture from "./Batch/Texture/index";
+
+/**
+ * @param {Array} color
+ */
+export function fillBackground(color) {
+  let isempty = isGhostColor(color);
+  this.pushTileBatchOperation();
+  let batch = this.getLatestTileBatchOperation();
+  batch.isBackground = true;
+  batch.renderBackground(this.camera.width, this.camera.height, color);
+  this.createBatchTileAt(0, 0, color);
+  this.finalizeBatchOperation();
+};
 
 /**
  * Fill enclosed tile area
@@ -13,10 +29,12 @@ export function fillBucket(x, y, color) {
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
   let queue = [{x, y}];
+  let sIndex = this.sindex;
   // differentiate between empty and colored tiles
   let tile = this.getStackRelativeTileAt(x, y);
   this.pushTileBatchOperation();
   let batch = this.getLatestTileBatchOperation();
+  let infinite = false;
   // try color based filling
   if (tile !== null) {
     let final = tile.colors[tile.cindex];
@@ -26,6 +44,10 @@ export function fillBucket(x, y, color) {
       let point = queue.pop();
       let x = point.x;
       let y = point.y;
+      if (!this.pointInsideAbsoluteBoundings(x, y)) {
+        infinite = true;
+        break;
+      }
       let a = this.getTileAt(x+1, y);
       let b = this.getTileAt(x-1, y);
       let c = this.getTileAt(x, y+1);
@@ -44,6 +66,10 @@ export function fillBucket(x, y, color) {
       let point = queue.pop();
       let x = point.x;
       let y = point.y;
+      if (!this.pointInsideAbsoluteBoundings(x, y)) {
+        infinite = true;
+        break;
+      }
       if (batch.getTileColorAt(x, y)[3] === UNSET_TILE_COLOR) {
         this.createBatchTileAt(x, y, color);
       }
@@ -54,6 +80,15 @@ export function fillBucket(x, y, color) {
     };
   }
   this.finalizeBatchOperation();
+  if (infinite) {
+    // remove our recent batch if it didn't got removed yet
+    // e.g. infinity got detected later and some batches got drawn
+    if (sIndex < this.sindex) {
+      this.undo();
+      this.refreshStack();
+    }
+    this.fillBackground(color);
+  }
 };
 
 /**

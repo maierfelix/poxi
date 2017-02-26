@@ -21,7 +21,6 @@
 ### Coming soon:
  - Layers
  - Animations
- - Ellipse insertion
  - Eraser (Delete tiles)
  - Dropper (Extract tile color)
  - Cropper (Crop out tile area)

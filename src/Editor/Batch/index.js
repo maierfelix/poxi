@@ -1,6 +1,10 @@
-import { BATCH_BUFFER_SIZE } from "../../cfg";
+import {
+  UNSET_TILE_COLOR,
+  BATCH_BUFFER_SIZE
+} from "../../cfg";
 
 import {
+  sortAscending,
   createCanvasBuffer,
   alphaByteToRgbAlpha
 } from "../../utils";
@@ -12,17 +16,62 @@ import Texture from "./Texture/index";
  */
 class Batch {
   constructor() {
+    this.x = 0;
+    this.y = 0;
+    this.width = 0;
+    this.height = 0;
     this.index = 0;
     this.tiles = [];
+    // background related, see 'renderBackground'
     this.buffer = null;
+    this.bgcolor = null;
+    this.bgbuffer = null;
     this.isBuffered = false;
-    /**
-     * This property indicates, if only
-     * the canvas buffer is available to us
-     * e.g. used for inserted sprite images
-     */
+    // This property indicates, if only the canvas buffer is available to us
+    // e.g. used for inserted sprite images
     this.isRawBuffer = false;
+    // If the batch should appear everywhere on the screen
+    this.isBackground = false;
   }
+};
+
+/**
+ * @param {Number} width
+ * @param {Number} height
+ * @param {Array} color
+ */
+Batch.prototype.renderBackground = function(width, height, color) {
+  let buffer = createCanvasBuffer(width, height);
+  let r = color[0];
+  let g = color[1];
+  let b = color[2];
+  let a = color[3];
+  buffer.fillStyle = `rgba(${r},${g},${b},${a})`;
+  buffer.fillRect(
+    0, 0,
+    width, height
+  );
+  this.bgcolor = color;
+  this.bgbuffer = buffer.canvas;
+};
+
+/**
+ * @param {Tile} tile
+ */
+Batch.prototype.addTile = function(tile) {
+  this.tiles.push(tile);
+  this.updateBoundings();
+};
+
+/**
+ * Updates the batch's relative position and size
+ */
+Batch.prototype.updateBoundings = function() {
+  let info = this.getBoundings();
+  this.x = info.x;
+  this.y = info.y;
+  this.width = info.w;
+  this.height = info.h;
 };
 
 /**
@@ -41,8 +90,8 @@ Batch.prototype.getBoundings = function() {
     px.push(tile.x);
     py.push(tile.y);
   };
-  px.sort((a, b) => { return a - b; });
-  py.sort((a, b) => { return a - b; });
+  px.sort(sortAscending);
+  py.sort(sortAscending);
   let idx = px.length-1;
   // calculate rectangle position
   let xx = px[0]|0;
@@ -62,10 +111,10 @@ Batch.prototype.getBoundings = function() {
  * Creates a cropped canvas buffer
  */
 Batch.prototype.renderBuffer = function() {
-  let info = this.getBoundings();
-  let buffer = createCanvasBuffer(info.w, info.h);
-  let bx = info.x | 0;
-  let by = info.y | 0;
+  this.updateBoundings();
+  let buffer = createCanvasBuffer(this.width, this.height);
+  let bx = this.x | 0;
+  let by = this.y | 0;
   let tiles = this.tiles;
   for (let ii = 0; ii < tiles.length; ++ii) {
     let tile = tiles[ii];
@@ -104,7 +153,7 @@ Batch.prototype.exceedsBounds = function() {
  * @return {Array}
  */
 Batch.prototype.getTileColorAt = function(x, y) {
-  if (!this.isBuffered) return ([0,0,0,2]);
+  if (!this.isBuffered) return ([0,0,0,UNSET_TILE_COLOR]);
   let data = this.buffer.context.getImageData(x, y, 1, 1).data;
   let alpha = alphaByteToRgbAlpha(data[3]);
   let color = [data[0], data[1], data[2], alpha];
