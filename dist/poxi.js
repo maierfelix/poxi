@@ -1106,8 +1106,10 @@ function pointInsideAbsoluteBoundings(x, y) {
  */
 function getAbsoluteBoundings(batches) {
   var px = []; var py = []; var pw = []; var ph = [];
+  var sindex = this.sindex;
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
+    if (sindex < ii) { continue; }
     var info = batch.getBoundings();
     px.push(info.x);
     py.push(info.y);
