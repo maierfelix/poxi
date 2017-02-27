@@ -1761,9 +1761,9 @@ var _render = Object.freeze({
 });
 
 /**
- * @class Picaxo
+ * @class Poxi
  */
-var Picaxo = function Picaxo(obj) {
+var Poxi = function Poxi(obj) {
   this.bg = null;
   this.ctx = null;
   this.view = null;
@@ -1788,17 +1788,17 @@ var Picaxo = function Picaxo(obj) {
   this.init();
 };
 
-Picaxo.prototype.init = function init () {
+Poxi.prototype.init = function init () {
   this.renderLoop();
 };
 
-Picaxo.prototype.createView = function createView () {
+Poxi.prototype.createView = function createView () {
   var buffer = createCanvasBuffer(this.width, this.height);
   this.ctx = buffer;
   this.view = buffer.canvas;
 };
 
-Picaxo.prototype.renderLoop = function renderLoop () {
+Poxi.prototype.renderLoop = function renderLoop () {
     var this$1 = this;
 
   // try again to render in 16ms
@@ -1816,7 +1816,7 @@ Picaxo.prototype.renderLoop = function renderLoop () {
 /**
  * @param {HTMLCanvasElement} el
  */
-Picaxo.prototype.isViewElement = function isViewElement (el) {
+Poxi.prototype.isViewElement = function isViewElement (el) {
   return (
     el && el instanceof HTMLCanvasElement
   );
@@ -1827,7 +1827,7 @@ Picaxo.prototype.isViewElement = function isViewElement (el) {
  * @param {String} kind
  * @param {Function} fn
  */
-Picaxo.prototype.on = function on (kind, fn) {
+Poxi.prototype.on = function on (kind, fn) {
   if (!(typeof kind === "string")) {
     throw new Error("Expected emitter kind to be string");
   }
@@ -1846,20 +1846,20 @@ Picaxo.prototype.on = function on (kind, fn) {
  * @param {Number} hash
  * @param {Function} fn
  */
-Picaxo.prototype.processEmitter = function processEmitter (hash, fn) {
+Poxi.prototype.processEmitter = function processEmitter (hash, fn) {
   // begin drawing as soon as we got something to do there
   if (this.frames === 0 && hash === DRAW_HASH) {
     this.states.paused = false;
   }
 };
 
-inherit(Picaxo, _render);
+inherit(Poxi, _render);
 
 // apply to window
 if (typeof window !== "undefined") {
-  window.Picaxo = Picaxo;
+  window.Poxi = Poxi;
 } else {
-  throw new Error("Please run Picaxo inside a browser");
+  throw new Error("Please run Poxi inside a browser");
 }
 
 })));

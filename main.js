@@ -1,7 +1,7 @@
 (() => { "use strict";
 
   // ## relevant part
-  let stage = new Picaxo({
+  let stage = new Poxi({
     width: window.innerWidth,
     height: window.innerHeight
   });
