@@ -50,6 +50,7 @@
   });
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();
+    if (!(e.target instanceof HTMLCanvasElement)) return;
     // right key to drag
     if (e.which === 3) {
       rpressed = true;
@@ -89,6 +90,12 @@
     stage.camera.scale(x);
   };
 
+  // download button
+  download.onclick = () => {
+    let data = stage.exportAsDataUrl();
+    window.open(data);
+  };
+
   // ## drag&drop images
   file.onclick = (e) => { e.preventDefault(); };
   file.onchange = (e) => {
@@ -120,6 +127,6 @@
     file.style.display = "none";
   });
 
-  window.stage = stage;
+  window.stage = stage; // our current stage
 
 })();

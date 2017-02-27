@@ -73,6 +73,18 @@ export function alphaByteToRgbAlpha(a) {
 };
 
 /**
+ * @param {Array} color
+ * @return {String}
+ */
+export function colorToRgbaString(color) {
+  let r = color[0];
+  let g = color[1];
+  let b = color[2];
+  let a = color[3];
+  return (`rgba(${r},${g},${b},${a})`);
+};
+
+/**
  * Do rgba color arrays match
  * @param {Array} a
  * @param {Array} a

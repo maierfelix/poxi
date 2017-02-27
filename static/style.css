@@ -23,3 +23,22 @@ body {
   z-index: 999;
   display: none;
 }
+
+#download {
+  position: absolute;
+  z-index: 9999;
+  right: 2px;
+  bottom: 2px;
+  background: rgba(255,255,255,0.05);
+  font-family: "Andale Mono", AndaleMono, monospace;
+  border: 1px solid rgba(255, 255, 255, .35);
+  color: rgba(255, 255, 255, .75);
+  text-decoration: none;
+  min-width: 80px;
+  text-align: center;
+  font-size: 10px;
+  font-style: normal;
+  font-variant: normal;
+  font-weight: 500;
+  line-height: 16px;
+}

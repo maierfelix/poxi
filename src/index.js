@@ -9,6 +9,7 @@ import {
 import {
   inherit,
   hashFromString,
+  colorToRgbaString,
   createCanvasBuffer
 } from "./utils";
 
@@ -108,6 +109,60 @@ class Poxi {
     if (this.frames === 0 && hash === DRAW_HASH) {
       this.states.paused = false;
     }
+  }
+
+  /**
+   * Export the current view to base64 encoded png string
+   * @return {String}
+   */
+  exportAsDataUrl() {
+    let editor = this.editor;
+    let batches = editor.batches;
+    let info = editor.getAbsoluteBoundings(batches);
+    let rx = info.x;
+    let ry = info.y;
+    let width = info.w;
+    let height = info.h;
+    let ctx = createCanvasBuffer(width, height);
+    let view = ctx.canvas;
+    for (let ii = 0; ii < batches.length; ++ii) {
+      let batch = batches[ii];
+      // background
+      if (batch.isBackground) {
+        ctx.fillStyle = colorToRgbaString(batch.bgcolor);
+        ctx.fillRect(
+          0, 0,
+          view.width, view.height
+        );
+        continue;
+      }
+      // buffer
+      if (batch.isBuffered) {
+        ctx.drawImage(
+          batch.buffer.view,
+          (batch.x - rx) | 0, (batch.y - ry) | 0,
+          batch.width | 0, batch.height | 0
+        );
+        continue;
+      }
+      // tiles
+      if (batch.tiles.length) {
+        let tiles = batch.tiles;
+        for (let ii = 0; ii < tiles.length; ++ii) {
+          let tile = tiles[ii];
+          let x = (tile.x - rx) | 0;
+          let y = (tile.y - ry) | 0;
+          let color = colorToRgbaString(tile.colors[tile.cindex]);
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            x, y,
+            1, 1
+          );
+        };
+        continue;
+      }
+    };
+    return (view.toDataURL());
   }
 
 };
