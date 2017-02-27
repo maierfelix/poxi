@@ -44,7 +44,7 @@ You can either use Poxi as a pixel art editor or as a renderer for your games (s
   - getRandomRgbaColors () => Array
 
 ### Contributing
-If you're interested in creating a **pixel art editor ui** for this project, then please write me a [mail](xilefmai@gmail.com) first.
+If you're interested in creating a **pixel art editor ui** for this project, then please write me a [mail](mailto:xilefmai@gmail.com) first.
 
 Code related pull requests are very welcome, but please make sure they match the existing code style.
 
