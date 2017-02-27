@@ -1,16 +1,16 @@
 <div align="center">
   <h3>
-    Picaxo is a modern, hackable pixel art editor for the browser with focus on elegance, simplicity and productivity.
+    Poxi is a modern, hackable pixel art editor for the browser with focus on elegance, simplicity and productivity.
   </h3>
 </div>
 
 <div align="center">
-  <a href="http://maierfelix.github.io/picaxo/">Demo</a>
+  <a href="http://maierfelix.github.io/poxi/">Demo</a>
   <br/><br/>
-  <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
+  <a href="https://github.com/maierfelix/poxi/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
   </a>
-  <a href="https://github.com/maierfelix/picaxo/blob/master/LICENSE">
+  <a href="https://github.com/maierfelix/poxi/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/Dependencies-None-green.svg?style=flat-square" alt="No dependencies" />
   </a>
   <a href="https://nodejs.org/api/documentation.html#documentation_stability_index">
@@ -19,7 +19,7 @@
 </div>
 
 ### Introduction
-You can either use Picaxo as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/picaxo#api)). Picaxo offers great performance, an infinite grid playground as well as a wide range of fine grained api methods.
+You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers great performance, an infinite grid playground as well as a wide range of fine grained api methods.
 
  - Batch and buffer based tile drawing
  - Undo/Redo for all operations
@@ -47,4 +47,4 @@ You can either use Picaxo as a pixel art editor or as a renderer for your games 
 If you're interested and experienced in creating a **pixel art editor ui**, then feel free to write me a [mail](xilefmai@gmail.com). Pull requests are welcome as long as they match the given code style.
 
 ### License
-[BSD-2](https://github.com/maierfelix/picaxo/blob/master/LICENSE)
+[BSD-2](https://github.com/maierfelix/poxi/blob/master/LICENSE)
