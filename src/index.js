@@ -125,8 +125,11 @@ class Poxi {
     let height = info.h;
     let ctx = createCanvasBuffer(width, height);
     let view = ctx.canvas;
+    let sindex = editor.sindex;
     for (let ii = 0; ii < batches.length; ++ii) {
       let batch = batches[ii];
+      // ignore future batches
+      if (sindex < ii) continue;
       // background
       if (batch.isBackground) {
         ctx.fillStyle = colorToRgbaString(batch.bgcolor);

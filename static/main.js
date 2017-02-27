@@ -64,6 +64,7 @@
   });
   window.addEventListener("mouseup", (e) => {
     e.preventDefault();
+    if (!(e.target instanceof HTMLCanvasElement)) return;
     // stop dragging
     if (e.which === 3) {
       rpressed = false;

@@ -183,8 +183,10 @@ export function pointInsideAbsoluteBoundings(x, y) {
  */
 export function getAbsoluteBoundings(batches) {
   let px = []; let py = []; let pw = []; let ph = [];
+  let sindex = this.sindex;
   for (let ii = 0; ii < batches.length; ++ii) {
     let batch = batches[ii];
+    if (sindex < ii) continue;
     let info = batch.getBoundings();
     px.push(info.x);
     py.push(info.y);
