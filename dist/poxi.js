@@ -1879,8 +1879,11 @@ Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
   var height = info.h;
   var ctx = createCanvasBuffer(width, height);
   var view = ctx.canvas;
+  var sindex = editor.sindex;
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
+    // ignore future batches
+    if (sindex < ii) { continue; }
     // background
     if (batch.isBackground) {
       ctx.fillStyle = colorToRgbaString(batch.bgcolor);
