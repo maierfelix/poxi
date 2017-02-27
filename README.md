@@ -19,18 +19,18 @@
 </div>
 
 ### Introduction
-You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers great performance, an infinite grid playground as well as a wide range of fine grained api methods.
+You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers **great** performance, an infinite grid playground as well as a wide range of fine grained api methods.
 
- - Batch and buffer based tile drawing
+ - Auto batch and buffer based drawing
  - Undo/Redo for all operations
  - Infinite grid in all directions
- - Import images
+ - Import images // *Use drag n' drop in the demo*
 
 ### Coming soon:
  - Layers
  - Animations
  - Eraser (Delete tiles)
- - Cropper (Crop out or move pixel regions)
+ - Cropper (Crop out and move areas)
 
 ### API:
   - drawImage (ctx, x, y)
@@ -44,7 +44,9 @@ You can either use Poxi as a pixel art editor or as a renderer for your games (s
   - getRandomRgbaColors () => Array
 
 ### Contributing
-If you're interested and experienced in creating a **pixel art editor ui**, then feel free to write me a [mail](xilefmai@gmail.com). Pull requests are welcome as long as they match the given code style.
+If you're interested in creating a **pixel art editor ui** for this project, then please write me a [mail](xilefmai@gmail.com) first.
+
+Code related pull requests are very welcome, but please make sure they match the existing code style.
 
 ### License
 [BSD-2](https://github.com/maierfelix/poxi/blob/master/LICENSE)
