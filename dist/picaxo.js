@@ -76,9 +76,52 @@ function alphaByteToRgbAlpha(a) {
   return (Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10);
 }
 
+/**
+ * Do rgba color arrays match
+ * @param {Array} a
+ * @param {Array} a
+ * @return {Boolean}
+ */
+function colorsMatch(a, b) {
+  return (
+    a[0] === b[0] &&
+    a[1] === b[1] &&
+    a[2] === b[2] &&
+    a[3] === b[3]
+  );
+}
+
+/**
+ * Checks if a color array is fully transparent
+ * @param {Array} color
+ * @return {Boolean}
+ */
+var transparent = [0, 0, 0, 0];
+function isGhostColor(color) {
+  return (colorsMatch(color, transparent));
+}
+
+/**
+ * @param {Number} a
+ * @param {Number} b
+ * @return {Number}
+ */
+function sortAscending(a, b) {
+  return (a - b);
+}
+
+/**
+ * @param {Number} a
+ * @param {Number} b
+ * @return {Number}
+ */
+
 var TILE_SIZE = 8;
 var MIN_SCALE = 0.25;
 var MAX_SCALE = 32;
+var MAGIC_SCALE = .125;
+// trace ghost tiles by alpha=^2
+var UNSET_TILE_COLOR = 2;
 var BASE_TILE_COLOR = [0,0,0,0];
 
 // 32-bit ints are allowed at maximum
@@ -129,6 +172,25 @@ function roundTo(x, t) {
 }
 
 /**
+ * @param {Number} x1
+ * @param {Number} y1
+ * @param {Number} w1
+ * @param {Number} h1
+ * @param {Number} x2
+ * @param {Number} y2
+ * @param {Number} w2
+ * @param {Number} h2
+ * @return {Boolean}
+ */
+function intersectRectangles(x1, y1, w1, h1, x2, y2, w2, h2) {
+  var x = Math.max(x1, x2);
+  var w = Math.min(x1 + w1, x2 + w2);
+  var y = Math.max(y1, y2);
+  var h = Math.min(y1 + h1, y2 + h2);
+  return (w >= x && h >= y);
+}
+
+/**
  * @class Camera
  */
 var Camera = function Camera(instance) {
@@ -153,7 +215,7 @@ Camera.prototype.scale = function scale (dir) {
   if (this.s + x <= MIN_SCALE) { this.s = MIN_SCALE; }
   else if (this.s + x >= MAX_SCALE) { this.s = MAX_SCALE; }
   else { this.s += x; }
-  this.s = roundTo(this.s, .125);
+  this.s = roundTo(this.s, MAGIC_SCALE);
   this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
   this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
 };
@@ -212,15 +274,23 @@ Camera.prototype.resize = function resize (width, height) {
 function enqueue(op) {
   // our stack index is out of position
   // => clean up all more recent batches
+  this.refreshStack();
+  this.stack.push(op);
+  this.redo();
+  this.undo();
+  this.redo();
+}
+
+/**
+ * Manually refresh the stack,
+ * clear future operations etc.
+ */
+function refreshStack() {
   if (this.sindex < this.stack.length - 1) {
     this.dequeue(this.sindex, this.stack.length - 1);
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
   }
-  this.stack.push(op);
-  this.redo();
-  this.undo();
-  this.redo();
 }
 
 /**
@@ -282,6 +352,7 @@ function redo() {
 
 var _stack = Object.freeze({
 	enqueue: enqueue,
+	refreshStack: refreshStack,
 	dequeue: dequeue,
 	fire: fire,
 	currentStackOperation: currentStackOperation,
@@ -298,19 +369,14 @@ var Tile = function Tile() {
   this.id = uid();
   this.cindex = 0;
   this.colors = [BASE_TILE_COLOR];
-  this.isHovered = false;
 };
 /**
  * @param {Array} color
  * @return {Boolean}
  */
 Tile.prototype.colorMatchesWithTile = function colorMatchesWithTile (color) {
-  var owncolor = this.colors[this.cindex];
   return (
-    owncolor[0] === color[0] &&
-    owncolor[1] === color[1] &&
-    owncolor[2] === color[2] &&
-    owncolor[3] === color[3]
+    colorsMatch(this.colors[this.cindex], color)
   );
 };
 /**
@@ -346,6 +412,31 @@ function hover(x, y) {
 }
 
 /**
+ * Erase a tile by mouse offset
+ * @param {Number} x
+ * @param {Number} y
+ */
+function eraseTileAtMouseOffset(x, y) {
+  var position = this.getRelativeOffset(x, y);
+  this.eraseTileAt(position.x, position.y);
+}
+
+/**
+ * Erase a tile at given relative position
+ * @param {Number} x
+ * @param {Number} y
+ */
+function eraseTileAt(x, y) {
+  var tile = this.getStackRelativeTileAt(x, y);
+  this.pushTileBatchOperation();
+  if (tile !== null) {
+    var color = tile.colors.shift();
+    this.createBatchTileAt(tile.x, tile.y, [0,0,0,0]);
+  }
+  this.finalizeBatchOperation();
+}
+
+/**
  * @param {Number} x
  * @param {Number} y
  */
@@ -364,43 +455,8 @@ function drawTileAtMouseOffset(x, y) {
  */
 function drawTileAt(x, y, color) {
   this.pushTileBatchOperation();
-  this.createBatchTileAt((x*TILE_SIZE)|0, (y*TILE_SIZE)|0, color);
+  this.createBatchTileAt(x|0, y|0, color);
   this.finalizeBatchOperation();
-  return (tile);
-}
-
-/**
- * Returns rnd(0-255) rgba color array with a=1
- * @return {Array}
- */
-function getRandomRgbaColors() {
-  var cmax = 256;
-  var r = (Math.random() * cmax) | 0;
-  var g = (Math.random() * cmax) | 0;
-  var b = (Math.random() * cmax) | 0;
-  return ([r, g, b, 1]);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-function getStackRelativeTileColorByMouseOffset(x, y) {
-  var tile = this.getStackRelativeTileByMouseOffset(x, y);
-  if (tile !== null) { return (tile.color[tile.cindex]); }
-  return (BASE_TILE_COLOR);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-function getStackRelativeTileColorAt(x, y) {
-  var tile = this.getStackRelativeTileAt(x, y);
-  if (tile !== null) { return (tile.color[tile.cindex]); }
-  return (BASE_TILE_COLOR);
 }
 
 /**
@@ -433,8 +489,8 @@ function createTileAtMouseOffset(x, y) {
 function createTileAt(x, y) {
   var tile = new Tile();
   if (!this.offsetExceedsIntegerLimit(x, y)) {
-    tile.x = x;
-    tile.y = y;
+    tile.x = x | 0;
+    tile.y = y | 0;
   } else {
     throw new Error("Tile position exceeds 32-bit integer limit!");
   }
@@ -517,8 +573,8 @@ function getTileOffsetAt(x, y) {
   var xx = roundTo(x - half, TILE_SIZE);
   var yy = roundTo(y - half, TILE_SIZE);
   return ({
-    x: xx,
-    y: yy
+    x: xx / TILE_SIZE,
+    y: yy / TILE_SIZE
   });
 }
 
@@ -536,7 +592,64 @@ function getTileById(id) {
       if (tile.id === id) { return (tile); }
     }
   }
-  return null;
+  return (null);
+}
+
+/**
+ * Returns rnd(0-255) rgba color array with a=1
+ * @return {Array}
+ */
+function getRandomRgbaColors() {
+  var cmax = 256;
+  var r = (Math.random() * cmax) | 0;
+  var g = (Math.random() * cmax) | 0;
+  var b = (Math.random() * cmax) | 0;
+  return ([r, g, b, 1]);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getTileColorAt(x, y) {
+  var target = null;
+  var batches = this.batches;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    // buffer color
+    var color = batch.getTileColorAt(x, y);
+    if (color !== null) { target = color; }
+  }
+  return (target);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getStackRelativeTileColorAt(x, y) {
+  var target = null;
+  var sIndex = this.sindex;
+  var batches = this.batches;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    if (sIndex - ii < 0) { continue; }
+    var color = batch.getTileColorAt(x, y);
+    if (color !== null) { target = color; }
+  }
+  return (target);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getStackRelativeTileColorByMouseOffset(x, y) {
+  var position = this.getRelativeOffset(x, y);
+  return (this.getStackRelativeTileColorAt(position.x, position.y));
 }
 
 /**
@@ -550,11 +663,11 @@ function isTileInsideView(tile) {
   var height = this.camera.height;
   var tilew = TILE_SIZE * scale;
   var tileh = TILE_SIZE * scale;
-  var x = (tile.x * scale) + this.camera.x;
-  var y = (tile.y * scale) + this.camera.y;
+  var x = ((tile.x * TILE_SIZE) * scale) + this.camera.x;
+  var y = ((tile.y * TILE_SIZE) * scale) + this.camera.y;
   return (
-    (x + tilew) >= 0 && x <= width &&
-    (y + tileh) >= 0 && y <= height
+    (x + tilew) >= 0 && (x - tilew) <= width &&
+    (y + tileh) >= 0 && (y - tileh) <= height
   );
 }
 
@@ -562,11 +675,10 @@ function isTileInsideView(tile) {
 var _tiles = Object.freeze({
 	selectAll: selectAll,
 	hover: hover,
+	eraseTileAtMouseOffset: eraseTileAtMouseOffset,
+	eraseTileAt: eraseTileAt,
 	drawTileAtMouseOffset: drawTileAtMouseOffset,
 	drawTileAt: drawTileAt,
-	getRandomRgbaColors: getRandomRgbaColors,
-	getStackRelativeTileColorByMouseOffset: getStackRelativeTileColorByMouseOffset,
-	getStackRelativeTileColorAt: getStackRelativeTileColorAt,
 	getRelativeOffset: getRelativeOffset$1,
 	createTileAtMouseOffset: createTileAtMouseOffset,
 	createTileAt: createTileAt,
@@ -576,6 +688,10 @@ var _tiles = Object.freeze({
 	getStackRelativeTileAt: getStackRelativeTileAt,
 	getTileOffsetAt: getTileOffsetAt,
 	getTileById: getTileById,
+	getRandomRgbaColors: getRandomRgbaColors,
+	getTileColorAt: getTileColorAt,
+	getStackRelativeTileColorAt: getStackRelativeTileColorAt,
+	getStackRelativeTileColorByMouseOffset: getStackRelativeTileColorByMouseOffset,
 	isTileInsideView: isTileInsideView
 });
 
@@ -597,16 +713,63 @@ var Texture = function Texture(ctx, x, y) {
  * @class Batch
  */
 var Batch = function Batch() {
+  this.x = 0;
+  this.y = 0;
+  this.width = 0;
+  this.height = 0;
   this.index = 0;
   this.tiles = [];
+  // background related, see 'renderBackground'
   this.buffer = null;
+  this.bgcolor = null;
+  this.bgbuffer = null;
   this.isBuffered = false;
-  /**
-   * This property indicates, if only
-   * the canvas buffer is available to us
-   * e.g. used for inserted sprite images
-   */
+  // This property indicates, if only the canvas buffer is available to us
+  // e.g. used for inserted sprite images
   this.isRawBuffer = false;
+  // If the batch should appear everywhere on the screen
+  this.isBackground = false;
+};
+
+/**
+ * @param {Number} width
+ * @param {Number} height
+ * @param {Array} color
+ */
+Batch.prototype.renderBackground = function(width, height, color) {
+  var buffer = createCanvasBuffer(width, height);
+  var r = color[0];
+  var g = color[1];
+  var b = color[2];
+  var a = color[3];
+  buffer.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  buffer.fillRect(
+    0, 0,
+    width, height
+  );
+  this.bgcolor = color;
+  this.bgbuffer = buffer.canvas;
+};
+
+/**
+ * @param {Tile} tile
+ */
+Batch.prototype.addTile = function(tile) {
+  this.tiles.push(tile);
+  this.updateBoundings();
+};
+
+/**
+ * Updates the batch's relative position and size
+ */
+Batch.prototype.updateBoundings = function() {
+  // dont calculate sizes of raw buffers
+  if (this.isRawBuffer) { return; }
+  var info = this.getBoundings();
+  this.x = info.x;
+  this.y = info.y;
+  this.width = info.w;
+  this.height = info.h;
 };
 
 /**
@@ -614,9 +777,15 @@ var Batch = function Batch() {
  * @return {Object}
  */
 Batch.prototype.getBoundings = function() {
-  // start position at maximum buffer size
-  var x = BATCH_BUFFER_SIZE.MAX_W;
-  var y = BATCH_BUFFER_SIZE.MAX_H;
+  // raw buffers have static bounding
+  if (this.isRawBuffer) {
+    return ({
+      x: this.x,
+      y: this.y,
+      w: this.width,
+      h: this.height
+    });
+  }
   var px = [];
   var py = [];
   var tiles = this.tiles;
@@ -625,15 +794,15 @@ Batch.prototype.getBoundings = function() {
     px.push(tile.x);
     py.push(tile.y);
   }
-  px.sort(function (a, b) { return a - b; });
-  py.sort(function (a, b) { return a - b; });
+  px.sort(sortAscending);
+  py.sort(sortAscending);
   var idx = px.length-1;
   // calculate rectangle position
-  var xx = (px[0] / TILE_SIZE) | 0;
-  var yy = (py[0] / TILE_SIZE) | 0;
+  var xx = px[0]|0;
+  var yy = py[0]|0;
   // calculate rectangle size
-  var ww = (((px[idx] - px[0]) / TILE_SIZE) | 0) + 1;
-  var hh = (((py[idx] - py[0]) / TILE_SIZE) | 0) + 1;
+  var ww = ((px[idx] - px[0]) | 0) + 1;
+  var hh = ((py[idx] - py[0]) | 0) + 1;
   return ({
     x: xx,
     y: yy,
@@ -643,27 +812,43 @@ Batch.prototype.getBoundings = function() {
 };
 
 /**
+ * @param {CanvasRenderingContext2D}
+ * @param {Number} x
+ * @param {Number} y
+ */
+Batch.prototype.createRawBufferAt = function(ctx, x, y) {
+  var view = ctx.canvas;
+  this.x = x;
+  this.y = y;
+  this.width = view.width;
+  this.height = view.height;
+  this.isBuffered = true;
+  this.isRawBuffer = true;
+  this.buffer = new Texture(ctx, x, y);
+};
+
+/**
  * Creates a cropped canvas buffer
  */
 Batch.prototype.renderBuffer = function() {
-  var info = this.getBoundings();
-  var buffer = createCanvasBuffer(info.w, info.h);
-  var bx = info.x | 0;
-  var by = info.y | 0;
+  var buffer = createCanvasBuffer(this.width, this.height);
+  var bx = this.x | 0;
+  var by = this.y | 0;
   var tiles = this.tiles;
   for (var ii = 0; ii < tiles.length; ++ii) {
     var tile = tiles[ii];
     var color = tile.colors[tile.cindex];
-    var xx = (tile.x / TILE_SIZE) - bx;
-    var yy = (tile.y / TILE_SIZE) - by;
+    var xx = (tile.x - bx) | 0;
+    var yy = (tile.y - by) | 0;
     buffer.fillStyle = tile.getColorAsRgbaString();
     buffer.fillRect(
-      xx|0, yy|0,
+      xx, yy,
       1|0, 1|0
     );
   }
   this.buffer = new Texture(buffer, bx, by);
   this.isBuffered = true;
+  this.updateBoundings();
 };
 
 /**
@@ -682,17 +867,64 @@ Batch.prototype.exceedsBounds = function() {
 };
 
 /**
+ * Batch is completely empty
+ * @return {Boolean}
+ */
+Batch.prototype.isEmpty = function() {
+  return (
+    !this.isBuffered &&
+    !this.isRawBuffer &&
+    !this.isBackground &&
+    this.tiles.length <= 0
+  );
+};
+
+/**
  * Get tile color from buffered batch
  * @param {Number} x
  * @param {Number} y
  * @return {Array}
  */
 Batch.prototype.getTileColorAt = function(x, y) {
-  if (!this.isBuffered) { return ([0,0,0,0]); }
-  var data = this.buffer.context.getImageData(x, y, 1, 1).data;
-  var alpha = alphaByteToRgbAlpha(data[3]);
-  var color = [data[0], data[1], data[2], alpha];
-  return (color);
+  // nothing buffered and no tiles
+  if (this.isEmpty()) { return (null); }
+  // use getImageData for raw buffers
+  if (this.isRawBuffer) {
+    // normalize coordinates
+    var xx = x - this.x;
+    var yy = y - this.y;
+    // first check if coordinates lie inside our buffer
+    if (xx < 0 || yy < 0) { return (null); }
+    if (xx > this.width || this.yy > this.height) { return (null); }
+    // now extract the data
+    var data = this.buffer.context.getImageData(xx, yy, 1, 1).data;
+    var alpha = alphaByteToRgbAlpha(data[3]);
+    var color = [data[0], data[1], data[2], alpha];
+    // image color data is fully transparent
+    if (isGhostColor(color) || alpha <= 0) { return (null); }
+    return (
+      [data[0], data[1], data[2], alpha]
+    );
+  }
+  // search tile based
+  var tile = this.getTileAt(x, y);
+  if (tile !== null) { return (tile.colors[tile.cindex]); }
+  return (null);
+};
+
+/**
+ * Get tile at relative position
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+Batch.prototype.getTileAt = function(x, y) {
+  var tiles = this.tiles;
+  for (var ii = 0; ii < tiles.length; ++ii) {
+    var tile = tiles[ii];
+    if (tile.x === x && tile.y === y) { return (tile); }
+  }
+  return (null);
 };
 
 /**
@@ -701,23 +933,17 @@ Batch.prototype.getTileColorAt = function(x, y) {
 function pushTileBatchOperation() {
   var batch = new Batch();
   this.batches.push(batch);
-  this.refreshBatches();
 }
 
+/**
+ * Refreshes all batch indexes
+ */
 function refreshBatches() {
   var batches = this.batches;
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
     batch.index = ii;
   }
-}
-
-/**
- * @return {Batch}
- */
-function getLatestTileBatchOperation() {
-  var offset = this.batches.length - 1;
-  return (this.batches[offset]);
 }
 
 /**
@@ -729,11 +955,34 @@ function finalizeBatchOperation() {
   var batch = this.batches[offset];
   if (batch.exceedsBounds() && !batch.isRawBuffer) {
     batch.renderBuffer();
+  } else {
+    // dont push batch into stack if batch is empty
+    if (batch.isEmpty()) {
+      this.batches.splice(offset, 1);
+      this.refreshBatches();
+      return;
+    }
+    // got a background fill batch, check if we have to push it into the stack
+    if (batch.isBackground) {
+      var last = this.currentStackOperation();
+      // last operation was a background fill too, check if their colors match
+      if (last && last.batch.isBackground) {
+        if (colorsMatch(batch.bgcolor, last.batch.bgcolor)) { return; }
+      }
+    }
   }
   this.enqueue({
-    batch: batch,
-    index: offset
+    batch: batch
   });
+  this.refreshBatches();
+}
+
+/**
+ * @return {Batch}
+ */
+function getLatestTileBatchOperation() {
+  var offset = this.batches.length - 1;
+  return (this.batches[offset]);
 }
 
 /**
@@ -782,10 +1031,15 @@ function createBatchTileAt(x, y, color) {
   var otile = this.getTileAt(x, y);
   var batch = this.getLatestTileBatchOperation();
   // only push tile if necessary
-  if (otile !== null && otile.colorMatchesWithTile(color)) { return; }
+  if (otile !== null) {
+    if (
+      otile.colorMatchesWithTile(color) ||
+      otile.colors[otile.cindex][3] === UNSET_TILE_COLOR
+    ) { return; }
+  }
   var tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
-  batch.tiles.push(tile);
+  batch.addTile(tile);
 }
 
 /**
@@ -806,18 +1060,246 @@ function getBatchByTile(tile) {
   return null;
 }
 
+/**
+ * Resize all background batches to stay smoothy
+ * @param {Number} width
+ * @param {Number} height
+ */
+function resizeBackgroundBatches(width, height) {
+  var batches = this.batches;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    if (!batch.isBackground) { continue; }
+    batch.renderBackground(width, height, batch.bgcolor);
+  }
+}
+
+/**
+ * Check whether a point lies inside the used editor area
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Boolean}
+ */
+function pointInsideAbsoluteBoundings(x, y) {
+  var info = this.getAbsoluteBoundings(this.batches);
+  var state = intersectRectangles(
+    info.x, info.y, info.w, info.h,
+    x, y, 0, 0
+  );
+  return (state);
+}
+
+/**
+ * @param {Array} batches
+ */
+function getAbsoluteBoundings(batches) {
+  var px = []; var py = []; var pw = []; var ph = [];
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    var info = batch.getBoundings();
+    px.push(info.x);
+    py.push(info.y);
+    pw.push(info.x + info.w);
+    ph.push(info.y + info.h);
+  }
+  px.sort(sortAscending);
+  py.sort(sortAscending);
+  pw.sort(sortAscending);
+  ph.sort(sortAscending);
+  // calculate rectangle position
+  var xx = px[0]|0;
+  var yy = py[0]|0;
+  // calculate rectangle size
+  var idx = pw.length-1;
+  var ww = (-xx + pw[idx]);
+  var hh = (-yy + ph[idx]);
+  return ({
+    x: xx,
+    y: yy,
+    w: ww,
+    h: hh
+  });
+}
+
 
 var _batch = Object.freeze({
 	pushTileBatchOperation: pushTileBatchOperation,
 	refreshBatches: refreshBatches,
-	getLatestTileBatchOperation: getLatestTileBatchOperation,
 	finalizeBatchOperation: finalizeBatchOperation,
+	getLatestTileBatchOperation: getLatestTileBatchOperation,
 	clearLatestTileBatch: clearLatestTileBatch,
 	startBatchedDrawing: startBatchedDrawing,
 	stopBatchedDrawing: stopBatchedDrawing,
 	createBatchTileAt: createBatchTileAt,
-	getBatchByTile: getBatchByTile
+	getBatchByTile: getBatchByTile,
+	resizeBackgroundBatches: resizeBackgroundBatches,
+	pointInsideAbsoluteBoundings: pointInsideAbsoluteBoundings,
+	getAbsoluteBoundings: getAbsoluteBoundings
 });
+
+/**
+ * @param {Array} color
+ */
+function fillBackground(color) {
+  var isempty = isGhostColor(color);
+  this.pushTileBatchOperation();
+  var batch = this.getLatestTileBatchOperation();
+  batch.isBackground = true;
+  batch.renderBackground(this.camera.width, this.camera.height, color);
+  this.createBatchTileAt(0, 0, color);
+  this.finalizeBatchOperation();
+}
+
+/**
+ * Fill enclosed tile area color based
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} base
+ * @param {Array} color
+ * @return {Boolean}
+ */
+function fillBucketColorBased(x, y, base, color) {
+  var this$1 = this;
+
+  // clicked tile color and fill colors match, abort
+  if (colorsMatch(color, base)) { return (false); }
+  var queue = [{x: x, y: y}];
+  var batch = this.getLatestTileBatchOperation();
+  for (; queue.length > 0;) {
+    var point = queue.pop();
+    var x$1 = point.x;
+    var y$1 = point.y;
+    if (!this$1.pointInsideAbsoluteBoundings(x$1, y$1)) {
+      // returning true gets handled as infinite fill detection
+      return (true);
+    }
+    // tile is free, so fill in one here
+    if (!batch.getTileColorAt(x$1, y$1)) { this$1.createBatchTileAt(x$1, y$1, color); }
+    var a = this$1.getTileColorAt(x$1+1, y$1);
+    var b = this$1.getTileColorAt(x$1-1, y$1);
+    var c = this$1.getTileColorAt(x$1, y$1+1);
+    var d = this$1.getTileColorAt(x$1, y$1-1);
+    if (a && colorsMatch(a, base)) { queue.push({x:x$1+1, y:y$1}); }
+    if (b && colorsMatch(b, base)) { queue.push({x:x$1-1, y:y$1}); }
+    if (c && colorsMatch(c, base)) { queue.push({x:x$1, y:y$1+1}); }
+    if (d && colorsMatch(d, base)) { queue.push({x:x$1, y:y$1-1}); }
+  }
+  return (false);
+}
+
+/**
+ * Fill enclosed tile area color based
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ * @return {Boolean}
+ */
+function fillBucketEmptyTileBased(x, y, color) {
+  var this$1 = this;
+
+  var queue = [{x: x, y: y}];
+  var batch = this.getLatestTileBatchOperation();
+  for (; queue.length > 0;) {
+    var point = queue.pop();
+    var x$1 = point.x;
+    var y$1 = point.y;
+    if (!this$1.pointInsideAbsoluteBoundings(x$1, y$1)) {
+      // returning true gets handled as infinite fill detection
+      return (true);
+    }
+    if (!batch.getTileColorAt(x$1, y$1)) {
+      this$1.createBatchTileAt(x$1, y$1, color);
+    }
+    if (!this$1.getTileAt(x$1+1, y$1)) { queue.push({x:x$1+1, y:y$1}); }
+    if (!this$1.getTileAt(x$1-1, y$1)) { queue.push({x:x$1-1, y:y$1}); }
+    if (!this$1.getTileAt(x$1, y$1+1)) { queue.push({x:x$1, y:y$1+1}); }
+    if (!this$1.getTileAt(x$1, y$1-1)) { queue.push({x:x$1, y:y$1-1}); }
+  }
+  return (false);
+}
+
+/**
+ * Fill enclosed tile area
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+function fillBucket(x, y, color) {
+  // TODO: optimize filling:
+  // create a rawbuffer instead of creating a tile for each filled pixel
+  // TODO: fix future batches get still recognized...
+  color = color || [255, 255, 255, 1];
+  if (color[3] > 1) { throw new Error("Invalid alpha color!"); }
+  var sIndex = this.sindex;
+  // differentiate between empty and colored tiles
+  var basecolor = this.getTileColorAt(x, y);
+  this.pushTileBatchOperation();
+  var infinite = false;
+  // try color based filling
+  if (basecolor !== null) {
+    infinite = this.fillBucketColorBased(x, y, basecolor, color);
+  // empty tile based filling
+  } else {
+    infinite = this.fillBucketEmptyTileBased(x, y, color);
+  }
+  this.finalizeBatchOperation();
+  if (infinite) {
+    // remove our recent batch if it didn't got removed yet
+    // e.g. infinity got detected later and some batches got drawn
+    if (sIndex < this.sindex) {
+      this.undo();
+      this.refreshStack();
+    }
+    this.fillBackground(color);
+  }
+}
+
+/**
+ * Inserts stroked arc at given position
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} radius
+ * @param {Array} color
+ */
+function strokeArc(x, y, radius, color) {
+  if (!color) { color = [255, 255, 255, 1]; }
+  this.insertArc(x, y, radius, color);
+}
+
+/**
+ * Inserts filled arc at given position
+ * @param {Number} x1
+ * @param {Number} y1
+ * @param {Number} radius
+ * @param {Array} color
+ */
+function insertArc(x1, y1, radius, color) {
+  var this$1 = this;
+
+  var x2 = radius;
+  var y2 = 0;
+  var err = 1 - x2; 
+  this.pushTileBatchOperation();
+  for (; x2 >= y2;) {
+    this$1.createBatchTileAt(x2 + x1, y2 + y1, color);
+    this$1.createBatchTileAt(y2 + x1, x2 + y1, color);
+    this$1.createBatchTileAt(-x2 + x1, y2 + y1, color);
+    this$1.createBatchTileAt(-y2 + x1, x2 + y1, color);
+    this$1.createBatchTileAt(-x2 + x1, -y2 + y1, color);
+    this$1.createBatchTileAt(-y2 + x1, -x2 + y1, color);
+    this$1.createBatchTileAt(x2 + x1, -y2 + y1, color);
+    this$1.createBatchTileAt(y2 + x1, -x2 + y1, color);
+    y2++;
+    if (err <= 0) {
+      err += 2 * y2 + 1;
+    }
+    if (err > 0) {
+      x2--;
+      err += 2 * (y2 - x2) + 1;
+    }
+  }
+  this.finalizeBatchOperation();
+}
 
 /**
  * Inserts filled rectangle at given position
@@ -870,8 +1352,8 @@ function insertRectangleAt(x1, y1, x2, y2, color, filled) {
   this.pushTileBatchOperation();
   var dx = (x2 < 0 ? -1 : 1);
   var dy = (y2 < 0 ? -1 : 1);
-  var x = x1 * TILE_SIZE;
-  var y = y1 * TILE_SIZE;
+  var bx = x1;
+  var by = y1;
   for (var yy = 0; yy < height; ++yy) {
     for (var xx = 0; xx < width; ++xx) {
       // ignore inner tiles if rectangle not filled
@@ -881,7 +1363,7 @@ function insertRectangleAt(x1, y1, x2, y2, color, filled) {
           (yy === 0 || yy >= height-1))
         ) { continue; }
       }
-      this$1.createBatchTileAt(x + ((xx * TILE_SIZE)) * dx, y + ((yy * TILE_SIZE)) * dy, color);
+      this$1.createBatchTileAt(bx + xx * dx, by + yy * dy, color);
     }
   }
   this.finalizeBatchOperation();
@@ -904,18 +1386,20 @@ function drawImage(ctx, x, y) {
   // start ctx insertion from given position
   var data = ctx.getImageData(0, 0, width, height).data;
   var position = this.getRelativeOffset(x, y);
-  var mx = position.x;
-  var my = position.y;
   this.pushTileBatchOperation();
   var batch = this.getLatestTileBatchOperation();
-  batch.isBuffered = true;
-  batch.isRawBuffer = true;
-  batch.buffer = new Texture(ctx, mx / TILE_SIZE, my / TILE_SIZE);
+  batch.createRawBufferAt(ctx, position.x, position.y);
   this.finalizeBatchOperation();
 }
 
 
 var _insert = Object.freeze({
+	fillBackground: fillBackground,
+	fillBucketColorBased: fillBucketColorBased,
+	fillBucketEmptyTileBased: fillBucketEmptyTileBased,
+	fillBucket: fillBucket,
+	strokeArc: strokeArc,
+	insertArc: insertArc,
 	fillRect: fillRect,
 	strokeRect: strokeRect,
 	insertRectangleAt: insertRectangleAt,
@@ -986,8 +1470,8 @@ var Editor = function Editor(instance) {
   };
   this.batches = [];
   // mouse position, negative to be hidden initially
-  this.mx = -TILE_SIZE;
-  this.my = -TILE_SIZE;
+  this.mx = -1;
+  this.my = -1;
   this.colorTest = null;
   this.camera = instance.camera;
   // stack related
@@ -1025,6 +1509,8 @@ function resize$1(width, height) {
   this.camera.resize(width, height);
   // re-generate our bg
   this.generateBackground();
+  // re-generate background batches
+  this.editor.resizeBackgroundBatches(width, height);
   this.clear();
   this.render();
 }
@@ -1085,8 +1571,9 @@ function renderBatches() {
     var batch = batches[ii].batch;
     // batch index is higher than stack index, so ignore this batch
     if (sIndex - ii < 0) { continue; }
+    if (batch.isBackground) { this$1.drawBackgroundBatch(batch); }
     // draw batched buffer (faster, drawImage)
-    if (batch.isBuffered) { this$1.drawBatchedBuffer(batch); }
+    else if (batch.isBuffered) { this$1.drawBatchedBuffer(batch); }
     // draw batched tiles (slower, fillRect)
     else { this$1.drawBatchedTiles(batch); }
   }
@@ -1096,6 +1583,23 @@ function renderBatches() {
     if (length > 0) { this.drawBatchedTiles(this.editor.batches[length - 1]); }
   }
   this.drawHoveredTile();
+}
+
+/**
+ * @param {Batch} batch
+ */
+function drawBackgroundBatch(batch) {
+  var ctx = this.ctx;
+  var buffer = batch.bgbuffer;
+  var width = buffer.width | 0;
+  var height = buffer.height | 0;
+  ctx.drawImage(
+    buffer,
+    0, 0,
+    width, height,
+    0, 0,
+    width, height
+  );
 }
 
 /**
@@ -1114,8 +1618,8 @@ function drawBatchedTiles(batch) {
   for (var jj = 0; jj < tiles.length; ++jj) {
     var tile = tiles[jj];
     if (!this$1.editor.isTileInsideView(tile)) { continue; }
-    var x = (cx + (tile.x * scale)) | 0;
-    var y = (cy + (tile.y * scale)) | 0;
+    var x = ((cx + ((tile.x * TILE_SIZE) * scale))) | 0;
+    var y = ((cy + ((tile.y * TILE_SIZE) * scale))) | 0;
     var color = tile.colors[tile.cindex];
     var r = color[0];
     var g = color[1];
@@ -1133,12 +1637,12 @@ function drawBatchedBuffer(batch) {
   var cx = this.camera.x | 0;
   var cy = this.camera.y | 0;
   var scale = this.camera.s;
-  var bx = batch.buffer.x;
-  var by = batch.buffer.y;
-  var x = (cx + (bx * scale) * TILE_SIZE) | 0;
-  var y = (cy + (by * scale) * TILE_SIZE) | 0;
-  var width = (batch.buffer.width * TILE_SIZE) | 0;
-  var height = (batch.buffer.height * TILE_SIZE) | 0;
+  var bx = batch.x * TILE_SIZE;
+  var by = batch.y * TILE_SIZE;
+  var x = (cx + (bx * scale)) | 0;
+  var y = (cy + (by * scale)) | 0;
+  var width = (batch.width * TILE_SIZE) | 0;
+  var height = (batch.height * TILE_SIZE) | 0;
   this.ctx.drawImage(
     batch.buffer.view,
     0, 0,
@@ -1159,8 +1663,8 @@ function drawHoveredTile() {
   var mx = this.editor.mx;
   var my = this.editor.my;
   var relative = this.editor.getRelativeOffset(mx, my);
-  var rx = relative.x;
-  var ry = relative.y;
+  var rx = relative.x * TILE_SIZE;
+  var ry = relative.y * TILE_SIZE;
   var x = ((cx + GRID_LINE_WIDTH/2) + (rx * scale)) | 0;
   var y = ((cy + GRID_LINE_WIDTH/2) + (ry * scale)) | 0;
   ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
@@ -1168,22 +1672,26 @@ function drawHoveredTile() {
 }
 
 function renderStats() {
-  this.ctx.fillStyle = "#ffffff";
   // render mouse hovered color
   var mx = this.editor.mx;
   var my = this.editor.my;
   var relative = this.editor.getRelativeOffset(mx, my);
   var rx = relative.x;
   var ry = relative.y;
-  var tile = this.editor.getTileAt(rx, ry);
-  this.ctx.fillText(("x:" + (rx / TILE_SIZE) + ", y:" + (ry / TILE_SIZE)), 16, 32);
-  if (tile !== null) {
-    var color = tile.colors[tile.cindex];
+  var color = this.editor.getStackRelativeTileColorAt(rx, ry);
+  this.ctx.fillStyle = "#ffffff";
+  this.ctx.fillText(("x:" + rx + ", y:" + ry), 16, 32);
+  if (color !== null) {
     var r = color[0];
     var g = color[1];
     var b = color[2];
     var a = color[3];
-    this.ctx.fillText((r + "," + g + "," + b + "," + a), 16, 48);
+    this.ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+    this.ctx.fillRect(
+      6, 42, 8, 8
+    );
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.fillText((r + "," + g + "," + b + "," + a), 20, 48);
   }
   this.renderFPS();
 }
@@ -1235,6 +1743,7 @@ function generateBackground() {
 
 }
 
+
 var _render = Object.freeze({
 	resize: resize$1,
 	clear: clear,
@@ -1242,6 +1751,7 @@ var _render = Object.freeze({
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
 	renderBatches: renderBatches,
+	drawBackgroundBatch: drawBackgroundBatch,
 	drawBatchedTiles: drawBatchedTiles,
 	drawBatchedBuffer: drawBatchedBuffer,
 	drawHoveredTile: drawHoveredTile,

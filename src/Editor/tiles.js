@@ -1,6 +1,7 @@
 import {
   TILE_SIZE,
-  BASE_TILE_COLOR
+  BASE_TILE_COLOR,
+  UNSET_TILE_COLOR
 } from "../cfg";
 
 import { roundTo } from "../math";
@@ -70,41 +71,6 @@ export function drawTileAt(x, y, color) {
   this.pushTileBatchOperation();
   this.createBatchTileAt(x|0, y|0, color);
   this.finalizeBatchOperation();
-  return (tile);
-};
-
-/**
- * Returns rnd(0-255) rgba color array with a=1
- * @return {Array}
- */
-export function getRandomRgbaColors() {
-  let cmax = 256;
-  let r = (Math.random() * cmax) | 0;
-  let g = (Math.random() * cmax) | 0;
-  let b = (Math.random() * cmax) | 0;
-  return ([r, g, b, 1]);
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-export function getStackRelativeTileColorByMouseOffset(x, y) {
-  let tile = this.getStackRelativeTileByMouseOffset(x, y);
-  if (tile !== null) return (tile.color[tile.cindex]);
-  return (BASE_TILE_COLOR);
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-export function getStackRelativeTileColorAt(x, y) {
-  let tile = this.getStackRelativeTileAt(x, y);
-  if (tile !== null) return (tile.color[tile.cindex]);
-  return (BASE_TILE_COLOR);
 };
 
 /**
@@ -240,7 +206,64 @@ export function getTileById(id) {
       if (tile.id === id) return (tile);
     };
   };
-  return null;
+  return (null);
+};
+
+/**
+ * Returns rnd(0-255) rgba color array with a=1
+ * @return {Array}
+ */
+export function getRandomRgbaColors() {
+  let cmax = 256;
+  let r = (Math.random() * cmax) | 0;
+  let g = (Math.random() * cmax) | 0;
+  let b = (Math.random() * cmax) | 0;
+  return ([r, g, b, 1]);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getTileColorAt(x, y) {
+  let target = null;
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii];
+    // buffer color
+    let color = batch.getTileColorAt(x, y);
+    if (color !== null) target = color;
+  };
+  return (target);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getStackRelativeTileColorAt(x, y) {
+  let target = null;
+  let sIndex = this.sindex;
+  let batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let batch = batches[ii];
+    if (sIndex - ii < 0) continue;
+    let color = batch.getTileColorAt(x, y);
+    if (color !== null) target = color;
+  };
+  return (target);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getStackRelativeTileColorByMouseOffset(x, y) {
+  let position = this.getRelativeOffset(x, y);
+  return (this.getStackRelativeTileColorAt(position.x, position.y));
 };
 
 /**

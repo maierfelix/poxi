@@ -45,8 +45,8 @@ export function finalizeBatchOperation() {
   if (batch.exceedsBounds() && !batch.isRawBuffer) {
     batch.renderBuffer();
   } else {
-    // dont push into stack, if nothing has changed
-    if (!batch.tiles.length && !batch.isBackground) {
+    // dont push batch into stack if batch is empty
+    if (batch.isEmpty()) {
       this.batches.splice(offset, 1);
       this.refreshBatches();
       return;

@@ -20,64 +20,92 @@ export function fillBackground(color) {
 };
 
 /**
+ * Fill enclosed tile area color based
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} base
+ * @param {Array} color
+ * @return {Boolean}
+ */
+export function fillBucketColorBased(x, y, base, color) {
+  // clicked tile color and fill colors match, abort
+  if (colorsMatch(color, base)) return (false);
+  let queue = [{x, y}];
+  let batch = this.getLatestTileBatchOperation();
+  for (; queue.length > 0;) {
+    let point = queue.pop();
+    let x = point.x;
+    let y = point.y;
+    if (!this.pointInsideAbsoluteBoundings(x, y)) {
+      // returning true gets handled as infinite fill detection
+      return (true);
+    }
+    // tile is free, so fill in one here
+    if (!batch.getTileColorAt(x, y)) this.createBatchTileAt(x, y, color);
+    let a = this.getTileColorAt(x+1, y);
+    let b = this.getTileColorAt(x-1, y);
+    let c = this.getTileColorAt(x, y+1);
+    let d = this.getTileColorAt(x, y-1);
+    if (a && colorsMatch(a, base)) queue.push({x:x+1, y:y});
+    if (b && colorsMatch(b, base)) queue.push({x:x-1, y:y});
+    if (c && colorsMatch(c, base)) queue.push({x:x, y:y+1});
+    if (d && colorsMatch(d, base)) queue.push({x:x, y:y-1});
+  };
+  return (false);
+};
+
+/**
+ * Fill enclosed tile area color based
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ * @return {Boolean}
+ */
+export function fillBucketEmptyTileBased(x, y, color) {
+  let queue = [{x, y}];
+  let batch = this.getLatestTileBatchOperation();
+  for (; queue.length > 0;) {
+    let point = queue.pop();
+    let x = point.x;
+    let y = point.y;
+    if (!this.pointInsideAbsoluteBoundings(x, y)) {
+      // returning true gets handled as infinite fill detection
+      return (true);
+    }
+    if (!batch.getTileColorAt(x, y)) {
+      this.createBatchTileAt(x, y, color);
+    }
+    if (!this.getTileAt(x+1, y)) queue.push({x:x+1, y:y});
+    if (!this.getTileAt(x-1, y)) queue.push({x:x-1, y:y});
+    if (!this.getTileAt(x, y+1)) queue.push({x:x, y:y+1});
+    if (!this.getTileAt(x, y-1)) queue.push({x:x, y:y-1});
+  };
+  return (false);
+};
+
+/**
  * Fill enclosed tile area
  * @param {Number} x
  * @param {Number} y
  * @param {Array} color
  */
 export function fillBucket(x, y, color) {
+  // TODO: optimize filling:
+  // create a rawbuffer instead of creating a tile for each filled pixel
+  // TODO: fix future batches get still recognized...
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
-  let queue = [{x, y}];
   let sIndex = this.sindex;
   // differentiate between empty and colored tiles
-  let tile = this.getStackRelativeTileAt(x, y);
+  let basecolor = this.getTileColorAt(x, y);
   this.pushTileBatchOperation();
-  let batch = this.getLatestTileBatchOperation();
   let infinite = false;
   // try color based filling
-  if (tile !== null) {
-    let final = tile.colors[tile.cindex];
-    // clicked tile color and fill colors match, abort
-    if (colorsMatch(color, final)) return;
-    while (queue.length) {
-      let point = queue.pop();
-      let x = point.x;
-      let y = point.y;
-      if (!this.pointInsideAbsoluteBoundings(x, y)) {
-        infinite = true;
-        break;
-      }
-      let a = this.getTileAt(x+1, y);
-      let b = this.getTileAt(x-1, y);
-      let c = this.getTileAt(x, y+1);
-      let d = this.getTileAt(x, y-1);
-      let old = batch.getTileColorAt(x, y);
-      // tile is free, so fill in one here
-      if (old[3] === UNSET_TILE_COLOR) this.createBatchTileAt(x, y, color);
-      if (a && a.colorMatchesWithTile(final)) queue.push({x:x+1, y:y});
-      if (b && b.colorMatchesWithTile(final)) queue.push({x:x-1, y:y});
-      if (c && c.colorMatchesWithTile(final)) queue.push({x:x, y:y+1});
-      if (d && d.colorMatchesWithTile(final)) queue.push({x:x, y:y-1});
-    };
+  if (basecolor !== null) {
+    infinite = this.fillBucketColorBased(x, y, basecolor, color);
   // empty tile based filling
   } else {
-    while (queue.length) {
-      let point = queue.pop();
-      let x = point.x;
-      let y = point.y;
-      if (!this.pointInsideAbsoluteBoundings(x, y)) {
-        infinite = true;
-        break;
-      }
-      if (batch.getTileColorAt(x, y)[3] === UNSET_TILE_COLOR) {
-        this.createBatchTileAt(x, y, color);
-      }
-      if (!this.getTileAt(x+1, y)) queue.push({x:x+1, y:y});
-      if (!this.getTileAt(x-1, y)) queue.push({x:x-1, y:y});
-      if (!this.getTileAt(x, y+1)) queue.push({x:x, y:y+1});
-      if (!this.getTileAt(x, y-1)) queue.push({x:x, y:y-1});
-    };
+    infinite = this.fillBucketEmptyTileBased(x, y, color);
   }
   this.finalizeBatchOperation();
   if (infinite) {
@@ -92,17 +120,6 @@ export function fillBucket(x, y, color) {
 };
 
 /**
- * Inserts filled arc at given position
- * @param {Number} x
- * @param {Number} y
- * @param {Number} radius
- * @param {Array} color
- */
-export function fillArc(x, y, radius, color) {
-  if (!color) color = [255, 255, 255, 1];
-};
-
-/**
  * Inserts stroked arc at given position
  * @param {Number} x
  * @param {Number} y
@@ -111,6 +128,7 @@ export function fillArc(x, y, radius, color) {
  */
 export function strokeArc(x, y, radius, color) {
   if (!color) color = [255, 255, 255, 1];
+  this.insertArc(x, y, radius, color);
 };
 
 /**
@@ -125,7 +143,7 @@ export function insertArc(x1, y1, radius, color) {
   let y2 = 0;
   let err = 1 - x2; 
   this.pushTileBatchOperation();
-  while (x2 >= y2) {
+  for (; x2 >= y2;) {
     this.createBatchTileAt(x2 + x1, y2 + y1, color);
     this.createBatchTileAt(y2 + x1, x2 + y1, color);
     this.createBatchTileAt(-x2 + x1, y2 + y1, color);
@@ -229,12 +247,8 @@ export function drawImage(ctx, x, y) {
   // start ctx insertion from given position
   let data = ctx.getImageData(0, 0, width, height).data;
   let position = this.getRelativeOffset(x, y);
-  let mx = position.x;
-  let my = position.y;
   this.pushTileBatchOperation();
   let batch = this.getLatestTileBatchOperation();
-  batch.isBuffered = true;
-  batch.isRawBuffer = true;
-  batch.buffer = new Texture(ctx, mx, my);
+  batch.createRawBufferAt(ctx, position.x, position.y);
   this.finalizeBatchOperation();
 };

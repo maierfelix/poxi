@@ -3,6 +3,7 @@ import {
   MIN_SCALE,
   MAX_SCALE,
   HIDE_GRID,
+  MAGIC_SCALE,
   GRID_LINE_WIDTH
 } from "./cfg";
 
@@ -10,6 +11,8 @@ import {
   createCanvasBuffer,
   applyImageSmoothing
 } from "./utils";
+
+import { roundTo } from "./math";
 
 /**
  * @param {Number} width
@@ -104,8 +107,8 @@ export function renderBatches() {
 export function drawBackgroundBatch(batch) {
   let ctx = this.ctx;
   let buffer = batch.bgbuffer;
-  let width = buffer.width;
-  let height = buffer.height;
+  let width = buffer.width | 0;
+  let height = buffer.height | 0;
   ctx.drawImage(
     buffer,
     0, 0,
@@ -129,8 +132,8 @@ export function drawBatchedTiles(batch) {
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
     if (!this.editor.isTileInsideView(tile)) continue;
-    let x = (cx + ((tile.x * TILE_SIZE) * scale)) | 0;
-    let y = (cy + ((tile.y * TILE_SIZE) * scale)) | 0;
+    let x = ((cx + ((tile.x * TILE_SIZE) * scale))) | 0;
+    let y = ((cy + ((tile.y * TILE_SIZE) * scale))) | 0;
     let color = tile.colors[tile.cindex];
     let r = color[0];
     let g = color[1];
@@ -148,12 +151,12 @@ export function drawBatchedBuffer(batch) {
   let cx = this.camera.x | 0;
   let cy = this.camera.y | 0;
   let scale = this.camera.s;
-  let bx = batch.buffer.x * TILE_SIZE;
-  let by = batch.buffer.y * TILE_SIZE;
+  let bx = batch.x * TILE_SIZE;
+  let by = batch.y * TILE_SIZE;
   let x = (cx + (bx * scale)) | 0;
   let y = (cy + (by * scale)) | 0;
-  let width = (batch.buffer.width * TILE_SIZE) | 0;
-  let height = (batch.buffer.height * TILE_SIZE) | 0;
+  let width = (batch.width * TILE_SIZE) | 0;
+  let height = (batch.height * TILE_SIZE) | 0;
   this.ctx.drawImage(
     batch.buffer.view,
     0, 0,
@@ -183,22 +186,26 @@ export function drawHoveredTile() {
 };
 
 export function renderStats() {
-  this.ctx.fillStyle = "#ffffff";
   // render mouse hovered color
   let mx = this.editor.mx;
   let my = this.editor.my;
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x;
   let ry = relative.y;
-  let tile = this.editor.getTileAt(rx, ry);
+  let color = this.editor.getStackRelativeTileColorAt(rx, ry);
+  this.ctx.fillStyle = "#ffffff";
   this.ctx.fillText(`x:${rx}, y:${ry}`, 16, 32);
-  if (tile !== null) {
-    let color = tile.colors[tile.cindex];
+  if (color !== null) {
     let r = color[0];
     let g = color[1];
     let b = color[2];
     let a = color[3];
-    this.ctx.fillText(`${r},${g},${b},${a}`, 16, 48);
+    this.ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+    this.ctx.fillRect(
+      6, 42, 8, 8
+    );
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.fillText(`${r},${g},${b},${a}`, 20, 48);
   }
   this.renderFPS();
 };

@@ -4,6 +4,7 @@ import {
 } from "../../cfg";
 
 import {
+  isGhostColor,
   sortAscending,
   createCanvasBuffer,
   alphaByteToRgbAlpha
@@ -67,6 +68,8 @@ Batch.prototype.addTile = function(tile) {
  * Updates the batch's relative position and size
  */
 Batch.prototype.updateBoundings = function() {
+  // dont calculate sizes of raw buffers
+  if (this.isRawBuffer) return;
   let info = this.getBoundings();
   this.x = info.x;
   this.y = info.y;
@@ -79,9 +82,15 @@ Batch.prototype.updateBoundings = function() {
  * @return {Object}
  */
 Batch.prototype.getBoundings = function() {
-  // start position at maximum buffer size
-  let x = BATCH_BUFFER_SIZE.MAX_W;
-  let y = BATCH_BUFFER_SIZE.MAX_H;
+  // raw buffers have static bounding
+  if (this.isRawBuffer) {
+    return ({
+      x: this.x,
+      y: this.y,
+      w: this.width,
+      h: this.height
+    });
+  }
   let px = [];
   let py = [];
   let tiles = this.tiles;
@@ -108,10 +117,25 @@ Batch.prototype.getBoundings = function() {
 };
 
 /**
+ * @param {CanvasRenderingContext2D}
+ * @param {Number} x
+ * @param {Number} y
+ */
+Batch.prototype.createRawBufferAt = function(ctx, x, y) {
+  let view = ctx.canvas;
+  this.x = x;
+  this.y = y;
+  this.width = view.width;
+  this.height = view.height;
+  this.isBuffered = true;
+  this.isRawBuffer = true;
+  this.buffer = new Texture(ctx, x, y);
+};
+
+/**
  * Creates a cropped canvas buffer
  */
 Batch.prototype.renderBuffer = function() {
-  this.updateBoundings();
   let buffer = createCanvasBuffer(this.width, this.height);
   let bx = this.x | 0;
   let by = this.y | 0;
@@ -129,6 +153,7 @@ Batch.prototype.renderBuffer = function() {
   };
   this.buffer = new Texture(buffer, bx, by);
   this.isBuffered = true;
+  this.updateBoundings();
 };
 
 /**
@@ -147,17 +172,64 @@ Batch.prototype.exceedsBounds = function() {
 };
 
 /**
+ * Batch is completely empty
+ * @return {Boolean}
+ */
+Batch.prototype.isEmpty = function() {
+  return (
+    !this.isBuffered &&
+    !this.isRawBuffer &&
+    !this.isBackground &&
+    this.tiles.length <= 0
+  );
+};
+
+/**
  * Get tile color from buffered batch
  * @param {Number} x
  * @param {Number} y
  * @return {Array}
  */
 Batch.prototype.getTileColorAt = function(x, y) {
-  if (!this.isBuffered) return ([0,0,0,UNSET_TILE_COLOR]);
-  let data = this.buffer.context.getImageData(x, y, 1, 1).data;
-  let alpha = alphaByteToRgbAlpha(data[3]);
-  let color = [data[0], data[1], data[2], alpha];
-  return (color);
+  // nothing buffered and no tiles
+  if (this.isEmpty()) return (null);
+  // use getImageData for raw buffers
+  if (this.isRawBuffer) {
+    // normalize coordinates
+    let xx = x - this.x;
+    let yy = y - this.y;
+    // first check if coordinates lie inside our buffer
+    if (xx < 0 || yy < 0) return (null);
+    if (xx > this.width || this.yy > this.height) return (null);
+    // now extract the data
+    let data = this.buffer.context.getImageData(xx, yy, 1, 1).data;
+    let alpha = alphaByteToRgbAlpha(data[3]);
+    let color = [data[0], data[1], data[2], alpha];
+    // image color data is fully transparent
+    if (isGhostColor(color) || alpha <= 0) return (null);
+    return (
+      [data[0], data[1], data[2], alpha]
+    );
+  }
+  // search tile based
+  let tile = this.getTileAt(x, y);
+  if (tile !== null) return (tile.colors[tile.cindex]);
+  return (null);
+};
+
+/**
+ * Get tile at relative position
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
+Batch.prototype.getTileAt = function(x, y) {
+  let tiles = this.tiles;
+  for (let ii = 0; ii < tiles.length; ++ii) {
+    let tile = tiles[ii];
+    if (tile.x === x && tile.y === y) return (tile);
+  };
+  return (null);
 };
 
 export default Batch;
