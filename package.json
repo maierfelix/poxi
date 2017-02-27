@@ -1,23 +1,23 @@
 {
-  "name": "picaxo",
+  "name": "poxi",
   "version": "0.2.8",
   "description": "A hackable pixel editor",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/maierfelix/picaxo.git"
+    "url": "git+ssh://git@github.com/maierfelix/poxi.git"
   },
-  "main": "dist/picaxo.js",
-  "homepage": "https://github.com/maierfelix/picaxo#readme",
+  "main": "dist/poxi.js",
+  "homepage": "https://github.com/maierfelix/poxi#readme",
   "author": "Felix Maier <xilefmai@gmail.com>",
   "contributors": [
     "Felix Maier <xilefmai@gmail.com> (https://github.com/maierfelix)"
   ],
   "bugs": {
-    "url": "https://github.com/maierfelix/picaxo/issues"
+    "url": "https://github.com/maierfelix/poxi/issues"
   },
   "scripts": {
-    "start": "npm run dist && node dist/picaxo",
+    "start": "npm run dist && node dist/poxi",
     "build": "npm run dist && npm run minify",
     "dist": "rollup -c rollup/config.build.js",
     "minify": "rollup -c rollup/config.minify.js"

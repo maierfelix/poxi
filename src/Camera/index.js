@@ -13,7 +13,7 @@ import { roundTo, zoomScale } from "../math";
 class Camera {
 
   /**
-   * @param {Picaxo} instance
+   * @param {Poxi} instance
    */
   constructor(instance) {
     this.x = 0;

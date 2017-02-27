@@ -14,7 +14,7 @@ import * as _transform from "./transform";
 class Editor {
 
   /**
-   * @param {Picaxo} instance
+   * @param {Poxi} instance
    */
   constructor(instance) {
     this.instance = instance;

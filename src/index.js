@@ -15,9 +15,9 @@ import {
 import * as _render from "./render";
 
 /**
- * @class Picaxo
+ * @class Poxi
  */
-class Picaxo {
+class Poxi {
 
   /**
    * @param {Object} obj
@@ -112,11 +112,11 @@ class Picaxo {
 
 };
 
-inherit(Picaxo, _render);
+inherit(Poxi, _render);
 
 // apply to window
 if (typeof window !== "undefined") {
-  window.Picaxo = Picaxo;
+  window.Poxi = Poxi;
 } else {
-  throw new Error("Please run Picaxo inside a browser");
+  throw new Error("Please run Poxi inside a browser");
 }
