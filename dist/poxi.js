@@ -77,6 +77,18 @@ function alphaByteToRgbAlpha(a) {
 }
 
 /**
+ * @param {Array} color
+ * @return {String}
+ */
+function colorToRgbaString(color) {
+  var r = color[0];
+  var g = color[1];
+  var b = color[2];
+  var a = color[3];
+  return (("rgba(" + r + "," + g + "," + b + "," + a + ")"));
+}
+
+/**
  * Do rgba color arrays match
  * @param {Array} a
  * @param {Array} a
@@ -1851,6 +1863,60 @@ Poxi.prototype.processEmitter = function processEmitter (hash, fn) {
   if (this.frames === 0 && hash === DRAW_HASH) {
     this.states.paused = false;
   }
+};
+
+/**
+ * Export the current view to base64 encoded png string
+ * @return {String}
+ */
+Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
+  var editor = this.editor;
+  var batches = editor.batches;
+  var info = editor.getAbsoluteBoundings(batches);
+  var rx = info.x;
+  var ry = info.y;
+  var width = info.w;
+  var height = info.h;
+  var ctx = createCanvasBuffer(width, height);
+  var view = ctx.canvas;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    // background
+    if (batch.isBackground) {
+      ctx.fillStyle = colorToRgbaString(batch.bgcolor);
+      ctx.fillRect(
+        0, 0,
+        view.width, view.height
+      );
+      continue;
+    }
+    // buffer
+    if (batch.isBuffered) {
+      ctx.drawImage(
+        batch.buffer.view,
+        (batch.x - rx) | 0, (batch.y - ry) | 0,
+        batch.width | 0, batch.height | 0
+      );
+      continue;
+    }
+    // tiles
+    if (batch.tiles.length) {
+      var tiles = batch.tiles;
+      for (var ii$1 = 0; ii$1 < tiles.length; ++ii$1) {
+        var tile = tiles[ii$1];
+        var x = (tile.x - rx) | 0;
+        var y = (tile.y - ry) | 0;
+        var color = colorToRgbaString(tile.colors[tile.cindex]);
+        ctx.fillStyle = color;
+        ctx.fillRect(
+          x, y,
+          1, 1
+        );
+      }
+      continue;
+    }
+  }
+  return (view.toDataURL());
 };
 
 inherit(Poxi, _render);
