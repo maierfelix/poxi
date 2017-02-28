@@ -89,6 +89,17 @@ function colorToRgbaString(color) {
 }
 
 /**
+ * Hex to rgba
+ * @param {String} hex
+ */
+function hexToRgba(hex) {
+  var r = parseInt(hex.substring(1,3), 16);
+  var g = parseInt(hex.substring(3,5), 16);
+  var b = parseInt(hex.substring(5,7), 16);
+  return ([r,g,b,1]);
+}
+
+/**
  * Do rgba color arrays match
  * @param {Array} a
  * @param {Array} a
@@ -455,7 +466,7 @@ function eraseTileAt(x, y) {
 function drawTileAtMouseOffset(x, y) {
   if (this.modes.draw) {
     var position = this.getRelativeOffset(x, y);
-    this.createBatchTileAt(position.x, position.y, this.colorTest);
+    this.createBatchTileAt(position.x, position.y, this._fillStyle);
   }
 }
 
@@ -725,6 +736,7 @@ var Texture = function Texture(ctx, x, y) {
  * @class Batch
  */
 var Batch = function Batch() {
+  this.id = uid();
   this.x = 0;
   this.y = 0;
   this.width = 0;
@@ -761,14 +773,6 @@ Batch.prototype.renderBackground = function(width, height, color) {
   );
   this.bgcolor = color;
   this.bgbuffer = buffer.canvas;
-};
-
-/**
- * @param {Tile} tile
- */
-Batch.prototype.addTile = function(tile) {
-  this.tiles.push(tile);
-  this.updateBoundings();
 };
 
 /**
@@ -836,6 +840,7 @@ Batch.prototype.createRawBufferAt = function(ctx, x, y) {
   this.height = view.height;
   this.isBuffered = true;
   this.isRawBuffer = true;
+  this.isBackground = false;
   this.buffer = new Texture(ctx, x, y);
 };
 
@@ -918,6 +923,10 @@ Batch.prototype.getTileColorAt = function(x, y) {
       [data[0], data[1], data[2], alpha]
     );
   }
+  // return background color if batch is a filled background
+  if (this.isBackground) {
+    return (this.bgcolor);
+  }
   // search tile based
   var tile = this.getTileAt(x, y);
   if (tile !== null) { return (tile.colors[tile.cindex]); }
@@ -932,11 +941,35 @@ Batch.prototype.getTileColorAt = function(x, y) {
  */
 Batch.prototype.getTileAt = function(x, y) {
   var tiles = this.tiles;
-  for (var ii = 0; ii < tiles.length; ++ii) {
+  var length = tiles.length;
+  for (var ii = 0; ii < length; ++ii) {
     var tile = tiles[ii];
     if (tile.x === x && tile.y === y) { return (tile); }
   }
   return (null);
+};
+
+/**
+ * @param {Tile} tile
+ */
+Batch.prototype.addTile = function(tile) {
+  this.tiles.push(tile);
+  this.updateBoundings();
+};
+
+/**
+ * Warning: does not update boundings!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+Batch.prototype.createRawTileAt = function(x, y, color) {
+  var tile = new Tile();
+  tile.x = x;
+  tile.y = y;
+  tile.colors.unshift(color);
+  // push in without updating boundings each time
+  this.tiles.push(tile);
 };
 
 /**
@@ -969,7 +1002,7 @@ function finalizeBatchOperation() {
     batch.renderBuffer();
   } else {
     // dont push batch into stack if batch is empty
-    if (batch.isEmpty()) {
+    if (batch.isEmpty() && !batch.isBackground) {
       this.batches.splice(offset, 1);
       this.refreshBatches();
       return;
@@ -1001,6 +1034,7 @@ function getLatestTileBatchOperation() {
  * Clear latest batch operation if empty
  */
 function clearLatestTileBatch() {
+  if (!this.batches.length) { return; }
   var batch = this.getLatestTileBatchOperation();
   // latest batch operation is empty, remove so 
   if (!batch.tiles.length) {
@@ -1016,9 +1050,8 @@ function clearLatestTileBatch() {
 function startBatchedDrawing(x, y) {
   this.modes.draw = true;
   var position = this.getRelativeOffset(x, y);
-  this.colorTest = this.getRandomRgbaColors();
   this.pushTileBatchOperation();
-  this.createBatchTileAt(position.x, position.y, this.colorTest);
+  this.createBatchTileAt(position.x, position.y, this._fillStyle);
 }
 
 /**
@@ -1152,6 +1185,8 @@ var _batch = Object.freeze({
 });
 
 /**
+ * Sets a batch to background, appends the given bg color
+ * as well as generates a camera size based buffered canvas
  * @param {Array} color
  */
 function fillBackground(color) {
@@ -1160,7 +1195,6 @@ function fillBackground(color) {
   var batch = this.getLatestTileBatchOperation();
   batch.isBackground = true;
   batch.renderBackground(this.camera.width, this.camera.height, color);
-  this.createBatchTileAt(0, 0, color);
   this.finalizeBatchOperation();
 }
 
@@ -1188,21 +1222,21 @@ function fillBucketColorBased(x, y, base, color) {
       return (true);
     }
     // tile is free, so fill in one here
-    if (!batch.getTileColorAt(x$1, y$1)) { this$1.createBatchTileAt(x$1, y$1, color); }
-    var a = this$1.getTileColorAt(x$1+1, y$1);
-    var b = this$1.getTileColorAt(x$1-1, y$1);
-    var c = this$1.getTileColorAt(x$1, y$1+1);
-    var d = this$1.getTileColorAt(x$1, y$1-1);
-    if (a && colorsMatch(a, base)) { queue.push({x:x$1+1, y:y$1}); }
-    if (b && colorsMatch(b, base)) { queue.push({x:x$1-1, y:y$1}); }
-    if (c && colorsMatch(c, base)) { queue.push({x:x$1, y:y$1+1}); }
-    if (d && colorsMatch(d, base)) { queue.push({x:x$1, y:y$1-1}); }
+    if (!batch.getTileColorAt(x$1, y$1)) { batch.createRawTileAt(x$1, y$1, color); }
+    var a = batch.getTileAt(x$1+1, y$1) || this$1.getStackRelativeTileColorAt(x$1+1, y$1);
+    var b = batch.getTileAt(x$1-1, y$1) || this$1.getStackRelativeTileColorAt(x$1-1, y$1);
+    var c = batch.getTileAt(x$1, y$1+1) || this$1.getStackRelativeTileColorAt(x$1, y$1+1);
+    var d = batch.getTileAt(x$1, y$1-1) || this$1.getStackRelativeTileColorAt(x$1, y$1-1);
+    if (a !== null && colorsMatch(a, base)) { queue.push({x:x$1+1, y:y$1}); }
+    if (b !== null && colorsMatch(b, base)) { queue.push({x:x$1-1, y:y$1}); }
+    if (c !== null && colorsMatch(c, base)) { queue.push({x:x$1, y:y$1+1}); }
+    if (d !== null && colorsMatch(d, base)) { queue.push({x:x$1, y:y$1-1}); }
   }
   return (false);
 }
 
 /**
- * Fill enclosed tile area color based
+ * Fill enclosed tile area empty tile based
  * @param {Number} x
  * @param {Number} y
  * @param {Array} color
@@ -1221,13 +1255,16 @@ function fillBucketEmptyTileBased(x, y, color) {
       // returning true gets handled as infinite fill detection
       return (true);
     }
-    if (!batch.getTileColorAt(x$1, y$1)) {
-      this$1.createBatchTileAt(x$1, y$1, color);
-    }
-    if (!this$1.getTileAt(x$1+1, y$1)) { queue.push({x:x$1+1, y:y$1}); }
-    if (!this$1.getTileAt(x$1-1, y$1)) { queue.push({x:x$1-1, y:y$1}); }
-    if (!this$1.getTileAt(x$1, y$1+1)) { queue.push({x:x$1, y:y$1+1}); }
-    if (!this$1.getTileAt(x$1, y$1-1)) { queue.push({x:x$1, y:y$1-1}); }
+    // tile is free, so create one here
+    if (!batch.getTileColorAt(x$1, y$1)) { batch.createRawTileAt(x$1, y$1, color); }
+    var a = this$1.getTileAt(x$1+1, y$1) || this$1.getStackRelativeTileColorAt(x$1+1, y$1);
+    var b = this$1.getTileAt(x$1-1, y$1) || this$1.getStackRelativeTileColorAt(x$1-1, y$1);
+    var c = this$1.getTileAt(x$1, y$1+1) || this$1.getStackRelativeTileColorAt(x$1, y$1+1);
+    var d = this$1.getTileAt(x$1, y$1-1) || this$1.getStackRelativeTileColorAt(x$1, y$1-1);
+    if (a === null) { queue.push({x:x$1+1, y:y$1}); }
+    if (b === null) { queue.push({x:x$1-1, y:y$1}); }
+    if (c === null) { queue.push({x:x$1, y:y$1+1}); }
+    if (d === null) { queue.push({x:x$1, y:y$1-1}); }
   }
   return (false);
 }
@@ -1239,8 +1276,6 @@ function fillBucketEmptyTileBased(x, y, color) {
  * @param {Array} color
  */
 function fillBucket(x, y, color) {
-  // TODO: optimize filling:
-  // create a rawbuffer instead of creating a tile for each filled pixel
   // TODO: fix future batches get still recognized...
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) { throw new Error("Invalid alpha color!"); }
@@ -1248,6 +1283,7 @@ function fillBucket(x, y, color) {
   // differentiate between empty and colored tiles
   var basecolor = this.getTileColorAt(x, y);
   this.pushTileBatchOperation();
+  var batch = this.getLatestTileBatchOperation();
   var infinite = false;
   // try color based filling
   if (basecolor !== null) {
@@ -1256,6 +1292,25 @@ function fillBucket(x, y, color) {
   } else {
     infinite = this.fillBucketEmptyTileBased(x, y, color);
   }
+  // after filling, finally update the boundings to get the batch's size
+  batch.updateBoundings();
+  var bx = batch.x;
+  var by = batch.y;
+  var buffer = createCanvasBuffer(batch.width, batch.height);
+  for (var ii = 0; ii < batch.tiles.length; ++ii) {
+    var tile = batch.tiles[ii];
+    var x$1 = tile.x - batch.x;
+    var y$1 = tile.y - batch.y;
+    buffer.fillStyle = tile.getColorAsRgbaString();
+    buffer.fillRect(
+      x$1, y$1,
+      1, 1
+    );
+  }
+  // now draw our staff as a rawbuffer
+  batch.createRawBufferAt(buffer, bx, by);
+  // free batch tiles to save memory
+  batch.tiles = [];
   this.finalizeBatchOperation();
   if (infinite) {
     // remove our recent batch if it didn't got removed yet
@@ -1486,11 +1541,32 @@ var Editor = function Editor(instance) {
   // mouse position, negative to be hidden initially
   this.mx = -1;
   this.my = -1;
-  this.colorTest = null;
+  this._fillStyle = [255,255,255,1];
   this.camera = instance.camera;
   // stack related
   this.sindex = -1;
   this.stack = [];
+};
+
+var prototypeAccessors = { fillStyle: {} };
+
+/**
+ * @return {Array}
+ */
+prototypeAccessors.fillStyle.get = function () {
+  return (this._fillStyle);
+};
+/**
+ * @param {*} value
+ */
+prototypeAccessors.fillStyle.set = function (value) {
+  if (typeof value === "string") {
+    this._fillStyle = hexToRgba(value);
+  }
+  else if (value instanceof Array && value.length === 4) {
+    this._fillStyle = value;
+  }
+  else { throw new Error("Unsupported or invalid color"); }
 };
 
 /**
@@ -1503,6 +1579,8 @@ Editor.prototype.offsetExceedsIntegerLimit = function offsetExceedsIntegerLimit 
     Math.abs(x) > MAX_SAFE_INTEGER || Math.abs(y) > MAX_SAFE_INTEGER
   );
 };
+
+Object.defineProperties( Editor.prototype, prototypeAccessors );
 
 inherit(Editor, _stack);
 inherit(Editor, _tiles);
@@ -1881,11 +1959,11 @@ Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
   var height = info.h;
   var ctx = createCanvasBuffer(width, height);
   var view = ctx.canvas;
-  var sindex = editor.sindex;
+  var sIndex = editor.sindex;
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
     // ignore future batches
-    if (sindex < ii) { continue; }
+    if (sIndex < ii) { continue; }
     // background
     if (batch.isBackground) {
       ctx.fillStyle = colorToRgbaString(batch.bgcolor);

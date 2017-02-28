@@ -1,6 +1,6 @@
 import { MAX_SAFE_INTEGER } from "../cfg";
 
-import { inherit } from "../utils";
+import { inherit, hexToRgba } from "../utils";
 
 import * as _stack from "./stack";
 import * as _tiles from "./tiles";
@@ -26,11 +26,30 @@ class Editor {
     // mouse position, negative to be hidden initially
     this.mx = -1;
     this.my = -1;
-    this.colorTest = null;
+    this._fillStyle = [255,255,255,1];
     this.camera = instance.camera;
     // stack related
     this.sindex = -1;
     this.stack = [];
+  }
+
+  /**
+   * @return {Array}
+   */
+  get fillStyle() {
+    return (this._fillStyle);
+  }
+  /**
+   * @param {*} value
+   */
+  set fillStyle(value) {
+    if (typeof value === "string") {
+      this._fillStyle = hexToRgba(value);
+    }
+    else if (value instanceof Array && value.length === 4) {
+      this._fillStyle = value;
+    }
+    else throw new Error("Unsupported or invalid color");
   }
 
   /**

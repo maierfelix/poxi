@@ -57,7 +57,7 @@ export function eraseTileAt(x, y) {
 export function drawTileAtMouseOffset(x, y) {
   if (this.modes.draw) {
     let position = this.getRelativeOffset(x, y);
-    this.createBatchTileAt(position.x, position.y, this.colorTest);
+    this.createBatchTileAt(position.x, position.y, this._fillStyle);
   }
 };
 

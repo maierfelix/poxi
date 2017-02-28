@@ -46,7 +46,7 @@ export function finalizeBatchOperation() {
     batch.renderBuffer();
   } else {
     // dont push batch into stack if batch is empty
-    if (batch.isEmpty()) {
+    if (batch.isEmpty() && !batch.isBackground) {
       this.batches.splice(offset, 1);
       this.refreshBatches();
       return;
@@ -78,6 +78,7 @@ export function getLatestTileBatchOperation() {
  * Clear latest batch operation if empty
  */
 export function clearLatestTileBatch() {
+  if (!this.batches.length) return;
   let batch = this.getLatestTileBatchOperation();
   // latest batch operation is empty, remove so 
   if (!batch.tiles.length) {
@@ -93,9 +94,8 @@ export function clearLatestTileBatch() {
 export function startBatchedDrawing(x, y) {
   this.modes.draw = true;
   let position = this.getRelativeOffset(x, y);
-  this.colorTest = this.getRandomRgbaColors();
   this.pushTileBatchOperation();
-  this.createBatchTileAt(position.x, position.y, this.colorTest);
+  this.createBatchTileAt(position.x, position.y, this._fillStyle);
 };
 
 /**

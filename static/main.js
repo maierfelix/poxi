@@ -42,10 +42,19 @@
     stage.editor.hover(x, y);
     // drag before drawing to stay in position (drag+draw)
     if (rpressed) stage.camera.drag(x, y);
-    if (lpressed) {
+    if (lpressed && modes.tiled) {
       stage.editor.drawTileAtMouseOffset(x, y);
       let batch = stage.editor.batches[stage.editor.batches.length - 1];
       stage.editor.applyPixelSmoothing(batch);
+    }
+    else if (modes.rectangle && modes.rectangleStart) {
+      let batch = stage.editor.getLatestTileBatchOperation();
+      batch.tiles = [];
+      batch.buffer = null;
+      batch.isBuffered = false;
+      let start = stage.editor.getRelativeOffset(rectX, rectY);
+      let end = stage.editor.getRelativeOffset(x, y);
+      stage.editor.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y, stage.editor.fillStyle);
     }
   });
   window.addEventListener("mousedown", (e) => {
@@ -58,8 +67,19 @@
     }
     // left key to select
     if (e.which === 1) {
-      stage.editor.startBatchedDrawing(e.clientX, e.clientY);
-      lpressed = true;
+      if (modes.tiled) {
+        stage.editor.startBatchedDrawing(e.clientX, e.clientY);
+        lpressed = true;
+      }
+      else if (modes.bucket) {
+        let relative = stage.editor.getRelativeOffset(e.clientX, e.clientY);
+        stage.editor.fillBucket(relative.x, relative.y, stage.editor.fillStyle);
+      }
+      else if (modes.rectangle) {
+        rectX = e.clientX;
+        rectY = e.clientY;
+        modes.rectangleStart = true;
+      }
     }
   });
   window.addEventListener("mouseup", (e) => {
@@ -71,8 +91,13 @@
     }
     // stop selecting
     if (e.which === 1) {
-      stage.editor.stopBatchedDrawing(e.clientX, e.clientY);
-      lpressed = false;
+      if (modes.tiled) {
+        stage.editor.stopBatchedDrawing(e.clientX, e.clientY);
+        lpressed = false;
+      }
+      else if (modes.rectangle) {
+        modes.rectangleStart = false;
+      }
     }
   });
   window.addEventListener("contextmenu", (e) => {
@@ -91,10 +116,53 @@
     stage.camera.scale(x);
   };
 
+  // color picker
+  color.onchange = (e) => {
+    stage.editor.fillStyle = color.value;
+  };
+  // auto set initial color
+  stage.editor.fillStyle = color.value;
+
   // download button
   download.onclick = () => {
     let data = stage.exportAsDataUrl();
     window.open(data);
+  };
+
+  let modes = {
+    bucket: false,
+    tiled: false,
+    rectangle: false,
+    rectangleStart: false,
+    ellipse: false,
+    ellipseStart: false
+  };
+  let rectX = 0;
+  let rectY = 0;
+
+  // buttons
+  bucket.onclick = () => {
+    resetModes();
+    modes.bucket = true;
+  };
+  tiled.onclick = () => {
+    resetModes();
+    modes.tiled = true;
+  };
+  rectangle.onclick = () => {
+    resetModes();
+    modes.rectangle = true;
+  };
+  ellipse.onclick = () => {
+    resetModes();
+    modes.ellipse = true;
+  };
+  modes.tiled = true;
+
+  let resetModes = () => {
+    for (let key in modes) {
+      modes[key] = false;
+    };
   };
 
   // ## drag&drop images

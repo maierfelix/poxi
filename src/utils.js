@@ -85,6 +85,17 @@ export function colorToRgbaString(color) {
 };
 
 /**
+ * Hex to rgba
+ * @param {String} hex
+ */
+export function hexToRgba(hex) {
+  let r = parseInt(hex.substring(1,3), 16);
+  let g = parseInt(hex.substring(3,5), 16);
+  let b = parseInt(hex.substring(5,7), 16);
+  return ([r,g,b,1]);
+};
+
+/**
  * Do rgba color arrays match
  * @param {Array} a
  * @param {Array} a

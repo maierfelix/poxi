@@ -4,12 +4,14 @@ import {
 } from "../../cfg";
 
 import {
+  uid,
   isGhostColor,
   sortAscending,
   createCanvasBuffer,
   alphaByteToRgbAlpha
 } from "../../utils";
 
+import Tile from "../Tile/index";
 import Texture from "./Texture/index";
 
 /**
@@ -17,6 +19,7 @@ import Texture from "./Texture/index";
  */
 class Batch {
   constructor() {
+    this.id = uid();
     this.x = 0;
     this.y = 0;
     this.width = 0;
@@ -54,14 +57,6 @@ Batch.prototype.renderBackground = function(width, height, color) {
   );
   this.bgcolor = color;
   this.bgbuffer = buffer.canvas;
-};
-
-/**
- * @param {Tile} tile
- */
-Batch.prototype.addTile = function(tile) {
-  this.tiles.push(tile);
-  this.updateBoundings();
 };
 
 /**
@@ -129,6 +124,7 @@ Batch.prototype.createRawBufferAt = function(ctx, x, y) {
   this.height = view.height;
   this.isBuffered = true;
   this.isRawBuffer = true;
+  this.isBackground = false;
   this.buffer = new Texture(ctx, x, y);
 };
 
@@ -211,6 +207,10 @@ Batch.prototype.getTileColorAt = function(x, y) {
       [data[0], data[1], data[2], alpha]
     );
   }
+  // return background color if batch is a filled background
+  if (this.isBackground) {
+    return (this.bgcolor);
+  }
   // search tile based
   let tile = this.getTileAt(x, y);
   if (tile !== null) return (tile.colors[tile.cindex]);
@@ -225,11 +225,35 @@ Batch.prototype.getTileColorAt = function(x, y) {
  */
 Batch.prototype.getTileAt = function(x, y) {
   let tiles = this.tiles;
-  for (let ii = 0; ii < tiles.length; ++ii) {
+  let length = tiles.length;
+  for (let ii = 0; ii < length; ++ii) {
     let tile = tiles[ii];
     if (tile.x === x && tile.y === y) return (tile);
   };
   return (null);
+};
+
+/**
+ * @param {Tile} tile
+ */
+Batch.prototype.addTile = function(tile) {
+  this.tiles.push(tile);
+  this.updateBoundings();
+};
+
+/**
+ * Warning: does not update boundings!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+Batch.prototype.createRawTileAt = function(x, y, color) {
+  let tile = new Tile();
+  tile.x = x;
+  tile.y = y;
+  tile.colors.unshift(color);
+  // push in without updating boundings each time
+  this.tiles.push(tile);
 };
 
 export default Batch;
