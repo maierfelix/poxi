@@ -10,7 +10,6 @@ canvas {
 body {
   margin: 0;
   overflow: hidden;
-  cursor: pointer;
 }
 
 #file {
@@ -24,11 +23,9 @@ body {
   display: none;
 }
 
-#download {
+.btn {
   position: absolute;
   z-index: 9999;
-  right: 2px;
-  bottom: 2px;
   background: rgba(255,255,255,0.05);
   font-family: "Andale Mono", AndaleMono, monospace;
   border: 1px solid rgba(255, 255, 255, .35);
@@ -41,4 +38,42 @@ body {
   font-variant: normal;
   font-weight: 500;
   line-height: 16px;
+}
+
+#download {
+  left: 5px;
+  bottom: 5px;
+}
+
+#bucket {
+  bottom: 28px;
+  left: 5px;
+}
+
+#rectangle {
+  bottom: 51px;
+  left: 5px;
+}
+
+#ellipse {
+  bottom: 74px;
+  left: 5px;
+}
+
+#tiled {
+  bottom: 52px;
+  left: 5px;
+}
+
+.color {
+  min-width: 0px;
+  width: 16px;
+  height: 19px;
+  padding: 0px;
+  margin: 0px;
+  line-height: 0px;
+  border: none;
+  background: transparent;
+  bottom: 72px;
+  left: 3px;
 }
