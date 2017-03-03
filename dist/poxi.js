@@ -68,6 +68,21 @@ function applyImageSmoothing(ctx, state) {
 }
 
 /**
+ * @param {String} path
+ * @param {Function} resolve
+ */
+function loadImage(path, resolve) {
+  var img = new Image();
+  img.addEventListener("load", function () {
+    resolve(img);
+  });
+  img.addEventListener("error", function () {
+    throw new Error("Failed to load image ressource " + path);
+  });
+  img.src = path;
+}
+
+/**
  * 0-255 => 0-1 with precision 1
  * @param {Number} a
  * @return {Number}
@@ -425,7 +440,7 @@ function selectAll() {
 }
 
 /**
- * Hover & unhover tiles
+ * Save last mouse position globally
  * @param {Number} x
  * @param {Number} y
  */
@@ -845,6 +860,21 @@ Batch.prototype.createRawBufferAt = function(ctx, x, y) {
 };
 
 /**
+ * Warning: does not update boundings!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+Batch.prototype.createRawTileAt = function(x, y, color) {
+  var tile = new Tile();
+  tile.x = x;
+  tile.y = y;
+  tile.colors.unshift(color);
+  // push in without updating boundings each time
+  this.tiles.push(tile);
+};
+
+/**
  * Creates a cropped canvas buffer
  */
 Batch.prototype.renderBuffer = function() {
@@ -958,21 +988,6 @@ Batch.prototype.addTile = function(tile) {
 };
 
 /**
- * Warning: does not update boundings!
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color
- */
-Batch.prototype.createRawTileAt = function(x, y, color) {
-  var tile = new Tile();
-  tile.x = x;
-  tile.y = y;
-  tile.colors.unshift(color);
-  // push in without updating boundings each time
-  this.tiles.push(tile);
-};
-
-/**
  * Push in a new batch operation
  */
 function pushTileBatchOperation() {
@@ -1019,7 +1034,24 @@ function finalizeBatchOperation() {
   this.enqueue({
     batch: batch
   });
+  this.updateGlobalBoundings();
   this.refreshBatches();
+}
+
+function updateGlobalBoundings() {
+  var info = this.getAbsoluteBoundings(this.batches);
+  var bounds = this.boundings;
+  if (
+    info.x !== bounds.x ||
+    info.y !== bounds.y ||
+    info.w !== bounds.w ||
+    info.h !== bounds.h
+  ) {
+    bounds.x = info.x;
+    bounds.y = info.y;
+    bounds.w = info.w;
+    bounds.h = info.h;
+  }
 }
 
 /**
@@ -1173,6 +1205,7 @@ var _batch = Object.freeze({
 	pushTileBatchOperation: pushTileBatchOperation,
 	refreshBatches: refreshBatches,
 	finalizeBatchOperation: finalizeBatchOperation,
+	updateGlobalBoundings: updateGlobalBoundings,
 	getLatestTileBatchOperation: getLatestTileBatchOperation,
 	clearLatestTileBatch: clearLatestTileBatch,
 	startBatchedDrawing: startBatchedDrawing,
@@ -1276,9 +1309,10 @@ function fillBucketEmptyTileBased(x, y, color) {
  * @param {Array} color
  */
 function fillBucket(x, y, color) {
-  // TODO: fix future batches get still recognized...
+  // TODO: add method to create temporary batches (e.g. insertRectangle by mouse)
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) { throw new Error("Invalid alpha color!"); }
+  this.refreshStack();
   var sIndex = this.sindex;
   // differentiate between empty and colored tiles
   var basecolor = this.getTileColorAt(x, y);
@@ -1546,20 +1580,23 @@ var Editor = function Editor(instance) {
   // stack related
   this.sindex = -1;
   this.stack = [];
+  this.boundings = {
+    x: 0, y: 0, w: 0, h: 0
+  };
 };
 
-var prototypeAccessors = { fillStyle: {} };
+var prototypeAccessors$1 = { fillStyle: {} };
 
 /**
  * @return {Array}
  */
-prototypeAccessors.fillStyle.get = function () {
+prototypeAccessors$1.fillStyle.get = function () {
   return (this._fillStyle);
 };
 /**
  * @param {*} value
  */
-prototypeAccessors.fillStyle.set = function (value) {
+prototypeAccessors$1.fillStyle.set = function (value) {
   if (typeof value === "string") {
     this._fillStyle = hexToRgba(value);
   }
@@ -1580,7 +1617,7 @@ Editor.prototype.offsetExceedsIntegerLimit = function offsetExceedsIntegerLimit 
   );
 };
 
-Object.defineProperties( Editor.prototype, prototypeAccessors );
+Object.defineProperties( Editor.prototype, prototypeAccessors$1 );
 
 inherit(Editor, _stack);
 inherit(Editor, _tiles);
@@ -1675,6 +1712,36 @@ function renderBatches() {
     if (length > 0) { this.drawBatchedTiles(this.editor.batches[length - 1]); }
   }
   this.drawHoveredTile();
+  this.drawActiveCursor();
+}
+
+function drawActiveCursor() {
+  if (!this.cursor) { return; } // no cursor available
+  var view = this.cursors[this.cursor];
+  if (!view) { return; } // cursor got not loaded yet
+  var ctx = this.ctx;
+  var drawing = this.editor.modes.draw;
+  // cursor gets a bit transparent when user is drawing
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "exclusion";
+  }
+  var mx = this.editor.mx;
+  var my = this.editor.my;
+  var w = 1 + (view.width / 6) | 0;
+  var h = 1 + (view.height / 6) | 0;
+  var x = ((mx + (w / 2))) | 0;
+  var y = ((my + (h / 2))) | 0;
+  ctx.drawImage(
+    view,
+    0, 0,
+    view.width, view.height,
+    x, y,
+    w, h
+  );
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "source-over";
+  }
+  return;
 }
 
 /**
@@ -1843,6 +1910,7 @@ var _render = Object.freeze({
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
 	renderBatches: renderBatches,
+	drawActiveCursor: drawActiveCursor,
 	drawBackgroundBatch: drawBackgroundBatch,
 	drawBatchedTiles: drawBatchedTiles,
 	drawBatchedBuffer: drawBatchedBuffer,
@@ -1870,6 +1938,8 @@ var Poxi = function Poxi(obj) {
   this.states = {
     paused: true
   };
+  this.cursor = null;
+  this.cursors = {};
   this.createView();
   // apply sizing
   if (obj.width >= 0 && obj.height >= 0) {
@@ -1879,6 +1949,8 @@ var Poxi = function Poxi(obj) {
   }
   this.init();
 };
+
+var prototypeAccessors = { activeCursor: {} };
 
 Poxi.prototype.init = function init () {
   this.renderLoop();
@@ -1952,11 +2024,11 @@ Poxi.prototype.processEmitter = function processEmitter (hash, fn) {
 Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
   var editor = this.editor;
   var batches = editor.batches;
-  var info = editor.getAbsoluteBoundings(batches);
-  var rx = info.x;
-  var ry = info.y;
-  var width = info.w;
-  var height = info.h;
+  var bounds = editor.boundings;
+  var rx = bounds.x;
+  var ry = bounds.y;
+  var width = bounds.w;
+  var height = bounds.h;
   var ctx = createCanvasBuffer(width, height);
   var view = ctx.canvas;
   var sIndex = editor.sindex;
@@ -2001,6 +2073,36 @@ Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
   }
   return (view.toDataURL());
 };
+
+/**
+ * @param {String} kind
+ * @param {String} path
+ */
+Poxi.prototype.addCursor = function addCursor (kind, path) {
+    var this$1 = this;
+
+  var cursor = this.cursor;
+  // reserve property, so we have access
+  // to it even before the image got loaded
+  this.cursors[kind] = null;
+  loadImage(path, function (img) {
+    this$1.cursors[kind] = img;
+  });
+};
+
+/**
+ * Set active cursor
+ * @param {String} kind
+ */
+prototypeAccessors.activeCursor.set = function (kind) {
+  if (this.cursors[kind] !== void 0) {
+    this.cursor = kind;
+  } else {
+    this.cursor = null;
+  }
+};
+
+Object.defineProperties( Poxi.prototype, prototypeAccessors );
 
 inherit(Poxi, _render);
 

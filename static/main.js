@@ -11,6 +11,9 @@
     stage.render();
   });
 
+  stage.addCursor("tiled", "./assets/img/cursor.png");
+  stage.addCursor("bucket", "./assets/img/bucket.png");
+
   stage.camera.x = (window.innerWidth / 2) | 0;
   stage.camera.y = (window.innerHeight / 2) | 0;
 
@@ -59,6 +62,7 @@
   });
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!(e.target instanceof HTMLCanvasElement)) return;
     // right key to drag
     if (e.which === 3) {
@@ -84,6 +88,7 @@
   });
   window.addEventListener("mouseup", (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!(e.target instanceof HTMLCanvasElement)) return;
     // stop dragging
     if (e.which === 3) {
@@ -102,6 +107,7 @@
   });
   window.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    e.stopPropagation();
   });
 
   // chrome
@@ -144,20 +150,23 @@
   bucket.onclick = () => {
     resetModes();
     modes.bucket = true;
+    stage.activeCursor = "bucket";
   };
   tiled.onclick = () => {
     resetModes();
     modes.tiled = true;
+    stage.activeCursor = "tiled";
   };
-  rectangle.onclick = () => {
+  /*rectangle.onclick = () => {
     resetModes();
     modes.rectangle = true;
   };
   ellipse.onclick = () => {
     resetModes();
     modes.ellipse = true;
-  };
+  };*/
   modes.tiled = true;
+  stage.activeCursor = "tiled";
 
   let resetModes = () => {
     for (let key in modes) {

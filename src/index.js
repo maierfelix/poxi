@@ -8,6 +8,7 @@ import {
 
 import {
   inherit,
+  loadImage,
   hashFromString,
   colorToRgbaString,
   createCanvasBuffer
@@ -38,6 +39,8 @@ class Poxi {
     this.states = {
       paused: true
     };
+    this.cursor = null;
+    this.cursors = {};
     this.createView();
     // apply sizing
     if (obj.width >= 0 && obj.height >= 0) {
@@ -118,11 +121,11 @@ class Poxi {
   exportAsDataUrl() {
     let editor = this.editor;
     let batches = editor.batches;
-    let info = editor.getAbsoluteBoundings(batches);
-    let rx = info.x;
-    let ry = info.y;
-    let width = info.w;
-    let height = info.h;
+    let bounds = editor.boundings;
+    let rx = bounds.x;
+    let ry = bounds.y;
+    let width = bounds.w;
+    let height = bounds.h;
     let ctx = createCanvasBuffer(width, height);
     let view = ctx.canvas;
     let sIndex = editor.sindex;
@@ -166,6 +169,32 @@ class Poxi {
       }
     };
     return (view.toDataURL());
+  }
+
+  /**
+   * @param {String} kind
+   * @param {String} path
+   */
+  addCursor(kind, path) {
+    let cursor = this.cursor;
+    // reserve property, so we have access
+    // to it even before the image got loaded
+    this.cursors[kind] = null;
+    loadImage(path, (img) => {
+      this.cursors[kind] = img;
+    });
+  }
+
+  /**
+   * Set active cursor
+   * @param {String} kind
+   */
+  set activeCursor(kind) {
+    if (this.cursors[kind] !== void 0) {
+      this.cursor = kind;
+    } else {
+      this.cursor = null;
+    }
   }
 
 };

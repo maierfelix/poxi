@@ -64,6 +64,21 @@ export function applyImageSmoothing(ctx, state) {
 };
 
 /**
+ * @param {String} path
+ * @param {Function} resolve
+ */
+export function loadImage(path, resolve) {
+  let img = new Image();
+  img.addEventListener("load", () => {
+    resolve(img);
+  });
+  img.addEventListener("error", () => {
+    throw new Error("Failed to load image ressource " + path);
+  });
+  img.src = path;
+};
+
+/**
  * 0-255 => 0-1 with precision 1
  * @param {Number} a
  * @return {Number}

@@ -99,6 +99,36 @@ export function renderBatches() {
     if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
   }
   this.drawHoveredTile();
+  this.drawActiveCursor();
+};
+
+export function drawActiveCursor() {
+  if (!this.cursor) return; // no cursor available
+  let view = this.cursors[this.cursor];
+  if (!view) return; // cursor got not loaded yet
+  let ctx = this.ctx;
+  let drawing = this.editor.modes.draw;
+  // cursor gets a bit transparent when user is drawing
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "exclusion";
+  }
+  let mx = this.editor.mx;
+  let my = this.editor.my;
+  let w = 1 + (view.width / 6) | 0;
+  let h = 1 + (view.height / 6) | 0;
+  let x = ((mx + (w / 2))) | 0;
+  let y = ((my + (h / 2))) | 0;
+  ctx.drawImage(
+    view,
+    0, 0,
+    view.width, view.height,
+    x, y,
+    w, h
+  );
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "source-over";
+  }
+  return;
 };
 
 /**

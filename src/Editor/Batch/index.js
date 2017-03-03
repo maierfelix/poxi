@@ -129,6 +129,21 @@ Batch.prototype.createRawBufferAt = function(ctx, x, y) {
 };
 
 /**
+ * Warning: does not update boundings!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} color
+ */
+Batch.prototype.createRawTileAt = function(x, y, color) {
+  let tile = new Tile();
+  tile.x = x;
+  tile.y = y;
+  tile.colors.unshift(color);
+  // push in without updating boundings each time
+  this.tiles.push(tile);
+};
+
+/**
  * Creates a cropped canvas buffer
  */
 Batch.prototype.renderBuffer = function() {
@@ -239,21 +254,6 @@ Batch.prototype.getTileAt = function(x, y) {
 Batch.prototype.addTile = function(tile) {
   this.tiles.push(tile);
   this.updateBoundings();
-};
-
-/**
- * Warning: does not update boundings!
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color
- */
-Batch.prototype.createRawTileAt = function(x, y, color) {
-  let tile = new Tile();
-  tile.x = x;
-  tile.y = y;
-  tile.colors.unshift(color);
-  // push in without updating boundings each time
-  this.tiles.push(tile);
 };
 
 export default Batch;

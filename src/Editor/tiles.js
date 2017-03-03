@@ -16,7 +16,7 @@ export function selectAll() {
 };
 
 /**
- * Hover & unhover tiles
+ * Save last mouse position globally
  * @param {Number} x
  * @param {Number} y
  */

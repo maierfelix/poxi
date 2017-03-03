@@ -95,9 +95,10 @@ export function fillBucketEmptyTileBased(x, y, color) {
  * @param {Array} color
  */
 export function fillBucket(x, y, color) {
-  // TODO: fix future batches get still recognized...
+  // TODO: add method to create temporary batches (e.g. insertRectangle by mouse)
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
+  this.refreshStack();
   let sIndex = this.sindex;
   // differentiate between empty and colored tiles
   let basecolor = this.getTileColorAt(x, y);

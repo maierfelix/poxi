@@ -63,7 +63,24 @@ export function finalizeBatchOperation() {
   this.enqueue({
     batch: batch
   });
+  this.updateGlobalBoundings();
   this.refreshBatches();
+};
+
+export function updateGlobalBoundings() {
+  let info = this.getAbsoluteBoundings(this.batches);
+  let bounds = this.boundings;
+  if (
+    info.x !== bounds.x ||
+    info.y !== bounds.y ||
+    info.w !== bounds.w ||
+    info.h !== bounds.h
+  ) {
+    bounds.x = info.x;
+    bounds.y = info.y;
+    bounds.w = info.w;
+    bounds.h = info.h;
+  }
 };
 
 /**
