@@ -477,7 +477,7 @@ function enqueue(op) {
   this.redo();
   // free the stack if necessary
   if (this.stack.length >= STACK_LIMIT / 4) {
-    throw new Error("Stack overflow!");
+    //throw new Error("Stack overflow!");
   }
 }
 
