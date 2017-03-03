@@ -115,6 +115,14 @@ class Poxi {
   }
 
   /**
+   * Simply redraws the stage synchronous
+   */
+  redraw() {
+    this.clear();
+    this.render();
+  }
+
+  /**
    * Export the current view to base64 encoded png string
    * @return {String}
    */
@@ -128,11 +136,11 @@ class Poxi {
     let height = bounds.h;
     let ctx = createCanvasBuffer(width, height);
     let view = ctx.canvas;
-    let sIndex = editor.sindex;
+    let sindex = editor.sindex;
     for (let ii = 0; ii < batches.length; ++ii) {
       let batch = batches[ii];
       // ignore future batches
-      if (sIndex < ii) continue;
+      if (sindex < ii) continue;
       // background
       if (batch.isBackground) {
         ctx.fillStyle = colorToRgbaString(batch.bgcolor);

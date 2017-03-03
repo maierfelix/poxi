@@ -38,6 +38,7 @@ export function refreshBatches() {
 /**
  * Take the latest tile batch, buffer it (if exceeds bound sizes)
  * and finally push it into the operation stack
+ * @return {Void}
  */
 export function finalizeBatchOperation() {
   let offset = this.batches.length - 1;
@@ -53,10 +54,10 @@ export function finalizeBatchOperation() {
     }
     // got a background fill batch, check if we have to push it into the stack
     if (batch.isBackground) {
-      let last = this.currentStackOperation();
+      let last = this.batches[this.batches.length - 2];
       // last operation was a background fill too, check if their colors match
-      if (last && last.batch.isBackground) {
-        if (colorsMatch(batch.bgcolor, last.batch.bgcolor)) return;
+      if (last && last.isBackground) {
+        if (colorsMatch(batch.bgcolor, last.bgcolor)) return;
       }
     }
   }
@@ -65,22 +66,7 @@ export function finalizeBatchOperation() {
   });
   this.updateGlobalBoundings();
   this.refreshBatches();
-};
-
-export function updateGlobalBoundings() {
-  let info = this.getAbsoluteBoundings(this.batches);
-  let bounds = this.boundings;
-  if (
-    info.x !== bounds.x ||
-    info.y !== bounds.y ||
-    info.w !== bounds.w ||
-    info.h !== bounds.h
-  ) {
-    bounds.x = info.x;
-    bounds.y = info.y;
-    bounds.w = info.w;
-    bounds.h = info.h;
-  }
+  return;
 };
 
 /**
@@ -93,6 +79,7 @@ export function getLatestTileBatchOperation() {
 
 /**
  * Clear latest batch operation if empty
+ * @return {Void}
  */
 export function clearLatestTileBatch() {
   if (!this.batches.length) return;
@@ -102,6 +89,7 @@ export function clearLatestTileBatch() {
     let offset = this.batches.length - 1;
     this.batches.splice(offset, 1);
   }
+  return;
 };
 
 /**
@@ -131,6 +119,7 @@ export function stopBatchedDrawing(x, y) {
  * @param {Number} x
  * @param {Number} y
  * @param {Array} color
+ * @return {Void}
  */
 export function createBatchTileAt(x, y, color) {
   // try to overwrite older tiles color
@@ -146,6 +135,7 @@ export function createBatchTileAt(x, y, color) {
   let tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
   batch.addTile(tile);
+  return;
 };
 
 /**
@@ -156,12 +146,34 @@ export function createBatchTileAt(x, y, color) {
 export function getBatchByTile(tile) {
   let id = tile.id;
   let batches = this.batches;
+  let x = tile.x;
+  let y = tile.y;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let tiles = batches[ii].tiles;
+    let batch = batches[ii];
+    let tiles = batch.tiles;
     for (let jj = 0; jj < tiles.length; ++jj) {
       let tile = tiles[jj];
-      if (tile.id === id) return (batches[ii]);
+      if (tile.id === id) return (batch);
     };
+  };
+  return null;
+};
+
+/**
+ * Get batch by the given tile
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Batch}
+ */
+export function getStackRelativeBatchByPoint(x, y) {
+  let batches = this.batches;
+  let sindex = this.sindex;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    let idx = batches.length - 1 - ii; // reversed
+    if (sindex < idx) continue;
+    let batch = batches[idx];
+    if (batch.isBackground) return (batch);
+    if (batch.pointInsideBoundings(x, y)) return (batch);
   };
   return null;
 };
@@ -187,9 +199,9 @@ export function resizeBackgroundBatches(width, height) {
  * @return {Boolean}
  */
 export function pointInsideAbsoluteBoundings(x, y) {
-  let info = this.getAbsoluteBoundings(this.batches);
+  let bounds = this.boundings;
   let state = intersectRectangles(
-    info.x, info.y, info.w, info.h,
+    bounds.x, bounds.y, bounds.w, bounds.h,
     x, y, 0, 0
   );
   return (state);
@@ -197,6 +209,7 @@ export function pointInsideAbsoluteBoundings(x, y) {
 
 /**
  * @param {Array} batches
+ * @return {Object}
  */
 export function getAbsoluteBoundings(batches) {
   let px = []; let py = []; let pw = []; let ph = [];
@@ -227,4 +240,24 @@ export function getAbsoluteBoundings(batches) {
     w: ww,
     h: hh
   });
+};
+
+/**
+ * Updates the global boundings of our stage, so we
+ * always have access to our absolute stage boundings
+ */
+export function updateGlobalBoundings() {
+  let info = this.getAbsoluteBoundings(this.batches);
+  let bounds = this.boundings;
+  if (
+    info.x !== bounds.x ||
+    info.y !== bounds.y ||
+    info.w !== bounds.w ||
+    info.h !== bounds.h
+  ) {
+    bounds.x = info.x;
+    bounds.y = info.y;
+    bounds.w = info.w;
+    bounds.h = info.h;
+  }
 };

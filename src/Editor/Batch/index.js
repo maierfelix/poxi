@@ -11,6 +11,8 @@ import {
   alphaByteToRgbAlpha
 } from "../../utils";
 
+import { intersectRectangles } from "../../math";
+
 import Tile from "../Tile/index";
 import Texture from "./Texture/index";
 
@@ -60,16 +62,38 @@ Batch.prototype.renderBackground = function(width, height, color) {
 };
 
 /**
+ * Check if points lies inside the batch
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Boolean}
+ */
+Batch.prototype.pointInsideBoundings = function(x, y) {
+  if (this.isBackground) return (true);
+  let state = intersectRectangles(
+    this.x, this.y, this.width, this.height,
+    x, y, 0, 0
+  );
+  return (state);
+};
+
+/**
  * Updates the batch's relative position and size
+ * @return {Void}
  */
 Batch.prototype.updateBoundings = function() {
   // dont calculate sizes of raw buffers
   if (this.isRawBuffer) return;
+  // background boundings are infinite
+  if (this.isBackground) {
+    this.x = this.y = this.width = this.height = Infinity;
+    return;
+  }
   let info = this.getBoundings();
   this.x = info.x;
   this.y = info.y;
   this.width = info.w;
   this.height = info.h;
+  return;
 };
 
 /**

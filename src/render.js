@@ -81,12 +81,12 @@ export function renderGrid() {
 };
 
 export function renderBatches() {
-  let sIndex = this.editor.sindex;
+  let sindex = this.editor.sindex;
   let batches = this.editor.stack;
   for (let ii = 0; ii < batches.length; ++ii) {
     let batch = batches[ii].batch;
     // batch index is higher than stack index, so ignore this batch
-    if (sIndex - ii < 0) continue;
+    if (sindex - ii < 0) continue;
     if (batch.isBackground) this.drawBackgroundBatch(batch);
     // draw batched buffer (faster, drawImage)
     else if (batch.isBuffered) this.drawBatchedBuffer(batch);
@@ -102,6 +102,9 @@ export function renderBatches() {
   this.drawActiveCursor();
 };
 
+/**
+ * @return {Void}
+ */
 export function drawActiveCursor() {
   if (!this.cursor) return; // no cursor available
   let view = this.cursors[this.cursor];

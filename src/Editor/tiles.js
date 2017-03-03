@@ -129,18 +129,18 @@ export function getTileByMouseOffset(x, y) {
  * @return {Tile}
  */
 export function getTileAt(x, y) {
-  let target = null;
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii].tiles;
+    let idx = batches.length - 1 - ii; // reversed
+    let batch = batches[idx].tiles;
     for (let jj = 0; jj < batch.length; ++jj) {
       let tile = batch[jj];
       if (tile.x === x && tile.y === y) {
-        target = tile;
+        return (tile);
       }
     };
   };
-  return (target);
+  return (null);
 };
 
 /**
@@ -161,20 +161,20 @@ export function getStackRelativeTileByMouseOffset(x, y) {
  * @return {Tile}
  */
 export function getStackRelativeTileAt(x, y) {
-  let target = null;
-  let sIndex = this.sindex;
+  let sindex = this.sindex;
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii].tiles;
-    if (sIndex - ii < 0) continue;
+    let idx = batches.length - 1 - ii; // reversed
+    let batch = batches[idx].tiles;
+    if (sindex - idx < 0) continue;
     for (let jj = 0; jj < batch.length; ++jj) {
       let tile = batch[jj];
       if (tile.x === x && tile.y === y) {
-        target = tile;
+        return (tile);
       }
     };
   };
-  return (target);
+  return (null);
 };
 
 /**
@@ -227,15 +227,14 @@ export function getRandomRgbaColors() {
  * @return {Array}
  */
 export function getTileColorAt(x, y) {
-  let target = null;
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii];
-    // buffer color
+    let idx = batches.length - 1 - ii; // reversed
+    let batch = batches[idx];
     let color = batch.getTileColorAt(x, y);
-    if (color !== null) target = color;
+    if (color !== null) return (color);
   };
-  return (target);
+  return (null);
 };
 
 /**
@@ -244,16 +243,16 @@ export function getTileColorAt(x, y) {
  * @return {Array}
  */
 export function getStackRelativeTileColorAt(x, y) {
-  let target = null;
-  let sIndex = this.sindex;
+  let sindex = this.sindex;
   let batches = this.batches;
   for (let ii = 0; ii < batches.length; ++ii) {
-    let batch = batches[ii];
-    if (sIndex - ii < 0) continue;
+    let idx = batches.length - 1 - ii; // reversed
+    let batch = batches[idx];
+    if (sindex - idx < 0) continue;
     let color = batch.getTileColorAt(x, y);
-    if (color !== null) target = color;
+    if (color !== null) return (color);
   };
-  return (target);
+  return (null);
 };
 
 /**

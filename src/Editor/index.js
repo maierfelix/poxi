@@ -2,6 +2,7 @@ import { MAX_SAFE_INTEGER } from "../cfg";
 
 import { inherit, hexToRgba } from "../utils";
 
+import * as _fill from "./fill";
 import * as _stack from "./stack";
 import * as _tiles from "./tiles";
 import * as _batch from "./batch";
@@ -68,6 +69,7 @@ class Editor {
 
 };
 
+inherit(Editor, _fill);
 inherit(Editor, _stack);
 inherit(Editor, _tiles);
 inherit(Editor, _batch);

@@ -32,7 +32,7 @@ class Camera {
    * @param {Number} dir
    */
   scale(dir) {
-    let x = (dir * ZOOM_SPEED) / (Math.hypot(this.width, this.height) / 2) * zoomScale(this.s);
+    let x = (dir * (ZOOM_SPEED / 1e2)) * zoomScale(this.s);
     let oscale = this.s;
     if (this.s + x <= MIN_SCALE) this.s = MIN_SCALE;
     else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;
@@ -40,6 +40,7 @@ class Camera {
     this.s = roundTo(this.s, MAGIC_SCALE);
     this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
     this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
+    this.instance.redraw();
   }
 
   /**
@@ -64,8 +65,7 @@ class Camera {
     this.dx = x;
     this.dy = y;
     // smooth dragging
-    this.instance.clear();
-    this.instance.render();
+    this.instance.redraw();
   }
 
   /**
