@@ -52,6 +52,7 @@ class Poxi {
   }
 
   init() {
+    this.camera.scale(0);
     this.renderLoop();
   }
 

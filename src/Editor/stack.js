@@ -27,6 +27,7 @@ export function refreshStack() {
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
   }
+  this.updateGlobalBoundings();
 };
 
 /**

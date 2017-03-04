@@ -1,9 +1,12 @@
 import {
   colorsMatch,
   isGhostColor,
+  sortAscending,
   colorToRgbaString,
   createCanvasBuffer
 } from "../utils";
+
+import { BASE_TILE_COLOR } from "../cfg";
 
 /**
  * Fill enclosed tile area
@@ -15,128 +18,143 @@ export function fillBucket(x, y, color) {
   // TODO: add method to create temporary batches (e.g. insertRectangle by mouse)
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
+  // differentiate between empty and colored tiles
+  let base = this.getStackRelativeTileColorAt(x, y) || BASE_TILE_COLOR;
+  // clicked tile color and fill colors matches, abort
+  if (colorsMatch(base, color)) return;
   // clear undone batches, since we dont need them anymore
   this.refreshStack();
-  let infinite = false;
+  // we now need the most recent boundings
+  this.updateGlobalBoundings();
+  // save the current stack index
   let sindex = this.sindex;
-  // differentiate between empty and colored tiles
-  let baseColor = this.getTileColorAt(x, y);
   this.pushTileBatchOperation();
   let batch = this.getLatestTileBatchOperation();
-  // color based filling
-  if (baseColor !== null) {
-    infinite = this.fillBucketColorBased(x, y, baseColor, color);
-  // empty tile based filling
-  } else {
-    infinite = this.fillBucketEmptyTileBased(x, y, color);
-  }
+  // flood fill
+  let result = this.binaryFloodFill(x, y, base, color);
+  // convert buffer into batched raw buffer
+  batch.createRawBufferAt(result.buffer, result.x, result.y);
   // after filling, finally update the boundings to get the batch's size
   batch.updateBoundings();
   // make sure we only create a raw buffer if we got tiles to draw onto
   if (batch.tiles.length) this.batchTilesToRawBuffer(batch, color);
   // finalizing a batch also deletes the batch if we didn't change anything
   this.finalizeBatchOperation();
-  // infinity got detected, but some batches could be drawn before -> clear them
-  if (infinite) {
+  // infinity got detected, but some batches could be drawn before, so clear them first
+  if (false) {
     // remove our recent batch if it didn't got removed yet
     if (sindex < this.sindex) {
       this.undo();
       this.refreshStack();
     }
-    // finally create and finalize a background fill batch
+    // finally create a background batch
     this.fillBackground(color);
   }
+  return;
 };
 
 /**
- * We filled tile based, create raw buffer of all tiles and finally free them
- * @param {Batch} batch
- * @param {Array} color
- */
-export function batchTilesToRawBuffer(batch, color) {
-  let bx = batch.x;
-  let by = batch.y;
-  let length = batch.tiles.length;
-  let buffer = createCanvasBuffer(batch.width, batch.height);
-  // take main fill color
-  buffer.fillStyle = colorToRgbaString(color);
-  for (let ii = 0; ii < length; ++ii) {
-    let tile = batch.tiles[ii];
-    let x = tile.x - batch.x;
-    let y = tile.y - batch.y;
-    buffer.fillRect(
-      x, y,
-      1, 1
-    );
-  };
-  // now draw our staff as a rawbuffer
-  batch.createRawBufferAt(buffer, bx, by);
-  // free batch tiles to save memory
-  batch.tiles = [];
-};
-
-/**
- * Fill enclosed tile area color based
+ * Uses preallocated binary grid with the size of the absolute boundings
+ * of our working area. In the next step we trace "alive" cells at the grid,
+ * then we take the boundings of the used/filled area of our grid and crop out
+ * the relevant part. Then we convert the filled grid area into a raw buffer
+ * TODO: Fails with negative coordinates and infinity
  * @param {Number} x
  * @param {Number} y
  * @param {Array} base
  * @param {Array} color
- * @return {Boolean}
+ * @return {Object}
  */
-export function fillBucketColorBased(x, y, base, color) {
-  // clicked tile color and fill colors match, abort
-  if (colorsMatch(color, base)) return (false);
-  let queue = [];
-  let batch = this.getLatestTileBatchOperation();
-  queue.push({x, y});
-  for (; queue.length > 0;) {
-    let point = queue.pop();
-    let x = point.x;
-    let y = point.y;
-    // detected infinite filling, skip and return true=^infinite
-    if (!this.pointInsideAbsoluteBoundings(x, y)) return (true);
-    // tile is free, so fill in one here
-    if (batch.getTileColorAt(x, y) === null) batch.createRawTileAt(x, y, color);
-    let n = this.getTileColorAt(x, y-1);
-    let e = this.getTileColorAt(x+1, y);
-    let s = this.getTileColorAt(x, y+1);
-    let w = this.getTileColorAt(x-1, y);
-    if (n !== null && colorsMatch(n, base)) queue.push({x:x, y:y-1});
-    if (e !== null && colorsMatch(e, base)) queue.push({x:x+1, y:y});
-    if (s !== null && colorsMatch(s, base)) queue.push({x:x, y:y+1});
-    if (w !== null && colorsMatch(w, base)) queue.push({x:x-1, y:y});
-  };
-  return (false);
-};
+export function binaryFloodFill(x, y, base, color) {
+  let bounds = this.boundings;
+  let bx = bounds.x;
+  let by = bounds.y;
+  let gw = bounds.w;
+  let gh = bounds.h;
+  let isEmpty = base[3] === 0;
+  let gridl = gw * gh;
 
-/**
- * Fill enclosed tile area empty tile based
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color
- * @return {Boolean}
- */
-export function fillBucketEmptyTileBased(x, y, color) {
+  // allocate and do a basic fill onto the grid
+  let grid = new Uint8ClampedArray(gw * gh);
+  for (let ii = 0; ii < gridl; ++ii) {
+    let xx = ii % gw;
+    let yy = (ii / gw) | 0;
+    let color = this.getTileColorAt(bx + xx, by + yy);
+    if (isEmpty) {
+      if (color !== null) continue;
+    } else {
+      if (color === null) continue;
+      if (!(base[0] === color[0] && base[1] === color[1] && base[2] === color[2])) continue;
+    }
+    // fill tiles with 1's if we got a color match
+    grid[yy * gw + xx] = 1;
+  };
+
+  // trace connected tiles by [x,y]=2
   let queue = [{x, y}];
-  let batch = this.getLatestTileBatchOperation();
-  for (; queue.length > 0;) {
+  while (queue.length > 0) {
     let point = queue.pop();
     let x = point.x;
     let y = point.y;
+    let idx = y * gw + x;
     // detected infinite filling, skip and return true=^infinite
-    if (!this.pointInsideAbsoluteBoundings(x, y)) return (true);
-    // tile is free, so create one here
-    if (!this.getTileAt(x, y)) batch.createRawTileAt(x, y, color);
-    let n = this.getTileAt(x, y-1);
-    let e = this.getTileAt(x+1, y);
-    let s = this.getTileAt(x, y+1);
-    let w = this.getTileAt(x-1, y);
-    if (n === null) queue.push({x:x, y:y-1});
-    if (e === null) queue.push({x:x+1, y:y});
-    if (s === null) queue.push({x:x, y:y+1});
-    if (w === null) queue.push({x:x-1, y:y});
+    //if (!this.pointInsideAbsoluteBoundings(x, y)) return (true);
+    // set this grid tile to 2, if it got traced earlier as a color match
+    if (grid[idx] === 1) grid[idx] = 2;
+    let nn = (y-1) * gw + x;
+    let ee = y * gw + (x+1);
+    let ss = (y+1) * gw + x;
+    let ww = y * gw + (x-1);
+    if (nn < gridl && grid[nn] === 1) queue.push({x, y:y-1});
+    if (ee < gridl && grid[ee] === 1) queue.push({x:x+1, y});
+    if (ss < gridl && grid[ss] === 1) queue.push({x, y:y+1});
+    if (ww < gridl && grid[ww] === 1) queue.push({x:x-1, y});
   };
-  return (false);
+
+  // calculate crop factor
+  let px = [];
+  let py = [];
+  for (let ii = 0, length = grid.length; ii < length; ++ii) {
+    let xx = ii % gw;
+    let yy = (ii / gw) | 0;
+    if (grid[ii] !== 2) continue;
+    px.push(xx);
+    py.push(yy);
+  };
+  px.sort(sortAscending);
+  py.sort(sortAscending);
+  // calculate position
+  let sx = px[0] | 0;
+  let sy = py[0] | 0;
+  // calculate rectangle size
+  let ww = ((px[px.length - 1] - sx) | 0) + 1;
+  let hh = ((py[py.length - 1] - sy) | 0) + 1;
+
+  // convert cropped area into raw buffer
+  let buffer = createCanvasBuffer(ww, hh);
+  buffer.fillStyle = colorToRgbaString(color);
+  for (let ii = 0; ii < ww * hh; ++ii) {
+    let xx = ii % ww;
+    let yy = (ii / ww) | 0;
+    let gx = sx + xx;
+    let gy = sy + yy;
+    if (grid[gy * gw + gx] !== 2) continue;
+    buffer.fillRect(
+      xx, yy, 1, 1
+    );
+  };
+
+  // finally free things from memory
+  grid = null;
+  px = null; py = null;
+
+  return ({
+    x: sx,
+    y: sy,
+    width: ww,
+    height: hh,
+    buffer: buffer
+  });
 };
 
 /**

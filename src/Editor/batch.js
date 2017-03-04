@@ -63,8 +63,8 @@ export function finalizeBatchOperation() {
   this.enqueue({
     batch: batch
   });
-  this.updateGlobalBoundings();
   this.refreshBatches();
+  this.refreshStack();
   return;
 };
 

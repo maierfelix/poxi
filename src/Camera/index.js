@@ -64,7 +64,6 @@ class Camera {
     this.y += y - this.dy;
     this.dx = x;
     this.dy = y;
-    // smooth dragging
     this.instance.redraw();
   }
 

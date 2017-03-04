@@ -78,8 +78,8 @@ export function getBoundings() {
   py.sort(sortAscending);
   let idx = px.length-1;
   // calculate rectangle position
-  let xx = px[0]|0;
-  let yy = py[0]|0;
+  let xx = px[0] | 0;
+  let yy = py[0] | 0;
   // calculate rectangle size
   let ww = ((px[idx] - px[0]) | 0) + 1;
   let hh = ((py[idx] - py[0]) | 0) + 1;

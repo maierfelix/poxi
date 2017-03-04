@@ -83,7 +83,7 @@ Batch.prototype.getTileColorAt = function(x, y) {
   // use image data for raw buffers
   if (this.isRawBuffer) {
     let color = this.getRawColorAt(x, y);
-    if (color) return (color);
+    if (color !== null) return (color);
   }
   // return background color if batch is a filled background
   if (this.isBackground) return (this.bgcolor);
@@ -112,7 +112,7 @@ Batch.prototype.renderBuffer = function() {
       1|0, 1|0
     );
   };
-  this.buffer = new Texture(buffer, bx, by);
+  this.buffer = new Texture(buffer);
   this.isBuffered = true;
   this.updateBoundings();
 };

@@ -17,7 +17,7 @@ export function createRawBufferAt(ctx, x, y) {
   this.isBuffered = true;
   this.isRawBuffer = true;
   this.isBackground = false;
-  this.buffer = new Texture(ctx, x, y);
+  this.buffer = new Texture(ctx);
 };
 
 /**
