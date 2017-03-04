@@ -1,4 +1,5 @@
 import {
+  TILE_SIZE,
   UNSET_TILE_COLOR,
   BATCH_BUFFER_SIZE
 } from "../cfg";
@@ -9,9 +10,7 @@ import {
   createCanvasBuffer
 } from "../utils";
 
-import {
-  intersectRectangles
-} from "../math";
+import { intersectRectangles } from "../math";
 
 import Tile from "./Tile/index";
 import Batch from "./Batch/index";
@@ -43,7 +42,7 @@ export function refreshBatches() {
 export function finalizeBatchOperation() {
   let offset = this.batches.length - 1;
   let batch = this.batches[offset];
-  if (batch.exceedsBounds() && !batch.isRawBuffer) {
+  if (batch.exceedsBoundings() && !batch.isRawBuffer) {
     batch.renderBuffer();
   } else {
     // dont push batch into stack if batch is empty
@@ -260,4 +259,28 @@ export function updateGlobalBoundings() {
     bounds.w = info.w;
     bounds.h = info.h;
   }
+};
+
+/**
+ * Check if given batch is inside camera view
+ * @param {Batch} batch
+ * @return {Boolean}
+ */
+export function isBatchInsideView(batch) {
+  let camera = this.camera;
+  let scale = camera.s;
+  let cw = camera.width;
+  let ch = camera.height;
+  let cx = camera.x;
+  let cy = camera.y;
+  let w = (batch.width * TILE_SIZE) * scale;
+  let h = (batch.height * TILE_SIZE) * scale;
+  let x = ((batch.x * TILE_SIZE) * scale) + cx;
+  let y = ((batch.y * TILE_SIZE) * scale) + cy;
+  // backgrounds are always visible
+  if (batch.isBackground) return (true);
+  return (
+    (x + w >= 0 && x <= cw) &&
+    (y + h >= 0 && y <= ch)
+  );
 };

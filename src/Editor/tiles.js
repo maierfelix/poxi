@@ -264,22 +264,3 @@ export function getStackRelativeTileColorByMouseOffset(x, y) {
   let position = this.getRelativeOffset(x, y);
   return (this.getStackRelativeTileColorAt(position.x, position.y));
 };
-
-/**
- * Checks if given tile is inside camera view
- * @param {Tile} tile
- * @return {Boolean}
- */
-export function isTileInsideView(tile) {
-  let scale = this.camera.s;
-  let width = this.camera.width;
-  let height = this.camera.height;
-  let tilew = TILE_SIZE * scale;
-  let tileh = TILE_SIZE * scale;
-  let x = ((tile.x * TILE_SIZE) * scale) + this.camera.x;
-  let y = ((tile.y * TILE_SIZE) * scale) + this.camera.y;
-  return (
-    (x + tilew) >= 0 && (x - tilew) <= width &&
-    (y + tileh) >= 0 && (y - tileh) <= height
-  );
-};

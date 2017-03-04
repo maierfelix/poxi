@@ -88,6 +88,15 @@ export function alphaByteToRgbAlpha(a) {
 };
 
 /**
+ * Derivative of alphaByteToRgbAlpha
+ * @param {Number} a
+ * @return {Number}
+ */
+export function rgbAlphaToAlphaByte(a) {
+  return (Math.round((a / MAGIC_RGB_A_BYTE) * 10) / 10) | 0;
+};
+
+/**
  * @param {Array} color
  * @return {String}
  */

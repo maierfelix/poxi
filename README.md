@@ -21,18 +21,19 @@
 ### Introduction
 You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers **great** performance, an infinite grid playground as well as a wide range of fine grained api methods. I want the engine to have **outstanding performance** - it has to be a pleasure to work with it, so right now there is a lot focus on improving the performance.
 
+### Core features
  - Auto batch and buffer based drawing
  - Undo/Redo for all operations
  - Infinite grid in all directions
  - Import images // *Use drag n' drop in the demo*
 
-### Coming soon:
+### Coming soon
  - Layers
  - Animations
  - Eraser (Delete tiles)
  - Cropper (Crop out and move areas)
 
-### API:
+### API
   - drawImage (ctx, x, y)
   - fillRect (x, y, width, height, color)
   - strokeRect (x, y, width, height, color)

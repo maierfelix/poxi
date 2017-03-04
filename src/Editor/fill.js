@@ -1,6 +1,7 @@
 import {
   colorsMatch,
   isGhostColor,
+  colorToRgbaString,
   createCanvasBuffer
 } from "../utils";
 
@@ -14,14 +15,15 @@ export function fillBucket(x, y, color) {
   // TODO: add method to create temporary batches (e.g. insertRectangle by mouse)
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
-  this.refreshStack(); // clear future batches
+  // clear undone batches, since we dont need them anymore
+  this.refreshStack();
   let infinite = false;
   let sindex = this.sindex;
   // differentiate between empty and colored tiles
   let baseColor = this.getTileColorAt(x, y);
   this.pushTileBatchOperation();
   let batch = this.getLatestTileBatchOperation();
-  // try color based filling
+  // color based filling
   if (baseColor !== null) {
     infinite = this.fillBucketColorBased(x, y, baseColor, color);
   // empty tile based filling
@@ -30,53 +32,47 @@ export function fillBucket(x, y, color) {
   }
   // after filling, finally update the boundings to get the batch's size
   batch.updateBoundings();
-  // we filled tile based
-  // create a raw buffer of all tiles and finally free them
-  // make sure we only create a raw buffer if we got tiles
-  if (batch.tiles.length) {
-    let bx = batch.x;
-    let by = batch.y;
-    let buffer = createCanvasBuffer(batch.width, batch.height);
-    for (let ii = 0; ii < batch.tiles.length; ++ii) {
-      let tile = batch.tiles[ii];
-      let x = tile.x - batch.x;
-      let y = tile.y - batch.y;
-      buffer.fillStyle = tile.getColorAsRgbaString();
-      buffer.fillRect(
-        x, y,
-        1, 1
-      );
-    };
-    // now draw our staff as a rawbuffer
-    batch.createRawBufferAt(buffer, bx, by);
-    // free batch tiles to save memory
-    batch.tiles = [];
-  }
+  // make sure we only create a raw buffer if we got tiles to draw onto
+  if (batch.tiles.length) this.batchTilesToRawBuffer(batch, color);
+  // finalizing a batch also deletes the batch if we didn't change anything
   this.finalizeBatchOperation();
+  // infinity got detected, but some batches could be drawn before -> clear them
   if (infinite) {
     // remove our recent batch if it didn't got removed yet
-    // e.g. infinity got detected later and some batches got drawn
     if (sindex < this.sindex) {
       this.undo();
       this.refreshStack();
     }
+    // finally create and finalize a background fill batch
     this.fillBackground(color);
   }
 };
 
 /**
- * Sets a batch to background, appends the given bg color
- * as well as generates a camera size based buffered canvas
+ * We filled tile based, create raw buffer of all tiles and finally free them
+ * @param {Batch} batch
  * @param {Array} color
  */
-export function fillBackground(color) {
-  let isempty = isGhostColor(color);
-  this.pushTileBatchOperation();
-  let batch = this.getLatestTileBatchOperation();
-  batch.isBackground = true;
-  batch.renderBackground(this.camera.width, this.camera.height, color);
-  batch.updateBoundings();
-  this.finalizeBatchOperation();
+export function batchTilesToRawBuffer(batch, color) {
+  let bx = batch.x;
+  let by = batch.y;
+  let length = batch.tiles.length;
+  let buffer = createCanvasBuffer(batch.width, batch.height);
+  // take main fill color
+  buffer.fillStyle = colorToRgbaString(color);
+  for (let ii = 0; ii < length; ++ii) {
+    let tile = batch.tiles[ii];
+    let x = tile.x - batch.x;
+    let y = tile.y - batch.y;
+    buffer.fillRect(
+      x, y,
+      1, 1
+    );
+  };
+  // now draw our staff as a rawbuffer
+  batch.createRawBufferAt(buffer, bx, by);
+  // free batch tiles to save memory
+  batch.tiles = [];
 };
 
 /**
@@ -90,26 +86,25 @@ export function fillBackground(color) {
 export function fillBucketColorBased(x, y, base, color) {
   // clicked tile color and fill colors match, abort
   if (colorsMatch(color, base)) return (false);
-  let queue = [{x, y}];
+  let queue = [];
   let batch = this.getLatestTileBatchOperation();
+  queue.push({x, y});
   for (; queue.length > 0;) {
     let point = queue.pop();
     let x = point.x;
     let y = point.y;
-    if (!this.pointInsideAbsoluteBoundings(x, y)) {
-      // returning true gets handled as infinite fill detection
-      return (true);
-    }
+    // detected infinite filling, skip and return true=^infinite
+    if (!this.pointInsideAbsoluteBoundings(x, y)) return (true);
     // tile is free, so fill in one here
-    if (!batch.getTileColorAt(x, y)) batch.createRawTileAt(x, y, color);
-    let a = batch.getTileAt(x+1, y) || this.getStackRelativeTileColorAt(x+1, y);
-    let b = batch.getTileAt(x-1, y) || this.getStackRelativeTileColorAt(x-1, y);
-    let c = batch.getTileAt(x, y+1) || this.getStackRelativeTileColorAt(x, y+1);
-    let d = batch.getTileAt(x, y-1) || this.getStackRelativeTileColorAt(x, y-1);
-    if (a !== null && colorsMatch(a, base)) queue.push({x:x+1, y:y});
-    if (b !== null && colorsMatch(b, base)) queue.push({x:x-1, y:y});
-    if (c !== null && colorsMatch(c, base)) queue.push({x:x, y:y+1});
-    if (d !== null && colorsMatch(d, base)) queue.push({x:x, y:y-1});
+    if (batch.getTileColorAt(x, y) === null) batch.createRawTileAt(x, y, color);
+    let n = this.getTileColorAt(x, y-1);
+    let e = this.getTileColorAt(x+1, y);
+    let s = this.getTileColorAt(x, y+1);
+    let w = this.getTileColorAt(x-1, y);
+    if (n !== null && colorsMatch(n, base)) queue.push({x:x, y:y-1});
+    if (e !== null && colorsMatch(e, base)) queue.push({x:x+1, y:y});
+    if (s !== null && colorsMatch(s, base)) queue.push({x:x, y:y+1});
+    if (w !== null && colorsMatch(w, base)) queue.push({x:x-1, y:y});
   };
   return (false);
 };
@@ -128,20 +123,33 @@ export function fillBucketEmptyTileBased(x, y, color) {
     let point = queue.pop();
     let x = point.x;
     let y = point.y;
-    if (!this.pointInsideAbsoluteBoundings(x, y)) {
-      // returning true gets handled as infinite fill detection
-      return (true);
-    }
+    // detected infinite filling, skip and return true=^infinite
+    if (!this.pointInsideAbsoluteBoundings(x, y)) return (true);
     // tile is free, so create one here
-    if (!batch.getTileColorAt(x, y)) batch.createRawTileAt(x, y, color);
-    let a = batch.getTileAt(x+1, y) || this.getStackRelativeTileColorAt(x+1, y);
-    let b = batch.getTileAt(x-1, y) || this.getStackRelativeTileColorAt(x-1, y);
-    let c = batch.getTileAt(x, y+1) || this.getStackRelativeTileColorAt(x, y+1);
-    let d = batch.getTileAt(x, y-1) || this.getStackRelativeTileColorAt(x, y-1);
-    if (a === null) queue.push({x:x+1, y:y});
-    if (b === null) queue.push({x:x-1, y:y});
-    if (c === null) queue.push({x:x, y:y+1});
-    if (d === null) queue.push({x:x, y:y-1});
+    if (!this.getTileAt(x, y)) batch.createRawTileAt(x, y, color);
+    let n = this.getTileAt(x, y-1);
+    let e = this.getTileAt(x+1, y);
+    let s = this.getTileAt(x, y+1);
+    let w = this.getTileAt(x-1, y);
+    if (n === null) queue.push({x:x, y:y-1});
+    if (e === null) queue.push({x:x+1, y:y});
+    if (s === null) queue.push({x:x, y:y+1});
+    if (w === null) queue.push({x:x-1, y:y});
   };
   return (false);
+};
+
+/**
+ * Sets a batch to background, appends the given bg color
+ * and generates a camera width and height based buffered canvas
+ * @param {Array} color
+ */
+export function fillBackground(color) {
+  let isempty = isGhostColor(color);
+  this.pushTileBatchOperation();
+  let batch = this.getLatestTileBatchOperation();
+  batch.isBackground = true;
+  batch.renderBackground(this.camera.width, this.camera.height, color);
+  batch.updateBoundings();
+  this.finalizeBatchOperation();
 };

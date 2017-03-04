@@ -87,6 +87,7 @@ export function renderBatches() {
     let batch = batches[ii].batch;
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0) continue;
+    if (!this.editor.isBatchInsideView(batch)) continue;
     if (batch.isBackground) this.drawBackgroundBatch(batch);
     // draw batched buffer (faster, drawImage)
     else if (batch.isBuffered) this.drawBatchedBuffer(batch);
@@ -164,7 +165,6 @@ export function drawBatchedTiles(batch) {
   let tiles = batch.tiles;
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
-    if (!this.editor.isTileInsideView(tile)) continue;
     let x = ((cx + ((tile.x * TILE_SIZE) * scale))) | 0;
     let y = ((cy + ((tile.y * TILE_SIZE) * scale))) | 0;
     let color = tile.colors[tile.cindex];
@@ -172,7 +172,7 @@ export function drawBatchedTiles(batch) {
     let g = color[1];
     let b = color[2];
     let a = color[3];
-    ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+    ctx.fillStyle = tile.getColorAsRgbaString();
     ctx.fillRect(x, y, ww, hh);
   };
 };
@@ -188,14 +188,14 @@ export function drawBatchedBuffer(batch) {
   let by = batch.y * TILE_SIZE;
   let x = (cx + (bx * scale)) | 0;
   let y = (cy + (by * scale)) | 0;
-  let width = (batch.width * TILE_SIZE) | 0;
-  let height = (batch.height * TILE_SIZE) | 0;
+  let ww = (batch.width * TILE_SIZE) | 0;
+  let hh = (batch.height * TILE_SIZE) | 0;
   this.ctx.drawImage(
     batch.buffer.view,
     0, 0,
-    width, height,
+    ww, hh,
     x, y,
-    (width * TILE_SIZE * scale) | 0, (height * TILE_SIZE * scale) | 0
+    (ww * TILE_SIZE * scale) | 0, (hh * TILE_SIZE * scale) | 0
   );
 };
 
@@ -254,30 +254,23 @@ export function renderFPS() {
  * Background grid as transparency placeholder
  */
 export function generateBackground() {
-
   let size = 8;
-
   let cw = this.width;
   let ch = this.height;
-
   let buffer = createCanvasBuffer(cw, ch);
-
   let canvas = document.createElement("canvas");
   let ctx = canvas.getContext("2d");
-
+  this.bg = canvas;
   canvas.width = cw;
   canvas.height = ch;
-
-  this.bg = canvas;
-
   // dark rectangles
   ctx.fillStyle = "#1f1f1f";
   ctx.fillRect(0, 0, cw, ch);
-
   // bright rectangles
   ctx.fillStyle = "#212121";
   for (let yy = 0; yy < ch; yy += size*2) {
     for (let xx = 0; xx < cw; xx += size*2) {
+      // applied 2 times to increase saturation
       ctx.fillRect(xx, yy, size, size);
       ctx.fillRect(xx, yy, size, size);
     };
@@ -287,5 +280,4 @@ export function generateBackground() {
       ctx.fillRect(xx, yy, size, size);
     };
   };
-
 };

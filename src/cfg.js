@@ -1,7 +1,7 @@
 import { hashFromString } from "./utils";
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 0.25;
+export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 32;
 export const MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2
@@ -33,3 +33,6 @@ export const BATCH_BUFFER_SIZE = {
 };
 
 export const DRAW_HASH = hashFromString("draw");
+
+// Maximum allowed items inside stack
+export const STACK_LIMIT = 255;

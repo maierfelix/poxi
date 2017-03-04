@@ -15,7 +15,7 @@ class Texture {
     this.width = view.width;
     this.height = view.height;
     this.context = ctx;
-    this.tiles = [];
+    this.data = ctx.getImageData(0, 0, view.width, view.height).data;
   }
 };
 

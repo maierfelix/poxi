@@ -1,3 +1,5 @@
+import { STACK_LIMIT } from "../cfg";
+
 /**
  * @param {Object} op
  */
@@ -9,6 +11,10 @@ export function enqueue(op) {
   this.redo();
   this.undo();
   this.redo();
+  // free the stack if necessary
+  if (this.stack.length >= STACK_LIMIT / 4) {
+    //throw new Error("Stack overflow!");
+  }
 };
 
 /**
