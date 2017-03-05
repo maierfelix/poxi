@@ -1,17 +1,11 @@
 import {
   TILE_SIZE,
   MIN_SCALE,
-  MAX_SCALE,
   HIDE_GRID,
-  MAGIC_SCALE,
   GRID_LINE_WIDTH
 } from "./cfg";
 
-import {
-  createCanvasBuffer,
-  applyImageSmoothing
-} from "./utils";
-
+import { rgbaToHex } from "./utils";
 import { roundTo } from "./math";
 
 /**
@@ -21,9 +15,7 @@ import { roundTo } from "./math";
 export function resize(width, height) {
   if (width >= 0) this.width = width;
   if (height >= 0) this.height = height;
-  this.view.width = width;
-  this.view.height = height;
-  applyImageSmoothing(this.ctx, false);
+  this.renderer.resize(width, height);
   this.camera.resize(width, height);
   // re-generate our bg
   this.generateBackground();
@@ -34,50 +26,28 @@ export function resize(width, height) {
 };
 
 export function clear() {
-  this.ctx.clearRect(0, 0, this.width, this.height);
+  let stage = this.stage;
+  while (stage.children.length > 0) {
+    stage.removeChild(stage.children[0]);
+  };
 };
 
 export function render() {
   this.renderBackground();
   this.renderBatches();
   if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
-    this.renderGrid();
+    //this.renderGrid();
   }
-  this.renderStats();
+  this.drawHoveredTile();
+  this.drawActiveCursor();
+  //this.renderStats();
+  this.renderer.render(this.stage);
 };
 
 export function renderBackground() {
   let width = this.camera.width
   let height = this.camera.height;
-  this.ctx.drawImage(
-    this.bg,
-    0, 0,
-    width, height,
-    0, 0,
-    width, height
-  );
-};
-
-export function renderGrid() {
-  let ctx = this.ctx;
-  let size = (TILE_SIZE*this.camera.s)|0;
-  let cx = this.camera.x;
-  let cy = this.camera.y;
-  let cw = this.camera.width;
-  let ch = this.camera.height;
-  ctx.lineWidth = GRID_LINE_WIDTH;
-  ctx.strokeStyle = "rgba(51,51,51,0.75)";
-  ctx.beginPath();
-  for (let xx = (cx%size)|0; xx < cw; xx += size) {
-    ctx.moveTo(xx, 0);
-    ctx.lineTo(xx, ch);
-  };
-  for (let yy = (cy%size)|0; yy < ch; yy += size) {
-    ctx.moveTo(0, yy);
-    ctx.lineTo(cw, yy);
-  };
-  ctx.stroke();
-  ctx.closePath();
+  this.stage.addChild(this.bg);
 };
 
 export function renderBatches() {
@@ -99,8 +69,6 @@ export function renderBatches() {
     let length = this.editor.batches.length;
     if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
   }
-  this.drawHoveredTile();
-  this.drawActiveCursor();
 };
 
 /**
@@ -110,28 +78,20 @@ export function drawActiveCursor() {
   if (!this.cursor) return; // no cursor available
   let view = this.cursors[this.cursor];
   if (!view) return; // cursor got not loaded yet
-  let ctx = this.ctx;
   let drawing = this.editor.modes.draw;
   // cursor gets a bit transparent when user is drawing
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "exclusion";
-  }
+  view.alpha = drawing ? 0.5 : 1.0;
   let mx = this.editor.mx;
   let my = this.editor.my;
-  let w = 1 + (view.width / 6) | 0;
-  let h = 1 + (view.height / 6) | 0;
+  let w = 1 + (view.texture.width / 6) | 0;
+  let h = 1 + (view.texture.height / 6) | 0;
   let x = ((mx + (w / 2))) | 0;
   let y = ((my + (h / 2))) | 0;
-  ctx.drawImage(
-    view,
-    0, 0,
-    view.width, view.height,
-    x, y,
-    w, h
-  );
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "source-over";
-  }
+  view.position.x = x;
+  view.position.y = y;
+  view.scale.x = 0.2;
+  view.scale.y = 0.2;
+  this.stage.addChild(view);
   return;
 };
 
@@ -156,24 +116,27 @@ export function drawBackgroundBatch(batch) {
  * @param {Batch} batch
  */
 export function drawBatchedTiles(batch) {
-  let cx = this.camera.x;
-  let cy = this.camera.y;
-  let scale = this.camera.s;
-  let ww = (TILE_SIZE * scale) | 0;
-  let hh = (TILE_SIZE * scale) | 0;
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
+  let cs = roundTo(this.camera.s, 0.125);
+  let ww = (TILE_SIZE * cs) | 0;
+  let hh = (TILE_SIZE * cs) | 0;
   let ctx = this.ctx;
   let tiles = batch.tiles;
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
-    let x = ((cx + ((tile.x * TILE_SIZE) * scale))) | 0;
-    let y = ((cy + ((tile.y * TILE_SIZE) * scale))) | 0;
-    let color = tile.colors[tile.cindex];
+    let x = ((cx + ((tile.x * TILE_SIZE) * cs))) | 0;
+    let y = ((cy + ((tile.y * TILE_SIZE) * cs))) | 0;
+    let color = rgbaToHex(tile.colors[tile.cindex]);
     let r = color[0];
     let g = color[1];
     let b = color[2];
     let a = color[3];
-    ctx.fillStyle = tile.getColorAsRgbaString();
-    ctx.fillRect(x, y, ww, hh);
+    let graphics = new PIXI.Graphics();
+    graphics.beginFill(color, 1);
+    graphics.drawRect(x, y, ww, hh);
+    graphics.endFill();
+    this.stage.addChild(graphics);
   };
 };
 
@@ -183,39 +146,38 @@ export function drawBatchedTiles(batch) {
 export function drawBatchedBuffer(batch) {
   let cx = this.camera.x | 0;
   let cy = this.camera.y | 0;
-  let scale = this.camera.s;
+  let cs = roundTo(this.camera.s, 0.125);
   let bx = batch.x * TILE_SIZE;
   let by = batch.y * TILE_SIZE;
-  let x = (cx + (bx * scale)) | 0;
-  let y = (cy + (by * scale)) | 0;
-  let ww = (batch.width * TILE_SIZE) | 0;
-  let hh = (batch.height * TILE_SIZE) | 0;
-  this.ctx.drawImage(
-    batch.buffer.view,
-    0, 0,
-    ww, hh,
-    x, y,
-    (ww * TILE_SIZE * scale) | 0, (hh * TILE_SIZE * scale) | 0
-  );
+  let x = (cx + (bx * cs)) | 0;
+  let y = (cy + (by * cs)) | 0;
+  let ww = (TILE_SIZE * cs) | 0;
+  let hh = (TILE_SIZE * cs) | 0;
+  let entity = batch.buffer.texture;
+  entity.position.x = x;
+  entity.position.y = y;
+  entity.scale.x = ww;
+  entity.scale.y = hh;
+  this.stage.addChild(entity);
 };
 
 export function drawHoveredTile() {
-  let ctx = this.ctx;
-  let cx = this.camera.x;
-  let cy = this.camera.y;
-  let scale = this.camera.s;
-  let ww = (TILE_SIZE * scale) | 0;
-  let hh = (TILE_SIZE * scale) | 0;
-  // apply empty tile hover color
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
+  let cs = roundTo(this.camera.s, 0.125);
   let mx = this.editor.mx;
   let my = this.editor.my;
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x * TILE_SIZE;
   let ry = relative.y * TILE_SIZE;
-  let x = ((cx + GRID_LINE_WIDTH/2) + (rx * scale)) | 0;
-  let y = ((cy + GRID_LINE_WIDTH/2) + (ry * scale)) | 0;
-  ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
-  ctx.fillRect(x, y, ww, hh);
+  let x = (cx + (rx * cs)) | 0;
+  let y = (cy + (ry * cs)) | 0;
+  let entity = this.hover;
+  entity.position.x = x;
+  entity.position.y = y;
+  entity.scale.x = cs;
+  entity.scale.y = cs;
+  this.stage.addChild(entity);
 };
 
 export function renderStats() {
@@ -240,44 +202,4 @@ export function renderStats() {
     this.ctx.fillStyle = "#ffffff";
     this.ctx.fillText(`${r},${g},${b},${a}`, 20, 48);
   }
-  this.renderFPS();
-};
-
-export function renderFPS() {
-  let now = Date.now();
-  let delta = now - this.last;
-  this.last = now;
-  this.ctx.fillText((1e3 / delta) | 0, 16, 16);
-};
-
-/**
- * Background grid as transparency placeholder
- */
-export function generateBackground() {
-  let size = 8;
-  let cw = this.width;
-  let ch = this.height;
-  let buffer = createCanvasBuffer(cw, ch);
-  let canvas = document.createElement("canvas");
-  let ctx = canvas.getContext("2d");
-  this.bg = canvas;
-  canvas.width = cw;
-  canvas.height = ch;
-  // dark rectangles
-  ctx.fillStyle = "#1f1f1f";
-  ctx.fillRect(0, 0, cw, ch);
-  // bright rectangles
-  ctx.fillStyle = "#212121";
-  for (let yy = 0; yy < ch; yy += size*2) {
-    for (let xx = 0; xx < cw; xx += size*2) {
-      // applied 2 times to increase saturation
-      ctx.fillRect(xx, yy, size, size);
-      ctx.fillRect(xx, yy, size, size);
-    };
-  };
-  for (let yy = size; yy < ch; yy += size*2) {
-    for (let xx = size; xx < cw; xx += size*2) {
-      ctx.fillRect(xx, yy, size, size);
-    };
-  };
 };

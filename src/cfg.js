@@ -1,9 +1,9 @@
 import { hashFromString } from "./utils";
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 0.1;
-export const MAX_SCALE = 32;
 export const MAGIC_SCALE = .125;
+export const MIN_SCALE = 0.1;
+export const MAX_SCALE = 32 + MAGIC_SCALE;
 // trace ghost tiles by alpha=^2
 export const UNSET_TILE_COLOR = 2;
 export const BASE_TILE_COLOR = [0,0,0,0];
@@ -27,9 +27,9 @@ export const ZOOM_SPEED = 15;
  * exceeding limit throws an out of bounds error
  */
 export const BATCH_BUFFER_SIZE = {
-  MIN_W: 8,
-  MIN_H: 8,
-  MIN_L: 32
+  MIN_W: 1,
+  MIN_H: 1,
+  MIN_L: 1
 };
 
 export const DRAW_HASH = hashFromString("draw");

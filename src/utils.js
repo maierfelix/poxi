@@ -79,6 +79,27 @@ export function loadImage(path, resolve) {
 };
 
 /**
+ * @param {String} path
+ * @param {Function} resolve
+ */
+export function loadImageAsCanvas(path, resolve) {
+  loadImage(path, (img) => {
+    let width = img.width;
+    let height = img.height;
+    let buffer = createCanvasBuffer(width, height);
+    buffer.drawImage(
+      img,
+      0, 0,
+      width, height,
+      0, 0,
+      width, height
+    );
+    let view = buffer.canvas;
+    resolve(view);
+  });
+};
+
+/**
  * 0-255 => 0-1 with precision 1
  * @param {Number} a
  * @return {Number}
@@ -109,14 +130,29 @@ export function colorToRgbaString(color) {
 };
 
 /**
- * Hex to rgba
  * @param {String} hex
+ * @return {Array}
  */
 export function hexToRgba(hex) {
   let r = parseInt(hex.substring(1,3), 16);
   let g = parseInt(hex.substring(3,5), 16);
   let b = parseInt(hex.substring(5,7), 16);
   return ([r,g,b,1]);
+};
+
+/**
+ * @param {Array} rgba
+ * @return {Number}
+ */
+export function rgbaToHex(rgba) {
+  let r = rgba[0].toString(16);
+  let g = rgba[1].toString(16);
+  let b = rgba[2].toString(16);
+  return parseInt(
+    (r.length == 1 ? "0"+ r : r) +
+    (g.length == 1 ? "0"+ g : g) +
+    (b.length == 1 ? "0"+ b : b)
+  , 16);
 };
 
 /**

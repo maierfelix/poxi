@@ -11,10 +11,18 @@ import {
   loadImage,
   hashFromString,
   colorToRgbaString,
+  loadImageAsCanvas,
   createCanvasBuffer
 } from "./utils";
 
+// by this we make pixi available to our global scope
+import * as _PIXI from "../lib/pixi.min.js";
+
 import * as _render from "./render";
+import * as _generate from "./generate";
+
+// at very first we tell pixi to render in pixel art friendly mode
+PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
 
 /**
  * @class Poxi
@@ -25,9 +33,14 @@ class Poxi {
    * @param {Object} obj
    */
   constructor(obj) {
+    // cached things
     this.bg = null;
+    this.hover = null;
+    // renderer things
     this.ctx = null;
     this.view = null;
+    this.stage = null;
+    this.renderer = null;
     this.events = {};
     this.camera = new Camera(this);
     this.editor = new Editor(this);
@@ -41,7 +54,8 @@ class Poxi {
     };
     this.cursor = null;
     this.cursors = {};
-    this.createView();
+    this.createBuffers();
+    this.createPixiStage();
     // apply sizing
     if (obj.width >= 0 && obj.height >= 0) {
       this.resize(obj.width, obj.height);
@@ -54,12 +68,22 @@ class Poxi {
   init() {
     this.camera.scale(0);
     this.renderLoop();
+    this.redraw();
   }
 
-  createView() {
-    let buffer = createCanvasBuffer(this.width, this.height);
-    this.ctx = buffer;
-    this.view = buffer.canvas;
+  createBuffers() {
+    this.generateHoverTile();
+  }
+
+  createPixiStage() {
+    let renderer = PIXI.autoDetectRenderer(
+      this.width, this.height,
+      { antialias: false, transparent: true, resolution: 1 }
+    );
+    this.view = renderer.view;
+    this.renderer = renderer;
+    let stage = new PIXI.DisplayObjectContainer();
+    this.stage = stage;
   }
 
   renderLoop() {
@@ -119,8 +143,10 @@ class Poxi {
    * Simply redraws the stage synchronous
    */
   redraw() {
-    this.clear();
-    this.render();
+    if (this.events[DRAW_HASH] !== void 0) {
+      this.events[DRAW_HASH].fn();
+      this.frames++;
+    }
   }
 
   /**
@@ -189,8 +215,8 @@ class Poxi {
     // reserve property, so we have access
     // to it even before the image got loaded
     this.cursors[kind] = null;
-    loadImage(path, (img) => {
-      this.cursors[kind] = img;
+    loadImageAsCanvas(path, (canvas) => {
+      this.cursors[kind] = new PIXI.Sprite(PIXI.Texture.fromCanvas(canvas));
     });
   }
 
@@ -209,6 +235,7 @@ class Poxi {
 };
 
 inherit(Poxi, _render);
+inherit(Poxi, _generate);
 
 // apply to window
 if (typeof window !== "undefined") {
