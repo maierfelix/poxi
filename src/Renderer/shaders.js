@@ -27,9 +27,15 @@ export const SPRITE_FRAGMENT = `
   precision lowp float;
   uniform sampler2D uSampler;
   varying vec2 uv;
+  uniform int isRectangle;
+  uniform vec4 rectColor;
   void main(void) {
-    gl_FragColor = texture2D(uSampler, uv);
-    if (gl_FragColor.a < 0.1) discard;
+    if (isRectangle == 0) {
+      gl_FragColor = texture2D(uSampler, uv);
+      if (gl_FragColor.a < 0.1) discard;
+    } else {
+      gl_FragColor = rectColor;
+    }
   }
 `;
 

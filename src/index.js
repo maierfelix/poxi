@@ -27,9 +27,13 @@ class Poxi {
    * @param {Object} obj
    */
   constructor(obj) {
+    // buffers
     this.bg = null;
-    this.hover = null;
     this.view = null;
+    this.grid = null;
+    this.tile = null;
+    this.hover = null;
+    this.gridTexture = null;
     this.events = {};
     this.camera = new Camera(this);
     this.renderer = new Renderer(this);
@@ -125,6 +129,7 @@ class Poxi {
    * Simply redraws the stage synchronous
    */
   redraw() {
+    this.redrawGridBuffer();
     this.clear();
     this.render();
   }

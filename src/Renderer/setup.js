@@ -16,6 +16,7 @@ export function setup(view) {
   let gl = getWGLContext(this.view);
   gl.disable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
+  gl.disable(gl.BLEND);
   this.ctx = gl;
   this.buildShaders();
   this.resize();

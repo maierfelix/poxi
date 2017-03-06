@@ -63,7 +63,7 @@ export function finalizeBatchOperation() {
   }
   // Auto generate texture out of buffer
   if (batch.buffer !== null) {
-    batch.buffer.texture = this.instance.renderer.bufferTexture(String(uid()), batch.buffer.view);
+    batch.buffer.texture = this.instance.renderer.bufferTexture(String(uid()), batch.buffer.view, false);
   }
   this.enqueue({
     batch: batch

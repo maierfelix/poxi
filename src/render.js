@@ -25,12 +25,13 @@ export function resize(width, height) {
   this.view.height = height;
   this.camera.resize(width, height);
   // re-generate our bg
-  this.generateBackground();
+  this.bg = this.createBackgroundBuffer();
+  // generate our grid
+  this.grid = this.createGridBuffer();
   // re-generate background batches
   this.editor.resizeBackgroundBatches(width, height);
   this.renderer.resize();
-  this.clear();
-  this.render();
+  this.redraw();
 };
 
 export function clear() {
@@ -40,14 +41,12 @@ export function clear() {
 export function render() {
   this.renderer.ctx.useProgram(this.renderer.psprite);
   this.renderBackground();
-  this.renderBatches();
-  this.drawHoveredTile();
-  return;
   if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
     this.renderGrid();
   }
   this.renderBatches();
   this.drawHoveredTile();
+  return;
   this.drawActiveCursor();
   this.renderStats();
 };
@@ -63,25 +62,13 @@ export function renderBackground() {
 };
 
 export function renderGrid() {
-  let ctx = this.ctx;
-  let size = (TILE_SIZE*this.camera.s)|0;
-  let cx = this.camera.x | 0;
-  let cy = this.camera.y | 0;
-  let cw = this.camera.width;
-  let ch = this.camera.height;
-  ctx.lineWidth = GRID_LINE_WIDTH;
-  ctx.strokeStyle = "rgba(51,51,51,0.75)";
-  ctx.beginPath();
-  for (let xx = (cx%size)|0; xx < cw; xx += size) {
-    ctx.moveTo(xx, 0);
-    ctx.lineTo(xx, ch);
-  };
-  for (let yy = (cy%size)|0; yy < ch; yy += size) {
-    ctx.moveTo(0, yy);
-    ctx.lineTo(cw, yy);
-  };
-  ctx.stroke();
-  ctx.closePath();
+  let width = this.camera.width
+  let height = this.camera.height;
+  this.renderer.drawImage(
+    this.gridTexture,
+    0, 0,
+    width, height
+  );
 };
 
 export function renderBatches() {
@@ -92,50 +79,17 @@ export function renderBatches() {
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0) continue;
     if (!this.editor.isBatchInsideView(batch)) continue;
-    /*if (batch.isBackground) this.drawBackgroundBatch(batch);
+    if (batch.isBackground) this.drawBackgroundBatch(batch);
     // draw batched buffer (faster, drawImage)
     else if (batch.isBuffered) this.drawBatchedBuffer(batch);
     // draw batched tiles (slower, fillRect)
-    else this.drawBatchedTiles(batch);*/
-    if (batch.isBuffered) this.drawBatchedBuffer(batch);
+    else this.drawBatchedTiles(batch);
   };
   // draw currently drawn tiles
   if (this.editor.modes.draw) {
     let length = this.editor.batches.length;
     if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
   }
-};
-
-/**
- * @return {Void}
- */
-export function drawActiveCursor() {
-  if (!this.cursor) return; // no cursor available
-  let view = this.cursors[this.cursor];
-  if (!view) return; // cursor got not loaded yet
-  let ctx = this.ctx;
-  let drawing = this.editor.modes.draw;
-  // cursor gets a bit transparent when user is drawing
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "exclusion";
-  }
-  let mx = this.editor.mx;
-  let my = this.editor.my;
-  let w = 1 + (view.width / 6) | 0;
-  let h = 1 + (view.height / 6) | 0;
-  let x = ((mx + (w / 2))) | 0;
-  let y = ((my + (h / 2))) | 0;
-  ctx.drawImage(
-    view,
-    0, 0,
-    view.width, view.height,
-    x, y,
-    w, h
-  );
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "source-over";
-  }
-  return;
 };
 
 /**
@@ -207,6 +161,7 @@ export function drawHoveredTile() {
   // apply empty tile hover color
   let mx = this.editor.mx;
   let my = this.editor.my;
+  if (mx === -0 && my === -0) return;
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x * TILE_SIZE;
   let ry = relative.y * TILE_SIZE;
@@ -217,6 +172,39 @@ export function drawHoveredTile() {
     x, y,
     ww, hh
   );
+  return;
+};
+
+/**
+ * @return {Void}
+ */
+export function drawActiveCursor() {
+  if (!this.cursor) return; // no cursor available
+  let view = this.cursors[this.cursor];
+  if (!view) return; // cursor got not loaded yet
+  let ctx = this.ctx;
+  let drawing = this.editor.modes.draw;
+  // cursor gets a bit transparent when user is drawing
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "exclusion";
+  }
+  let mx = this.editor.mx;
+  let my = this.editor.my;
+  let w = 1 + (view.width / 6) | 0;
+  let h = 1 + (view.height / 6) | 0;
+  let x = ((mx + (w / 2))) | 0;
+  let y = ((my + (h / 2))) | 0;
+  ctx.drawImage(
+    view,
+    0, 0,
+    view.width, view.height,
+    x, y,
+    w, h
+  );
+  if (drawing === true) {
+    ctx.globalCompositeOperation = "source-over";
+  }
+  return;
 };
 
 export function renderStats() {

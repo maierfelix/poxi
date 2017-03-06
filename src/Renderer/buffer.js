@@ -2,17 +2,23 @@
  * Create texture buffer from canvas
  * @param {String} name
  * @param {HTMLCanvasElement} canvas
+ * @param {Boolean} linear
  * @return {WebGLTexture}
  */
-export function bufferTexture(name, canvas) {
-  let ctx = this.ctx;
-  let texture = ctx.createTexture();
-  ctx.bindTexture(ctx.TEXTURE_2D, texture);
-  ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, canvas);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE);
+export function bufferTexture(name, canvas, linear) {
+  let gl = this.ctx;
+  let texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+  if (linear === true) {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  } else {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  }
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   if (this.textures[name] === void 0) {
     this.textures[name] = texture;
   }
@@ -34,4 +40,14 @@ export function destroyTexture(texture) {
     txt = null;
     break;
   };
+};
+
+/**
+ * @param {WebGLTexture} texture
+ * @param {HTMLCanvasElement} canvas 
+ */
+export function updateTexture(texture, canvas) {
+  let gl = this.ctx;
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
 };

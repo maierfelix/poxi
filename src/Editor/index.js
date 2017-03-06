@@ -26,8 +26,8 @@ class Editor {
     };
     this.batches = [];
     // mouse position, negative to be hidden initially
-    this.mx = -1;
-    this.my = -1;
+    this.mx = -0;
+    this.my = -0;
     this._fillStyle = [255,255,255,1];
     this.camera = instance.camera;
     // stack related
