@@ -5,15 +5,24 @@
     <link href="./style.css" rel="stylesheet" />
   </head>
   <body>
+
+    <div id="menu" class="dropdown-content">
+      <div class="wrapper">
+        <input id="color" type="color" class="color" value="#ff0000"/>
+      </div>
+      <a tabindex="0" id="tiled" >Tiled</a>
+      <a tabindex="0" id="bucket" >Bucket</a>
+      <a tabindex="0" id="download" >Save</a>
+    </div>
+
     <input id="file" type="file" title=" " />
-    <input id="color" type="color" class="btn color" value="#ff0000"/>
-    <button id="download" class="btn">Download</button>
-    <button id="tiled" class="btn">Tiled</button>
-    <button id="bucket" class="btn">Bucket</button>
     <!--<button id="ellipse" class="btn">Ellipse</button>
     <button id="rectangle" class="btn">Rectangle</button>-->
     <script type="text/javascript" src="./keyboardjs.js"></script>
     <script type="text/javascript" src="../dist/poxi.js"></script>
     <script type="text/javascript" src="./main.js"></script>
+    <script>
+      (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
+    </script>
   </body>
 </html>

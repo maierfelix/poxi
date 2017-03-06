@@ -8,6 +8,7 @@ class Texture {
   constructor(buffer) {
     let view = buffer.canvas;
     this.view = view;
+    this.texture = null;
     this.context = buffer;
     this.data = buffer.getImageData(0, 0, view.width, view.height).data;
   }

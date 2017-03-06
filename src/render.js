@@ -23,36 +23,40 @@ export function resize(width, height) {
   if (height >= 0) this.height = height;
   this.view.width = width;
   this.view.height = height;
-  applyImageSmoothing(this.ctx, false);
   this.camera.resize(width, height);
   // re-generate our bg
   this.generateBackground();
   // re-generate background batches
   this.editor.resizeBackgroundBatches(width, height);
+  this.renderer.resize();
   this.clear();
   this.render();
 };
 
 export function clear() {
-  this.ctx.clearRect(0, 0, this.width, this.height);
+  this.renderer.clear();
 };
 
 export function render() {
+  this.renderer.ctx.useProgram(this.renderer.psprite);
   this.renderBackground();
   this.renderBatches();
+  this.drawHoveredTile();
+  return;
   if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
     this.renderGrid();
   }
+  this.renderBatches();
+  this.drawHoveredTile();
+  this.drawActiveCursor();
   this.renderStats();
 };
 
 export function renderBackground() {
   let width = this.camera.width
   let height = this.camera.height;
-  this.ctx.drawImage(
+  this.renderer.drawImage(
     this.bg,
-    0, 0,
-    width, height,
     0, 0,
     width, height
   );
@@ -61,8 +65,8 @@ export function renderBackground() {
 export function renderGrid() {
   let ctx = this.ctx;
   let size = (TILE_SIZE*this.camera.s)|0;
-  let cx = this.camera.x;
-  let cy = this.camera.y;
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
   let cw = this.camera.width;
   let ch = this.camera.height;
   ctx.lineWidth = GRID_LINE_WIDTH;
@@ -88,19 +92,18 @@ export function renderBatches() {
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0) continue;
     if (!this.editor.isBatchInsideView(batch)) continue;
-    if (batch.isBackground) this.drawBackgroundBatch(batch);
+    /*if (batch.isBackground) this.drawBackgroundBatch(batch);
     // draw batched buffer (faster, drawImage)
     else if (batch.isBuffered) this.drawBatchedBuffer(batch);
     // draw batched tiles (slower, fillRect)
-    else this.drawBatchedTiles(batch);
+    else this.drawBatchedTiles(batch);*/
+    if (batch.isBuffered) this.drawBatchedBuffer(batch);
   };
   // draw currently drawn tiles
   if (this.editor.modes.draw) {
     let length = this.editor.batches.length;
     if (length > 0) this.drawBatchedTiles(this.editor.batches[length - 1]);
   }
-  this.drawHoveredTile();
-  this.drawActiveCursor();
 };
 
 /**
@@ -143,10 +146,8 @@ export function drawBackgroundBatch(batch) {
   let buffer = batch.bgbuffer;
   let width = buffer.width | 0;
   let height = buffer.height | 0;
-  ctx.drawImage(
-    buffer,
-    0, 0,
-    width, height,
+  this.renderer.drawImage(
+    batch.buffer.texture,
     0, 0,
     width, height
   );
@@ -156,17 +157,17 @@ export function drawBackgroundBatch(batch) {
  * @param {Batch} batch
  */
 export function drawBatchedTiles(batch) {
-  let cx = this.camera.x;
-  let cy = this.camera.y;
-  let scale = this.camera.s;
-  let ww = (TILE_SIZE * scale) | 0;
-  let hh = (TILE_SIZE * scale) | 0;
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
+  let cs = roundTo(this.camera.s, MAGIC_SCALE);
+  let ww = (TILE_SIZE * cs) | 0;
+  let hh = (TILE_SIZE * cs) | 0;
   let ctx = this.ctx;
   let tiles = batch.tiles;
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
-    let x = ((cx + ((tile.x * TILE_SIZE) * scale))) | 0;
-    let y = ((cy + ((tile.y * TILE_SIZE) * scale))) | 0;
+    let x = ((cx + ((tile.x * TILE_SIZE) * cs))) | 0;
+    let y = ((cy + ((tile.y * TILE_SIZE) * cs))) | 0;
     let color = tile.colors[tile.cindex];
     let r = color[0];
     let g = color[1];
@@ -183,39 +184,39 @@ export function drawBatchedTiles(batch) {
 export function drawBatchedBuffer(batch) {
   let cx = this.camera.x | 0;
   let cy = this.camera.y | 0;
-  let scale = this.camera.s;
+  let cs = roundTo(this.camera.s, MAGIC_SCALE);
   let bx = batch.x * TILE_SIZE;
   let by = batch.y * TILE_SIZE;
-  let x = (cx + (bx * scale)) | 0;
-  let y = (cy + (by * scale)) | 0;
-  let ww = (batch.width * TILE_SIZE) | 0;
-  let hh = (batch.height * TILE_SIZE) | 0;
-  this.ctx.drawImage(
-    batch.buffer.view,
-    0, 0,
-    ww, hh,
+  let x = (cx + (bx * cs)) | 0;
+  let y = (cy + (by * cs)) | 0;
+  let ww = ((batch.width * TILE_SIZE) * cs) | 0;
+  let hh = ((batch.height * TILE_SIZE) * cs) | 0;
+  this.renderer.drawImage(
+    batch.buffer.texture,
     x, y,
-    (ww * TILE_SIZE * scale) | 0, (hh * TILE_SIZE * scale) | 0
+    ww, hh
   );
 };
 
 export function drawHoveredTile() {
-  let ctx = this.ctx;
-  let cx = this.camera.x;
-  let cy = this.camera.y;
-  let scale = this.camera.s;
-  let ww = (TILE_SIZE * scale) | 0;
-  let hh = (TILE_SIZE * scale) | 0;
+  let cx = this.camera.x | 0;
+  let cy = this.camera.y | 0;
+  let cs = roundTo(this.camera.s, MAGIC_SCALE);
+  let ww = (TILE_SIZE * cs) | 0;
+  let hh = (TILE_SIZE * cs) | 0;
   // apply empty tile hover color
   let mx = this.editor.mx;
   let my = this.editor.my;
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x * TILE_SIZE;
   let ry = relative.y * TILE_SIZE;
-  let x = ((cx + GRID_LINE_WIDTH/2) + (rx * scale)) | 0;
-  let y = ((cy + GRID_LINE_WIDTH/2) + (ry * scale)) | 0;
-  ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
-  ctx.fillRect(x, y, ww, hh);
+  let x = ((cx + GRID_LINE_WIDTH/2) + (rx * cs)) | 0;
+  let y = ((cy + GRID_LINE_WIDTH/2) + (ry * cs)) | 0;
+  this.renderer.drawImage(
+    this.hover,
+    x, y,
+    ww, hh
+  );
 };
 
 export function renderStats() {
@@ -248,36 +249,4 @@ export function renderFPS() {
   let delta = now - this.last;
   this.last = now;
   this.ctx.fillText((1e3 / delta) | 0, 16, 16);
-};
-
-/**
- * Background grid as transparency placeholder
- */
-export function generateBackground() {
-  let size = 8;
-  let cw = this.width;
-  let ch = this.height;
-  let buffer = createCanvasBuffer(cw, ch);
-  let canvas = document.createElement("canvas");
-  let ctx = canvas.getContext("2d");
-  this.bg = canvas;
-  canvas.width = cw;
-  canvas.height = ch;
-  // dark rectangles
-  ctx.fillStyle = "#1f1f1f";
-  ctx.fillRect(0, 0, cw, ch);
-  // bright rectangles
-  ctx.fillStyle = "#212121";
-  for (let yy = 0; yy < ch; yy += size*2) {
-    for (let xx = 0; xx < cw; xx += size*2) {
-      // applied 2 times to increase saturation
-      ctx.fillRect(xx, yy, size, size);
-      ctx.fillRect(xx, yy, size, size);
-    };
-  };
-  for (let yy = size; yy < ch; yy += size*2) {
-    for (let xx = size; xx < cw; xx += size*2) {
-      ctx.fillRect(xx, yy, size, size);
-    };
-  };
 };

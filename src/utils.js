@@ -1,4 +1,7 @@
-import { MAGIC_RGB_A_BYTE } from "./cfg";
+import {
+  WGL_SUPPORTED,
+  MAGIC_RGB_A_BYTE
+} from "./cfg";
 
 /**
  * @param {Class} cls
@@ -160,4 +163,26 @@ export function sortAscending(a, b) {
  */
 export function sortDescending(a, b) {
   return (b - a);
+};
+
+/**
+ * Creates and returns an webgl context
+ * @param {HTMLCanvasElement} canvas
+ * @return {WebGLRenderingContext}
+ */
+export function getWGLContext(canvas) {
+  if (!WGL_SUPPORTED) {
+    throw new Error("Your browser doesn't support WebGL.");
+  }
+  let opts = {
+    alpha: false,
+    antialias: false,
+    premultipliedAlpha: false,
+    stencil: false,
+    preserveDrawingBuffer: false
+  };
+  return (
+    canvas.getContext("webgl", opts) ||
+    canvas.getContext("experimental-webgl", opts)
+  );
 };

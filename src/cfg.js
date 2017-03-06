@@ -27,12 +27,25 @@ export const ZOOM_SPEED = 15;
  * exceeding limit throws an out of bounds error
  */
 export const BATCH_BUFFER_SIZE = {
-  MIN_W: 8,
-  MIN_H: 8,
-  MIN_L: 32
+  MIN_W: 1,
+  MIN_H: 1,
+  MIN_L: 1
 };
 
 export const DRAW_HASH = hashFromString("draw");
 
 // Maximum allowed items inside stack
 export const STACK_LIMIT = 255;
+
+// WebGL texture limit
+export const WGL_TEXTURE_LIMIT = 1e3;
+
+// WebGL supported or not
+export const WGL_SUPPORTED = (
+  typeof WebGLRenderingContext !== "undefined"
+);
+
+// WebAssembly supported or not
+export const WASM_SUPPORTED = (
+  typeof WebAssembly !== "undefined"
+);

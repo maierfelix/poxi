@@ -10,7 +10,10 @@
   <a href="https://github.com/maierfelix/poxi/blob/master/LICENSE">
     <img src="https://img.shields.io/badge/BSD2-License-blue.svg?style=flat-square" alt="BSD-2" />
   </a>
-  <a href="https://github.com/maierfelix/poxi/blob/master/LICENSE">
+  <a href="#">
+    <img src="https://img.shields.io/badge/Renderer-WebGL-red.svg?style=flat-square" alt="No dependencies" />
+  </a>
+  <a href="#">
     <img src="https://img.shields.io/badge/Dependencies-None-green.svg?style=flat-square" alt="No dependencies" />
   </a>
   <a href="https://nodejs.org/api/documentation.html#documentation_stability_index">

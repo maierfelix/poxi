@@ -5,6 +5,7 @@ import {
 } from "../cfg";
 
 import {
+  uid,
   colorsMatch,
   sortAscending,
   createCanvasBuffer
@@ -59,6 +60,10 @@ export function finalizeBatchOperation() {
         if (colorsMatch(batch.bgcolor, last.bgcolor)) return;
       }
     }
+  }
+  // Auto generate texture out of buffer
+  if (batch.buffer !== null) {
+    batch.buffer.texture = this.instance.renderer.bufferTexture(String(uid()), batch.buffer.view);
   }
   this.enqueue({
     batch: batch

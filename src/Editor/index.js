@@ -19,6 +19,7 @@ class Editor {
    */
   constructor(instance) {
     this.instance = instance;
+    this.renderer = instance.renderer;
     this.modes = {
       draw: false,
       selectAll: false

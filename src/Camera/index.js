@@ -38,6 +38,7 @@ class Camera {
     else if (this.s + x >= MAX_SCALE) this.s = MAX_SCALE;
     else this.s += x;
     this.s = roundTo(this.s, MAGIC_SCALE);
+    if (this.s >= (MAX_SCALE - 1) + .25) this.s = (MAX_SCALE - 1) + .25;
     this.x -= (this.lx) * (zoomScale(this.s) - zoomScale(oscale));
     this.y -= (this.ly) * (zoomScale(this.s) - zoomScale(oscale));
     this.instance.redraw();

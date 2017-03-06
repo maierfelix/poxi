@@ -1,6 +1,7 @@
+import Tile from "./Editor/Tile/index";
 import Camera from "./Camera/index";
 import Editor from "./Editor/index";
-import Tile from "./Editor/Tile/index";
+import Renderer from "./Renderer/index";
 
 import {
   DRAW_HASH
@@ -15,6 +16,7 @@ import {
 } from "./utils";
 
 import * as _render from "./render";
+import * as _generate from "./generate";
 
 /**
  * @class Poxi
@@ -26,10 +28,11 @@ class Poxi {
    */
   constructor(obj) {
     this.bg = null;
-    this.ctx = null;
+    this.hover = null;
     this.view = null;
     this.events = {};
     this.camera = new Camera(this);
+    this.renderer = new Renderer(this);
     this.editor = new Editor(this);
     // fps
     this.last = 0;
@@ -42,6 +45,7 @@ class Poxi {
     this.cursor = null;
     this.cursors = {};
     this.createView();
+    this.hover = this.generateHoveredTile();
     // apply sizing
     if (obj.width >= 0 && obj.height >= 0) {
       this.resize(obj.width, obj.height);
@@ -57,9 +61,11 @@ class Poxi {
   }
 
   createView() {
-    let buffer = createCanvasBuffer(this.width, this.height);
-    this.ctx = buffer;
-    this.view = buffer.canvas;
+    let canvas = document.createElement("canvas");
+    canvas.width = this.width;
+    canvas.height = this.height;
+    this.view = canvas;
+    this.renderer.setup(canvas);
   }
 
   renderLoop() {
@@ -209,6 +215,7 @@ class Poxi {
 };
 
 inherit(Poxi, _render);
+inherit(Poxi, _generate);
 
 // apply to window
 if (typeof window !== "undefined") {

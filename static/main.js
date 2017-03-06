@@ -26,6 +26,28 @@
     stage.editor.redo();
   });
 
+  // dropdown
+  let menuActive = false;
+  let closeActiveMenu = () => {
+    menu.style.display = "none";
+    menuActive = false;
+  };
+  (() => {
+    keyboardJS.bind("space", () => {
+      // close
+      if (menuActive) {
+        closeActiveMenu();
+        return;
+      }
+      menuActive = true;
+      let mx = window.mx;
+      let my = window.my;
+      menu.style.display = "block";
+      menu.style.left = mx + "px";
+      menu.style.top = my + "px";
+    });
+  })();
+
   stage.editor.strokeRect(0, 0, 12, 12, [45, 67, 154, 1]);
   stage.editor.fillBucket(2, 2, [64, 64, 48, 1]);
 
@@ -38,9 +60,9 @@
   window.addEventListener("mousemove", (e) => {
     let x = e.clientX;
     let y = e.clientY;
-    // used to place drag&drop image at mouse position
     window.mx = x;
     window.my = y;
+    if (menuActive) return;
     e.preventDefault();
     stage.editor.hover(x, y);
     // drag before drawing to stay in position (drag+draw)
@@ -63,6 +85,12 @@
   window.addEventListener("mousedown", (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (menuActive) {
+      if (e.target instanceof HTMLCanvasElement) {
+        closeActiveMenu();
+      }
+      else return;
+    }
     if (!(e.target instanceof HTMLCanvasElement)) return;
     // right key to drag
     if (e.which === 3) {
@@ -89,6 +117,7 @@
   window.addEventListener("mouseup", (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (menuActive) return;
     if (!(e.target instanceof HTMLCanvasElement)) return;
     // stop dragging
     if (e.which === 3) {
@@ -108,6 +137,11 @@
   window.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (menuActive) {
+      if (e.target instanceof HTMLCanvasElement) {
+        closeActiveMenu();
+      }
+    }
   });
 
   // chrome
@@ -117,6 +151,7 @@
 
   function onScroll(e) {
     e.preventDefault();
+    if (menuActive) return;
     let x = e.deltaY > 0 ? -1 : 1;
     stage.camera.click(e.clientX, e.clientY);
     stage.camera.scale(x);
@@ -125,12 +160,14 @@
   // color picker
   color.onchange = (e) => {
     stage.editor.fillStyle = color.value;
+    closeActiveMenu();
   };
   // auto set initial color
   stage.editor.fillStyle = color.value;
 
   // download button
   download.onclick = () => {
+    closeActiveMenu();
     let data = stage.exportAsDataUrl();
     window.open(data);
   };
@@ -151,11 +188,13 @@
     resetModes();
     modes.bucket = true;
     stage.activeCursor = "bucket";
+    closeActiveMenu();
   };
   tiled.onclick = () => {
     resetModes();
     modes.tiled = true;
     stage.activeCursor = "tiled";
+    closeActiveMenu();
   };
   /*rectangle.onclick = () => {
     resetModes();
