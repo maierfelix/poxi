@@ -22,12 +22,13 @@
 </div>
 
 ### Introduction
-You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers **great** performance, an infinite grid playground as well as a wide range of fine grained api methods. I want the engine to have **outstanding performance** - it has to be a pleasure to work with it, so right now there is a lot focus on improving the performance.
+You can either use Poxi as a pixel art editor or as a renderer for your games (see [API](https://github.com/maierfelix/poxi#api)). Poxi offers **great** performance and ships it's own WebGL renderer, an infinite grid playground as well as a wide range of fine grained api methods.
 
 ### Core features
- - Auto batch and buffer based drawing
+ - Smart batching
+ - WebGL based renderer
  - Undo/Redo for all operations
- - Infinite grid in all directions
+ - Infinite grid
  - Import images // *Use drag n' drop in the demo*
 
 ### Coming soon
@@ -47,6 +48,7 @@ You can either use Poxi as a pixel art editor or as a renderer for your games (s
   - applyPixelSmoothing (batch)
   - getRandomRgbaColors () => Array
   - exportAsDataUrl() => String
+  - getBatches(relative) => Array
 
 ### Contributing
 If you're interested in creating a **pixel art editor ui** for this project, then please write me a [mail](mailto:xilefmai@gmail.com) first.

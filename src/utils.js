@@ -100,6 +100,19 @@ export function rgbAlphaToAlphaByte(a) {
 };
 
 /**
+ * Convert rgba to rgba byte color
+ * @param {Array} rgba
+ * @return {Array}
+ */
+export function rgbaToBytes(rgba) {
+  let r = rgba[0] / 255;
+  let g = rgba[1] / 255;
+  let b = rgba[2] / 255;
+  let a = rgba[3];
+  return ([r, g, b, a]);
+};
+
+/**
  * @param {Array} color
  * @return {String}
  */
@@ -112,14 +125,31 @@ export function colorToRgbaString(color) {
 };
 
 /**
- * Hex to rgba
  * @param {String} hex
+ * @return {Array}
  */
 export function hexToRgba(hex) {
   let r = parseInt(hex.substring(1,3), 16);
   let g = parseInt(hex.substring(3,5), 16);
   let b = parseInt(hex.substring(5,7), 16);
   return ([r,g,b,1]);
+};
+
+/**
+ * @param {Array} rgba
+ * @return {String}
+ */
+export function rgbaToHex(rgba) {
+  let r = rgba[0];
+  let g = rgba[1];
+  let b = rgba[2];
+  let a = rgba[3];
+  return (
+    "#" +
+    ("0" + parseInt(r, 10).toString(16)).slice(-2) +
+    ("0" + parseInt(g, 10).toString(16)).slice(-2) +
+    ("0" + parseInt(b, 10).toString(16)).slice(-2)
+  );
 };
 
 /**

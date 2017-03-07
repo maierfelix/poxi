@@ -2,8 +2,6 @@ import { getWGLContext } from "../utils";
 import { WGL_TEXTURE_LIMIT } from "../cfg";
 
 import {
-  GRID_VERTEX,
-  GRID_FRAGMENT,
   SPRITE_VERTEX,
   SPRITE_FRAGMENT
 } from "./shaders";
@@ -19,37 +17,52 @@ export function setup(view) {
   gl.disable(gl.BLEND);
   this.ctx = gl;
   this.buildShaders();
+  this.empty = this.createEmptyTexture();
   this.resize();
 };
 
-/**
- * Build da shaders
- */
 export function buildShaders() {
   this.psprite = this.createSpriteProgram();
 };
 
+/**
+ * @return {WebGLTexture}
+ */
+export function createEmptyTexture() {
+  let gl = this.ctx;
+  let texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(
+    gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+    new Uint8Array([0, 0, 0, 0])
+  );
+  return (texture);
+};
+
+/**
+ * @return {WebGLProgram}
+ */
 export function createSpriteProgram() {
-  let ctx = this.ctx;
+  let gl = this.ctx;
   let size = WGL_TEXTURE_LIMIT;
-  let program = ctx.createProgram();
-  let vshader = ctx.createShader(ctx.VERTEX_SHADER);
-  let fshader = ctx.createShader(ctx.FRAGMENT_SHADER);
+  let program = gl.createProgram();
+  let vshader = gl.createShader(gl.VERTEX_SHADER);
+  let fshader = gl.createShader(gl.FRAGMENT_SHADER);
 
   this.compileShader(vshader, SPRITE_VERTEX);
   this.compileShader(fshader, SPRITE_FRAGMENT);
 
-  ctx.attachShader(program, vshader);
-  ctx.attachShader(program, fshader);
-  ctx.linkProgram(program);
+  gl.attachShader(program, vshader);
+  gl.attachShader(program, fshader);
+  gl.linkProgram(program);
 
   let buffers = this.buffers;
   let vertices = this.vertices;
   let idxs = vertices.idx = new Float32Array(size * 6);
   vertices.position = new Float32Array(size * 12);
 
-  buffers.idx = ctx.createBuffer();
-  buffers.position = ctx.createBuffer();
+  buffers.idx = gl.createBuffer();
+  buffers.position = gl.createBuffer();
   for (let ii = 0; ii < size; ii++) {
     idxs[6 * ii + 0] = 0;
     idxs[6 * ii + 1] = 1;
@@ -64,18 +77,18 @@ export function createSpriteProgram() {
 };
 
 export function compileShader(shader, shader_src) {
-  let ctx = this.ctx;
-  ctx.shaderSource(shader, shader_src);
-  ctx.compileShader(shader);
+  let gl = this.ctx;
+  gl.shaderSource(shader, shader_src);
+  gl.compileShader(shader);
 };
 
 export function setAttribute(program, buffer, name, size, values) {
-  let ctx = this.ctx;
-  let attribute = ctx.getAttribLocation(program, name);
-  ctx.enableVertexAttribArray(attribute);
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer);
+  let gl = this.ctx;
+  let attribute = gl.getAttribLocation(program, name);
+  gl.enableVertexAttribArray(attribute);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   if (values.length > 0) {
-    ctx.bufferData(ctx.ARRAY_BUFFER, values, ctx.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, values, gl.DYNAMIC_DRAW);
   }
-  ctx.vertexAttribPointer(attribute, size, ctx.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(attribute, size, gl.FLOAT, false, 0, 0);
 };

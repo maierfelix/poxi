@@ -7,6 +7,15 @@ export function clear() {
   gl.clear(gl.COLOR_BUFFER_BIT);
 };
 
+export function updateViewport() {
+  let gl = this.ctx;
+  let program = this.psprite;
+  gl.uniform2f(
+    gl.getUniformLocation(program, "uScale"),
+    this.width, this.height
+  );
+};
+
 /**
  * Draw a texture
  * @param {Texture} tex
@@ -24,10 +33,6 @@ export function drawImage(tex, dx, dy, dw, dh) {
   let gl = this.ctx;
   let program = this.psprite;
 
-  gl.uniform2f(
-    gl.getUniformLocation(program, "uScale"),
-    this.width, this.height
-  );
   gl.uniform2f(
     gl.getUniformLocation(program, "uObjScale"),
     dw, dh
@@ -52,31 +57,22 @@ export function drawImage(tex, dx, dy, dw, dh) {
  * @param {Number} dy
  * @param {Number} dw
  * @param {Number} dh
+ * @param {Array} color
  */
-export function drawRectangle(dx, dy, dw, dh) {
+export function drawRectangle(dx, dy, dw, dh, color) {
   dx = dx | 0;
   dy = dy | 0;
   dw = dw | 0;
   dh = dh | 0;
 
   let gl = this.ctx;
-  let buffers = this.buffers;
   let program = this.psprite;
 
-  gl.uniform2f(
-    gl.getUniformLocation(program, "uScale"),
-    this.width, this.height
-  );
   gl.uniform2f(
     gl.getUniformLocation(program, "uObjScale"),
     dw, dh
   );
-
-  gl.uniform1i(gl.getUniformLocation(program, "isRectangle"), 1);
-  gl.uniform4f(
-    gl.getUniformLocation(program, "rectColor"),
-    1, 0.5, 0, 1
-  );
+  gl.uniform1i(gl.getUniformLocation(program, "isRect"), 1);
 
   let pos = this.vertices.position;
   for (let ii = 0; ii < 6; ++ii) {
@@ -85,8 +81,14 @@ export function drawRectangle(dx, dy, dw, dh) {
   };
 
   gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, this.empty);
+  gl.uniform4f(
+    gl.getUniformLocation(program, "vColor"),
+    color[0], color[1], color[2], color[3]
+  );
   this.setAttribute(program, this.buffers.position, "aObjCen", 2, pos);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.uniform1i(gl.getUniformLocation(program, "isRect"), 0);
 
 };
 
@@ -94,9 +96,10 @@ export function drawRectangle(dx, dy, dw, dh) {
  * Resize
  */
 export function resize() {
+  let gl = this.ctx;
   let width = this.camera.width;
   let height = this.camera.height;
-  let gl = this.ctx;
+  let program = this.psprite;
   let view = this.view;
   this.width = width;
   this.height = height;

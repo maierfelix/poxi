@@ -4,12 +4,18 @@ import Editor from "./Editor/index";
 import Renderer from "./Renderer/index";
 
 import {
-  DRAW_HASH
+  MIN_SCALE,
+  HIDE_GRID,
+  DRAW_HASH,
+  DEFAULT_WIDTH,
+  DEFAULT_HEIGHT,
+  DEFAULT_GRID_HIDDEN
 } from "./cfg";
 
 import {
   inherit,
   loadImage,
+  rgbaToHex,
   hashFromString,
   colorToRgbaString,
   createCanvasBuffer
@@ -26,13 +32,12 @@ class Poxi {
   /**
    * @param {Object} obj
    */
-  constructor(obj) {
+  constructor(obj = {}) {
     // buffers
     this.bg = null;
     this.view = null;
     this.grid = null;
     this.tile = null;
-    this.hover = null;
     this.gridTexture = null;
     this.events = {};
     this.camera = new Camera(this);
@@ -46,17 +51,32 @@ class Poxi {
     this.states = {
       paused: true
     };
-    this.cursor = null;
-    this.cursors = {};
+    this.hideGrid = false;
     this.createView();
-    this.hover = this.generateHoveredTile();
-    // apply sizing
-    if (obj.width >= 0 && obj.height >= 0) {
-      this.resize(obj.width, obj.height);
-    } else {
-      this.resize(view.width, view.height);
-    }
+    this.applySettings(obj);
     this.init();
+  }
+
+  /**
+   * @param {Object} obj
+   */
+  applySettings(obj) {
+    let grid = !DEFAULT_GRID_HIDDEN;
+    let width = DEFAULT_WIDTH;
+    let height = DEFAULT_HEIGHT;
+    // apply sizing
+    if (obj.width >= 0) {
+      width = obj.width | 0;
+    }
+    if (obj.height >= 0) {
+      height = obj.height | 0;
+    }
+    // apply grid
+    if (obj.grid !== void 0) {
+      grid = !!obj.grid;
+    }
+    this.hideGrid = !grid;
+    this.resize(width, height);
   }
 
   init() {
@@ -95,6 +115,16 @@ class Poxi {
   }
 
   /**
+   * Is it necessary to show the grid
+   * @return {Boolean}
+   */
+  showGrid() {
+    return (
+      !this.hideGrid && this.camera.s > (MIN_SCALE + HIDE_GRID)
+    );
+  }
+
+  /**
    * Event emitter
    * @param {String} kind
    * @param {Function} fn
@@ -123,15 +153,6 @@ class Poxi {
     if (this.frames === 0 && hash === DRAW_HASH) {
       this.states.paused = false;
     }
-  }
-
-  /**
-   * Simply redraws the stage synchronous
-   */
-  redraw() {
-    this.redrawGridBuffer();
-    this.clear();
-    this.render();
   }
 
   /**
@@ -192,29 +213,34 @@ class Poxi {
   }
 
   /**
-   * @param {String} kind
-   * @param {String} path
+   * Returns given batches from the editor
+   * @param {Boolean} relative
+   * @return {Array}
    */
-  addCursor(kind, path) {
-    let cursor = this.cursor;
-    // reserve property, so we have access
-    // to it even before the image got loaded
-    this.cursors[kind] = null;
-    loadImage(path, (img) => {
-      this.cursors[kind] = img;
-    });
+  getBatches(relative = false) {
+    let data = [];
+    let sindex = this.editor.sindex;
+    let batches = this.editor.batches;
+    for (let ii = 0; ii < batches.length; ++ii) {
+      // only take stack relative batches
+      if (relative && sindex - ii < 0) continue;
+      data.push(batches[ii]);
+    };
+    return (data);
   }
 
   /**
-   * Set active cursor
-   * @param {String} kind
+   * Get given color at mouse position
+   * @param {Number} mx
+   * @param {Number} my
+   * @return {String}
    */
-  set activeCursor(kind) {
-    if (this.cursors[kind] !== void 0) {
-      this.cursor = kind;
-    } else {
-      this.cursor = null;
-    }
+  getColorAtMouseOffset(mx, my) {
+    let relative = this.editor.getRelativeOffset(mx, my);
+    let rx = relative.x;
+    let ry = relative.y;
+    let color = this.editor.getStackRelativeTileColorAt(rx, ry);
+    return (color ? rgbaToHex(color) : null);
   }
 
 };

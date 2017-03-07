@@ -27,40 +27,14 @@ export const SPRITE_FRAGMENT = `
   precision lowp float;
   uniform sampler2D uSampler;
   varying vec2 uv;
-  uniform int isRectangle;
-  uniform vec4 rectColor;
+  uniform int isRect;
+  uniform vec4 vColor;
   void main(void) {
-    if (isRectangle == 0) {
+    if (isRect == 0) {
       gl_FragColor = texture2D(uSampler, uv);
-      if (gl_FragColor.a < 0.1) discard;
     } else {
-      gl_FragColor = rectColor;
+      gl_FragColor = vColor + texture2D(uSampler, uv);
     }
-  }
-`;
-
-export const GRID_VERTEX = `
-  precision lowp float;
-  attribute vec2 a_position;
-  void main(void) {
-    vec2 zeroToOne = a_position;
-    vec2 zeroToTwo = zeroToOne * 2.0;
-    vec2 clipSpace = zeroToTwo - 1.0;
-    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-  }
-`;
-
-export const GRID_FRAGMENT = `
-  precision lowp float;
-  uniform float uScale;
-  void main(void) {
-    float m = 8.0 * uScale;
-    vec3 c = vec3(1.0, 1.0, 1.0);
-    if (mod(gl_FragCoord.x, m) < 1.0 || mod(gl_FragCoord.y, m) < 1.0) {
-      float g = 0.8;
-      c = vec3(g, g, g);
-    }
-    gl_FragColor = vec4(c, 1.0);
-    if (gl_FragColor.r == 1.0) discard;
+    if (gl_FragColor.a < 0.1) discard;
   }
 `;

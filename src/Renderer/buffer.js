@@ -22,6 +22,7 @@ export function bufferTexture(name, canvas, linear) {
   if (this.textures[name] === void 0) {
     this.textures[name] = texture;
   }
+  gl.bindTexture(gl.TEXTURE_2D, null);
   return (this.textures[name]);
 };
 

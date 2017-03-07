@@ -34,21 +34,26 @@ export function resize(width, height) {
   this.redraw();
 };
 
+export function redraw() {
+  if (this.showGrid()) {
+    this.redrawGridBuffer();
+  }
+  this.clear();
+  this.render();
+};
+
 export function clear() {
   this.renderer.clear();
 };
 
 export function render() {
   this.renderer.ctx.useProgram(this.renderer.psprite);
+  this.renderer.updateViewport();
   this.renderBackground();
-  if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
-    this.renderGrid();
-  }
+  if (this.showGrid()) this.renderGrid();
   this.renderBatches();
   this.drawHoveredTile();
-  return;
-  this.drawActiveCursor();
-  this.renderStats();
+  //this.renderStats();
 };
 
 export function renderBackground() {
@@ -116,7 +121,6 @@ export function drawBatchedTiles(batch) {
   let cs = roundTo(this.camera.s, MAGIC_SCALE);
   let ww = (TILE_SIZE * cs) | 0;
   let hh = (TILE_SIZE * cs) | 0;
-  let ctx = this.ctx;
   let tiles = batch.tiles;
   for (let jj = 0; jj < tiles.length; ++jj) {
     let tile = tiles[jj];
@@ -127,8 +131,7 @@ export function drawBatchedTiles(batch) {
     let g = color[1];
     let b = color[2];
     let a = color[3];
-    ctx.fillStyle = tile.getColorAsRgbaString();
-    ctx.fillRect(x, y, ww, hh);
+    this.renderer.drawRectangle(x, y, ww, hh, tile.getColorAsRgbaBytes());
   };
 };
 
@@ -161,50 +164,18 @@ export function drawHoveredTile() {
   // apply empty tile hover color
   let mx = this.editor.mx;
   let my = this.editor.my;
-  if (mx === -0 && my === -0) return;
   let relative = this.editor.getRelativeOffset(mx, my);
   let rx = relative.x * TILE_SIZE;
   let ry = relative.y * TILE_SIZE;
   let x = ((cx + GRID_LINE_WIDTH/2) + (rx * cs)) | 0;
   let y = ((cy + GRID_LINE_WIDTH/2) + (ry * cs)) | 0;
-  this.renderer.drawImage(
-    this.hover,
-    x, y,
-    ww, hh
-  );
-  return;
-};
-
-/**
- * @return {Void}
- */
-export function drawActiveCursor() {
-  if (!this.cursor) return; // no cursor available
-  let view = this.cursors[this.cursor];
-  if (!view) return; // cursor got not loaded yet
-  let ctx = this.ctx;
-  let drawing = this.editor.modes.draw;
-  // cursor gets a bit transparent when user is drawing
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "exclusion";
+  if (mx !== -0 && my !== -0) {
+    this.renderer.drawRectangle(
+      x, y,
+      ww, hh,
+      [255, 255, 255, 0.2]
+    );
   }
-  let mx = this.editor.mx;
-  let my = this.editor.my;
-  let w = 1 + (view.width / 6) | 0;
-  let h = 1 + (view.height / 6) | 0;
-  let x = ((mx + (w / 2))) | 0;
-  let y = ((my + (h / 2))) | 0;
-  ctx.drawImage(
-    view,
-    0, 0,
-    view.width, view.height,
-    x, y,
-    w, h
-  );
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "source-over";
-  }
-  return;
 };
 
 export function renderStats() {

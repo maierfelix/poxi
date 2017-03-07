@@ -17,6 +17,8 @@ class WGLRenderer {
     this.view = null;
     // Wgl context
     this.ctx = null;
+    // empty texture
+    this.empty = null;
     // Clear colors
     this.colors = [0, 0, 0, 1];
     // View sizes

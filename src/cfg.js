@@ -1,5 +1,11 @@
 import { hashFromString } from "./utils";
 
+// default view size
+export const DEFAULT_WIDTH = 480;
+export const DEFAULT_HEIGHT = 320;
+// default grid hidden or not
+export const DEFAULT_GRID_HIDDEN = false;
+
 export const TILE_SIZE = 8;
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 32;
@@ -15,7 +21,7 @@ export const MAX_SAFE_INTEGER = (2 ** 31) - 1;
 export const MAGIC_RGB_A_BYTE = 0.00392;
 
 // factor when to hide the grid
-export const HIDE_GRID = 0.0;
+export const HIDE_GRID = 0.5;
 export const GRID_LINE_WIDTH = 0.25;
 
 // how fast we can scale with our mouse wheel

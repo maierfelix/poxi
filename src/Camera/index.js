@@ -18,7 +18,7 @@ class Camera {
   constructor(instance) {
     this.x = 0;
     this.y = 0;
-    this.s = MIN_SCALE + 6;
+    this.s = MIN_SCALE + 1.0;
     this.dx = 0;
     this.dy = 0;
     this.lx = 0;

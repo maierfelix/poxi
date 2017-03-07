@@ -7,16 +7,6 @@ import {
 import { createCanvasBuffer } from "./utils";
 import { roundTo } from "./math";
 
-export function generateHoveredTile() {
-  let ww = TILE_SIZE;
-  let hh = TILE_SIZE;
-  let buffer = createCanvasBuffer(ww, hh);
-  buffer.fillStyle = `rgba(255, 255, 255, 0.2)`;
-  buffer.fillRect(0, 0, ww, hh);
-  let texture = this.renderer.bufferTexture("hover", buffer.canvas, false);
-  return (texture);
-};
-
 /**
  * @return {CanvasRenderingContext2D}
  */
