@@ -11,11 +11,9 @@
     stage.render();
   });
 
-  stage.addCursor("tiled", "./assets/img/cursor.png");
-  stage.addCursor("bucket", "./assets/img/bucket.png");
-
   stage.camera.x = (window.innerWidth / 2) | 0;
   stage.camera.y = (window.innerHeight / 2) | 0;
+  stage.camera.scale(6); // zoom a bit
 
   document.body.appendChild(stage.view); // push view into body
 
@@ -63,6 +61,7 @@
     window.mx = x;
     window.my = y;
     if (menuActive) return;
+    if (!(e.target instanceof HTMLCanvasElement)) return;
     e.preventDefault();
     stage.editor.hover(x, y);
     // drag before drawing to stay in position (drag+draw)
@@ -92,6 +91,7 @@
       else return;
     }
     if (!(e.target instanceof HTMLCanvasElement)) return;
+    cursors.style.opacity = 0.5;
     // right key to drag
     if (e.which === 3) {
       rpressed = true;
@@ -112,6 +112,10 @@
         rectY = e.clientY;
         modes.rectangleStart = true;
       }
+      else if (modes.pipette) {
+        let color = stage.getColorAtMouseOffset(e.clientX, e.clientY);
+        if (color !== null) colorChange({value:color});
+      }
     }
   });
   window.addEventListener("mouseup", (e) => {
@@ -119,6 +123,7 @@
     e.stopPropagation();
     if (menuActive) return;
     if (!(e.target instanceof HTMLCanvasElement)) return;
+    cursors.style.opacity = 0.75;
     // stop dragging
     if (e.which === 3) {
       rpressed = false;
@@ -131,6 +136,11 @@
       }
       else if (modes.rectangle) {
         modes.rectangleStart = false;
+      }
+      else if (modes.pipette) {
+        resetModes();
+        modes[lastMode] = true;
+        setActiveCursor(lastMode);
       }
     }
   });
@@ -157,12 +167,26 @@
     stage.camera.scale(x);
   };
 
-  // color picker
-  color.onchange = (e) => {
-    stage.editor.fillStyle = color.value;
+  let mouseIsOut = false;
+  let onMouseOut = () => {
+    stage.editor.mx = -0;
+    stage.editor.my = -0;
+    mouseIsOut = true;
+  };
+
+  // handle mouse outside window
+  stage.view.addEventListener("mouseout", onMouseOut);
+  stage.view.addEventListener("mouseleave", onMouseOut);
+
+  let colorChange = (e) => {
+    stage.editor.fillStyle = e.value;
+    color_view.style.background = e.value;
     closeActiveMenu();
   };
+  // color picker
+  color.onchange = (e) => colorChange(color);
   // auto set initial color
+  colorChange({ value: color.value });
   stage.editor.fillStyle = color.value;
 
   // download button
@@ -180,6 +204,7 @@
     ellipse: false,
     ellipseStart: false
   };
+  let lastMode = "tiled";
   let rectX = 0;
   let rectY = 0;
 
@@ -187,13 +212,22 @@
   bucket.onclick = () => {
     resetModes();
     modes.bucket = true;
-    stage.activeCursor = "bucket";
+    setActiveCursor("bucket");
     closeActiveMenu();
   };
   tiled.onclick = () => {
     resetModes();
     modes.tiled = true;
-    stage.activeCursor = "tiled";
+    setActiveCursor("tiled");
+    closeActiveMenu();
+  };
+  pipette.onclick = () => {
+    // save last mode
+    let mode = getActiveMode();
+    if (mode !== "pipette") lastMode = mode;
+    resetModes();
+    modes.pipette = true;
+    setActiveCursor("pipette");
     closeActiveMenu();
   };
   /*rectangle.onclick = () => {
@@ -204,14 +238,36 @@
     resetModes();
     modes.ellipse = true;
   };*/
-  modes.tiled = true;
-  stage.activeCursor = "tiled";
 
   let resetModes = () => {
     for (let key in modes) {
       modes[key] = false;
     };
   };
+  let getActiveMode = () => {
+    for (let key in modes) {
+      if (modes[key]) return (key);
+    };
+  };
+
+  let setActiveCursor = (kind) => {
+    let el = document.querySelector("#c" + kind);
+    let children = cursors.children;
+    for (let key in children) {
+      if (children[key] instanceof HTMLElement) {
+        children[key].style.display = "none";
+      }
+    };
+    el.style.display = "block";
+  };
+  window.addEventListener("mousemove", (e) => {
+    let el = document.querySelector("#c" + getActiveMode());
+    if (!el) return;
+    el.style.left = e.clientX + 10 + "px";
+    el.style.top = e.clientY + 10 + "px";
+  });
+  modes.tiled = true;
+  setActiveCursor("tiled");
 
   // ## drag&drop images
   file.onclick = (e) => { e.preventDefault(); };

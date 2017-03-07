@@ -71,16 +71,7 @@ function applyImageSmoothing(ctx, state) {
  * @param {String} path
  * @param {Function} resolve
  */
-function loadImage(path, resolve) {
-  var img = new Image();
-  img.addEventListener("load", function () {
-    resolve(img);
-  });
-  img.addEventListener("error", function () {
-    throw new Error("Failed to load image ressource " + path);
-  });
-  img.src = path;
-}
+
 
 /**
  * 0-255 => 0-1 with precision 1
@@ -99,6 +90,19 @@ function alphaByteToRgbAlpha(a) {
 
 
 /**
+ * Convert rgba to rgba byte color
+ * @param {Array} rgba
+ * @return {Array}
+ */
+function rgbaToBytes(rgba) {
+  var r = rgba[0] / 255;
+  var g = rgba[1] / 255;
+  var b = rgba[2] / 255;
+  var a = rgba[3];
+  return ([r, g, b, a]);
+}
+
+/**
  * @param {Array} color
  * @return {String}
  */
@@ -111,14 +115,31 @@ function colorToRgbaString(color) {
 }
 
 /**
- * Hex to rgba
  * @param {String} hex
+ * @return {Array}
  */
 function hexToRgba(hex) {
   var r = parseInt(hex.substring(1,3), 16);
   var g = parseInt(hex.substring(3,5), 16);
   var b = parseInt(hex.substring(5,7), 16);
   return ([r,g,b,1]);
+}
+
+/**
+ * @param {Array} rgba
+ * @return {String}
+ */
+function rgbaToHex(rgba) {
+  var r = rgba[0];
+  var g = rgba[1];
+  var b = rgba[2];
+  var a = rgba[3];
+  return (
+    "#" +
+    ("0" + parseInt(r, 10).toString(16)).slice(-2) +
+    ("0" + parseInt(g, 10).toString(16)).slice(-2) +
+    ("0" + parseInt(b, 10).toString(16)).slice(-2)
+  );
 }
 
 /**
@@ -184,6 +205,12 @@ function getWGLContext(canvas) {
   );
 }
 
+// default view size
+var DEFAULT_WIDTH = 480;
+var DEFAULT_HEIGHT = 320;
+// default grid hidden or not
+var DEFAULT_GRID_HIDDEN = false;
+
 var TILE_SIZE = 8;
 var MIN_SCALE = 0.1;
 var MAX_SCALE = 32;
@@ -199,7 +226,7 @@ var MAX_SAFE_INTEGER = (Math.pow( 2, 31 )) - 1;
 var MAGIC_RGB_A_BYTE = 0.00392;
 
 // factor when to hide the grid
-var HIDE_GRID = 0.0;
+var HIDE_GRID = 0.5;
 var GRID_LINE_WIDTH = 0.25;
 
 // how fast we can scale with our mouse wheel
@@ -241,21 +268,29 @@ var Tile = function Tile() {
   this.cindex = 0;
   this.colors = [BASE_TILE_COLOR];
 };
+
 /**
  * @param {Array} color
  * @return {Boolean}
  */
-Tile.prototype.colorMatchesWithTile = function colorMatchesWithTile (color) {
+Tile.prototype.colorMatchesWithTile = function(color) {
   return (
     colorsMatch(this.colors[this.cindex], color)
   );
 };
+
 /**
- * @param {Number} cindex
+ * @return {Array}
+ */
+Tile.prototype.getColorAsRgbaBytes = function() {
+  return (rgbaToBytes(this.colors[this.cindex]));
+};
+
+/**
  * @return {String}
  */
-Tile.prototype.getColorAsRgbaString = function getColorAsRgbaString (cindex) {
-  var c = this.colors[cindex || 0];
+Tile.prototype.getColorAsRgbaString = function() {
+  var c = this.colors[this.cindex];
   var r = c[0];
   var g = c[1];
   var b = c[2];
@@ -312,7 +347,7 @@ function intersectRectangles(x1, y1, w1, h1, x2, y2, w2, h2) {
 var Camera = function Camera(instance) {
   this.x = 0;
   this.y = 0;
-  this.s = MIN_SCALE + 6;
+  this.s = MIN_SCALE + 1.0;
   this.dx = 0;
   this.dy = 0;
   this.lx = 0;
@@ -1290,7 +1325,7 @@ function finalizeBatchOperation() {
   }
   // Auto generate texture out of buffer
   if (batch.buffer !== null) {
-    batch.buffer.texture = this.instance.renderer.bufferTexture(String(uid()), batch.buffer.view);
+    batch.buffer.texture = this.instance.renderer.bufferTexture(String(uid()), batch.buffer.view, false);
   }
   this.enqueue({
     batch: batch
@@ -1749,8 +1784,8 @@ var Editor = function Editor(instance) {
   };
   this.batches = [];
   // mouse position, negative to be hidden initially
-  this.mx = -1;
-  this.my = -1;
+  this.mx = -0;
+  this.my = -0;
   this._fillStyle = [255,255,255,1];
   this.camera = instance.camera;
   // stack related
@@ -1761,18 +1796,18 @@ var Editor = function Editor(instance) {
   };
 };
 
-var prototypeAccessors$1 = { fillStyle: {} };
+var prototypeAccessors = { fillStyle: {} };
 
 /**
  * @return {Array}
  */
-prototypeAccessors$1.fillStyle.get = function () {
+prototypeAccessors.fillStyle.get = function () {
   return (this._fillStyle);
 };
 /**
  * @param {*} value
  */
-prototypeAccessors$1.fillStyle.set = function (value) {
+prototypeAccessors.fillStyle.set = function (value) {
   if (typeof value === "string") {
     this._fillStyle = hexToRgba(value);
   }
@@ -1793,7 +1828,7 @@ Editor.prototype.offsetExceedsIntegerLimit = function offsetExceedsIntegerLimit 
   );
 };
 
-Object.defineProperties( Editor.prototype, prototypeAccessors$1 );
+Object.defineProperties( Editor.prototype, prototypeAccessors );
 
 inherit(Editor, _fill);
 inherit(Editor, _stack);
@@ -1811,8 +1846,17 @@ function clear() {
   gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
+function updateViewport() {
+  var gl = this.ctx;
+  var program = this.psprite;
+  gl.uniform2f(
+    gl.getUniformLocation(program, "uScale"),
+    this.width, this.height
+  );
+}
+
 /**
- * Batch draw a texture
+ * Draw a texture
  * @param {Texture} tex
  * @param {Number} dx
  * @param {Number} dy
@@ -1820,20 +1864,13 @@ function clear() {
  * @param {Number} dh
  */
 function drawImage$1(tex, dx, dy, dw, dh) {
-
   dx = dx | 0;
   dy = dy | 0;
   dw = dw | 0;
   dh = dh | 0;
 
   var gl = this.ctx;
-  var buffers = this.buffers;
   var program = this.psprite;
-
-  gl.uniform2f(
-    gl.getUniformLocation(program, "uScale"),
-    this.width, this.height
-  );
 
   gl.uniform2f(
     gl.getUniformLocation(program, "uObjScale"),
@@ -1841,7 +1878,6 @@ function drawImage$1(tex, dx, dy, dw, dh) {
   );
 
   var pos = this.vertices.position;
-
   for (var ii = 0; ii < 6; ++ii) {
     pos[2 * ii + 0] = dx + (dw / 2);
     pos[2 * ii + 1] = dy + (dh / 2);
@@ -1849,10 +1885,49 @@ function drawImage$1(tex, dx, dy, dw, dh) {
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, tex);
-
-  this.setAttribute(program, buffers.position, "aObjCen", 2, pos);
-
+  this.setAttribute(program, this.buffers.position, "aObjCen", 2, pos);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+}
+
+/**
+ * Draw a rectangle
+ * @param {Number} dx
+ * @param {Number} dy
+ * @param {Number} dw
+ * @param {Number} dh
+ * @param {Array} color
+ */
+function drawRectangle(dx, dy, dw, dh, color) {
+  dx = dx | 0;
+  dy = dy | 0;
+  dw = dw | 0;
+  dh = dh | 0;
+
+  var gl = this.ctx;
+  var program = this.psprite;
+
+  gl.uniform2f(
+    gl.getUniformLocation(program, "uObjScale"),
+    dw, dh
+  );
+  gl.uniform1i(gl.getUniformLocation(program, "isRect"), 1);
+
+  var pos = this.vertices.position;
+  for (var ii = 0; ii < 6; ++ii) {
+    pos[2 * ii + 0] = dx + (dw / 2);
+    pos[2 * ii + 1] = dy + (dh / 2);
+  }
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, this.empty);
+  gl.uniform4f(
+    gl.getUniformLocation(program, "vColor"),
+    color[0], color[1], color[2], color[3]
+  );
+  this.setAttribute(program, this.buffers.position, "aObjCen", 2, pos);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.uniform1i(gl.getUniformLocation(program, "isRect"), 0);
 
 }
 
@@ -1860,9 +1935,10 @@ function drawImage$1(tex, dx, dy, dw, dh) {
  * Resize
  */
 function resize$1() {
+  var gl = this.ctx;
   var width = this.camera.width;
   var height = this.camera.height;
-  var gl = this.ctx;
+  var program = this.psprite;
   var view = this.view;
   this.width = width;
   this.height = height;
@@ -1870,19 +1946,24 @@ function resize$1() {
   view.height = height;
   gl.viewport(0, 0, width, height);
   gl.enable(gl.BLEND);
+  gl.disable(gl.CULL_FACE);
+  gl.disable(gl.DEPTH_TEST);
+  gl.disable(gl.STENCIL_TEST);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 }
 
 
 var _draw = Object.freeze({
 	clear: clear,
+	updateViewport: updateViewport,
 	drawImage: drawImage$1,
+	drawRectangle: drawRectangle,
 	resize: resize$1
 });
 
 var SPRITE_VERTEX = "\n  precision lowp float;\n  uniform vec2 uScale;\n  uniform vec2 uObjScale;\n  attribute vec2 aObjCen;\n  attribute float aIdx;\n  varying vec2 uv;\n  void main(void) {\n    if (aIdx == 0.0) {\n      uv = vec2(0.0,0.0);\n    } else if (aIdx == 1.0) {\n      uv = vec2(1.0,0.0);\n    } else if (aIdx == 2.0) {\n      uv = vec2(0.0,1.0);\n    } else {\n      uv = vec2(1.0,1.0);\n    }\n    gl_Position = vec4(\n      -1.0 + 2.0 * (aObjCen.x + uObjScale.x * (-0.5 + uv.x)) / uScale.x,\n      1.0 - 2.0 * (aObjCen.y + uObjScale.y * (-0.5 + uv.y)) / uScale.y,\n      0.0, 1.0\n    );\n  }\n";
 
-var SPRITE_FRAGMENT = "\n  precision lowp float;\n  uniform sampler2D uSampler;\n  varying vec2 uv;\n  void main(void) {\n    gl_FragColor = texture2D(uSampler, uv);\n    if (gl_FragColor.a < 0.1) discard;\n  }\n";
+var SPRITE_FRAGMENT = "\n  precision lowp float;\n  uniform sampler2D uSampler;\n  varying vec2 uv;\n  uniform int isRect;\n  uniform vec4 vColor;\n  void main(void) {\n    if (isRect == 0) {\n      gl_FragColor = texture2D(uSampler, uv);\n    } else {\n      gl_FragColor = vColor + texture2D(uSampler, uv);\n    }\n    if (gl_FragColor.a < 0.1) discard;\n  }\n";
 
 /**
  * @param {HTMLCanvasElement} view 
@@ -1892,39 +1973,55 @@ function setup(view) {
   var gl = getWGLContext(this.view);
   gl.disable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
+  gl.disable(gl.BLEND);
   this.ctx = gl;
   this.buildShaders();
+  this.empty = this.createEmptyTexture();
   this.resize();
 }
 
-/**
- * Build da shaders
- */
 function buildShaders() {
   this.psprite = this.createSpriteProgram();
 }
 
+/**
+ * @return {WebGLTexture}
+ */
+function createEmptyTexture() {
+  var gl = this.ctx;
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(
+    gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+    new Uint8Array([0, 0, 0, 0])
+  );
+  return (texture);
+}
+
+/**
+ * @return {WebGLProgram}
+ */
 function createSpriteProgram() {
-  var ctx = this.ctx;
+  var gl = this.ctx;
   var size = WGL_TEXTURE_LIMIT;
-  var program = ctx.createProgram();
-  var vshader = ctx.createShader(ctx.VERTEX_SHADER);
-  var fshader = ctx.createShader(ctx.FRAGMENT_SHADER);
+  var program = gl.createProgram();
+  var vshader = gl.createShader(gl.VERTEX_SHADER);
+  var fshader = gl.createShader(gl.FRAGMENT_SHADER);
 
   this.compileShader(vshader, SPRITE_VERTEX);
   this.compileShader(fshader, SPRITE_FRAGMENT);
 
-  ctx.attachShader(program, vshader);
-  ctx.attachShader(program, fshader);
-  ctx.linkProgram(program);
+  gl.attachShader(program, vshader);
+  gl.attachShader(program, fshader);
+  gl.linkProgram(program);
 
   var buffers = this.buffers;
   var vertices = this.vertices;
   var idxs = vertices.idx = new Float32Array(size * 6);
   vertices.position = new Float32Array(size * 12);
 
-  buffers.idx = ctx.createBuffer();
-  buffers.position = ctx.createBuffer();
+  buffers.idx = gl.createBuffer();
+  buffers.position = gl.createBuffer();
   for (var ii = 0; ii < size; ii++) {
     idxs[6 * ii + 0] = 0;
     idxs[6 * ii + 1] = 1;
@@ -1939,26 +2036,27 @@ function createSpriteProgram() {
 }
 
 function compileShader(shader, shader_src) {
-  var ctx = this.ctx;
-  ctx.shaderSource(shader, shader_src);
-  ctx.compileShader(shader);
+  var gl = this.ctx;
+  gl.shaderSource(shader, shader_src);
+  gl.compileShader(shader);
 }
 
 function setAttribute(program, buffer, name, size, values) {
-  var ctx = this.ctx;
-  var attribute = ctx.getAttribLocation(program, name);
-  ctx.enableVertexAttribArray(attribute);
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer);
+  var gl = this.ctx;
+  var attribute = gl.getAttribLocation(program, name);
+  gl.enableVertexAttribArray(attribute);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   if (values.length > 0) {
-    ctx.bufferData(ctx.ARRAY_BUFFER, values, ctx.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, values, gl.DYNAMIC_DRAW);
   }
-  ctx.vertexAttribPointer(attribute, size, ctx.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(attribute, size, gl.FLOAT, false, 0, 0);
 }
 
 
 var _setup = Object.freeze({
 	setup: setup,
 	buildShaders: buildShaders,
+	createEmptyTexture: createEmptyTexture,
 	createSpriteProgram: createSpriteProgram,
 	compileShader: compileShader,
 	setAttribute: setAttribute
@@ -1968,20 +2066,27 @@ var _setup = Object.freeze({
  * Create texture buffer from canvas
  * @param {String} name
  * @param {HTMLCanvasElement} canvas
+ * @param {Boolean} linear
  * @return {WebGLTexture}
  */
-function bufferTexture(name, canvas) {
-  var ctx = this.ctx;
-  var texture = ctx.createTexture();
-  ctx.bindTexture(ctx.TEXTURE_2D, texture);
-  ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, canvas);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE);
-  ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE);
+function bufferTexture(name, canvas, linear) {
+  var gl = this.ctx;
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+  if (linear === true) {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  } else {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  }
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   if (this.textures[name] === void 0) {
     this.textures[name] = texture;
   }
+  gl.bindTexture(gl.TEXTURE_2D, null);
   return (this.textures[name]);
 }
 
@@ -2002,10 +2107,21 @@ function destroyTexture(texture) {
   }
 }
 
+/**
+ * @param {WebGLTexture} texture
+ * @param {HTMLCanvasElement} canvas 
+ */
+function updateTexture(texture, canvas) {
+  var gl = this.ctx;
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+}
+
 
 var _buffer = Object.freeze({
 	bufferTexture: bufferTexture,
-	destroyTexture: destroyTexture
+	destroyTexture: destroyTexture,
+	updateTexture: updateTexture
 });
 
 /**
@@ -2016,6 +2132,8 @@ var WGLRenderer = function WGLRenderer(instance) {
   this.view = null;
   // Wgl context
   this.ctx = null;
+  // empty texture
+  this.empty = null;
   // Clear colors
   this.colors = [0, 0, 0, 1];
   // View sizes
@@ -2056,10 +2174,19 @@ function resize$2(width, height) {
   this.view.height = height;
   this.camera.resize(width, height);
   // re-generate our bg
-  this.generateBackground();
+  this.bg = this.createBackgroundBuffer();
+  // generate our grid
+  this.grid = this.createGridBuffer();
   // re-generate background batches
   this.editor.resizeBackgroundBatches(width, height);
   this.renderer.resize();
+  this.redraw();
+}
+
+function redraw() {
+  if (this.showGrid()) {
+    this.redrawGridBuffer();
+  }
   this.clear();
   this.render();
 }
@@ -2070,17 +2197,12 @@ function clear$1() {
 
 function render() {
   this.renderer.ctx.useProgram(this.renderer.psprite);
+  this.renderer.updateViewport();
   this.renderBackground();
+  if (this.showGrid()) { this.renderGrid(); }
   this.renderBatches();
   this.drawHoveredTile();
-  return;
-  if (this.camera.s > (MIN_SCALE + HIDE_GRID)) {
-    this.renderGrid();
-  }
-  this.renderBatches();
-  this.drawHoveredTile();
-  this.drawActiveCursor();
-  this.renderStats();
+  //this.renderStats();
 }
 
 function renderBackground() {
@@ -2094,25 +2216,13 @@ function renderBackground() {
 }
 
 function renderGrid() {
-  var ctx = this.ctx;
-  var size = (TILE_SIZE*this.camera.s)|0;
-  var cx = this.camera.x | 0;
-  var cy = this.camera.y | 0;
-  var cw = this.camera.width;
-  var ch = this.camera.height;
-  ctx.lineWidth = GRID_LINE_WIDTH;
-  ctx.strokeStyle = "rgba(51,51,51,0.75)";
-  ctx.beginPath();
-  for (var xx = (cx%size)|0; xx < cw; xx += size) {
-    ctx.moveTo(xx, 0);
-    ctx.lineTo(xx, ch);
-  }
-  for (var yy = (cy%size)|0; yy < ch; yy += size) {
-    ctx.moveTo(0, yy);
-    ctx.lineTo(cw, yy);
-  }
-  ctx.stroke();
-  ctx.closePath();
+  var width = this.camera.width;
+  var height = this.camera.height;
+  this.renderer.drawImage(
+    this.gridTexture,
+    0, 0,
+    width, height
+  );
 }
 
 function renderBatches() {
@@ -2125,50 +2235,17 @@ function renderBatches() {
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0) { continue; }
     if (!this$1.editor.isBatchInsideView(batch)) { continue; }
-    /*if (batch.isBackground) this.drawBackgroundBatch(batch);
+    if (batch.isBackground) { this$1.drawBackgroundBatch(batch); }
     // draw batched buffer (faster, drawImage)
-    else if (batch.isBuffered) this.drawBatchedBuffer(batch);
+    else if (batch.isBuffered) { this$1.drawBatchedBuffer(batch); }
     // draw batched tiles (slower, fillRect)
-    else this.drawBatchedTiles(batch);*/
-    if (batch.isBuffered) { this$1.drawBatchedBuffer(batch); }
+    else { this$1.drawBatchedTiles(batch); }
   }
   // draw currently drawn tiles
   if (this.editor.modes.draw) {
     var length = this.editor.batches.length;
     if (length > 0) { this.drawBatchedTiles(this.editor.batches[length - 1]); }
   }
-}
-
-/**
- * @return {Void}
- */
-function drawActiveCursor() {
-  if (!this.cursor) { return; } // no cursor available
-  var view = this.cursors[this.cursor];
-  if (!view) { return; } // cursor got not loaded yet
-  var ctx = this.ctx;
-  var drawing = this.editor.modes.draw;
-  // cursor gets a bit transparent when user is drawing
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "exclusion";
-  }
-  var mx = this.editor.mx;
-  var my = this.editor.my;
-  var w = 1 + (view.width / 6) | 0;
-  var h = 1 + (view.height / 6) | 0;
-  var x = ((mx + (w / 2))) | 0;
-  var y = ((my + (h / 2))) | 0;
-  ctx.drawImage(
-    view,
-    0, 0,
-    view.width, view.height,
-    x, y,
-    w, h
-  );
-  if (drawing === true) {
-    ctx.globalCompositeOperation = "source-over";
-  }
-  return;
 }
 
 /**
@@ -2190,12 +2267,13 @@ function drawBackgroundBatch(batch) {
  * @param {Batch} batch
  */
 function drawBatchedTiles(batch) {
+  var this$1 = this;
+
   var cx = this.camera.x | 0;
   var cy = this.camera.y | 0;
   var cs = roundTo(this.camera.s, MAGIC_SCALE);
   var ww = (TILE_SIZE * cs) | 0;
   var hh = (TILE_SIZE * cs) | 0;
-  var ctx = this.ctx;
   var tiles = batch.tiles;
   for (var jj = 0; jj < tiles.length; ++jj) {
     var tile = tiles[jj];
@@ -2206,8 +2284,7 @@ function drawBatchedTiles(batch) {
     var g = color[1];
     var b = color[2];
     var a = color[3];
-    ctx.fillStyle = tile.getColorAsRgbaString();
-    ctx.fillRect(x, y, ww, hh);
+    this$1.renderer.drawRectangle(x, y, ww, hh, tile.getColorAsRgbaBytes());
   }
 }
 
@@ -2245,11 +2322,13 @@ function drawHoveredTile() {
   var ry = relative.y * TILE_SIZE;
   var x = ((cx + GRID_LINE_WIDTH/2) + (rx * cs)) | 0;
   var y = ((cy + GRID_LINE_WIDTH/2) + (ry * cs)) | 0;
-  this.renderer.drawImage(
-    this.hover,
-    x, y,
-    ww, hh
-  );
+  if (mx !== -0 && my !== -0) {
+    this.renderer.drawRectangle(
+      x, y,
+      ww, hh,
+      [255, 255, 255, 0.2]
+    );
+  }
 }
 
 function renderStats() {
@@ -2287,12 +2366,12 @@ function renderFPS() {
 
 var _render = Object.freeze({
 	resize: resize$2,
+	redraw: redraw,
 	clear: clear$1,
 	render: render,
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
 	renderBatches: renderBatches,
-	drawActiveCursor: drawActiveCursor,
 	drawBackgroundBatch: drawBackgroundBatch,
 	drawBatchedTiles: drawBatchedTiles,
 	drawBatchedBuffer: drawBatchedBuffer,
@@ -2301,17 +2380,54 @@ var _render = Object.freeze({
 	renderFPS: renderFPS
 });
 
-function generateHoveredTile() {
-  var ww = TILE_SIZE;
-  var hh = TILE_SIZE;
-  var buffer = createCanvasBuffer(ww, hh);
-  buffer.fillStyle = "rgba(255, 255, 255, 0.2)";
-  buffer.fillRect(0, 0, ww, hh);
-  var texture = this.renderer.bufferTexture("hover", buffer.canvas);
-  return (texture);
+/**
+ * @return {CanvasRenderingContext2D}
+ */
+function createGridBuffer() {
+  var cw = this.camera.width;
+  var ch = this.camera.height;
+  var buffer = createCanvasBuffer(cw, ch);
+  if (this.grid !== null) {
+    this.grid = null;
+    this.renderer.destroyTexture(this.gridTexture);
+  }
+  this.grid = buffer;
+  this.gridTexture = this.renderer.bufferTexture("grid", buffer.canvas, true);
+  this.redrawGridBuffer();
+  return (buffer);
 }
 
-function generateBackground() {
+function redrawGridBuffer() {
+  var buffer = this.grid;
+  var texture = this.gridTexture;
+  var cs = roundTo(this.camera.s, MAGIC_SCALE);
+  var size = (TILE_SIZE * this.camera.s) | 0;
+  var cx = this.camera.x | 0;
+  var cy = this.camera.y | 0;
+  var cw = this.camera.width;
+  var ch = this.camera.height;
+  buffer.clearRect(0, 0, cw, ch);
+  buffer.lineWidth = GRID_LINE_WIDTH;
+  buffer.strokeStyle = "rgba(51,51,51,0.5)";
+  buffer.beginPath();
+  for (var xx = (cx%size) | 0; xx < cw; xx += size) {
+    buffer.moveTo(xx, 0);
+    buffer.lineTo(xx, ch);
+  }
+  for (var yy = (cy%size) | 0; yy < ch; yy += size) {
+    buffer.moveTo(0, yy);
+    buffer.lineTo(cw, yy);
+  }
+  buffer.stroke();
+  buffer.stroke();
+  buffer.closePath();
+  this.renderer.updateTexture(texture, buffer.canvas);
+}
+
+/**
+ * @return {WebGLTexture}
+ */
+function createBackgroundBuffer() {
   if (this.bg instanceof WebGLTexture) {
     this.renderer.destroyTexture(this.bg);
   }
@@ -2339,23 +2455,29 @@ function generateBackground() {
       ctx.fillRect(xx$1, yy$1, size, size);
     }
   }
-  var texture = this.renderer.bufferTexture("background", canvas);
-  this.bg = texture;
+  var texture = this.renderer.bufferTexture("background", canvas, false);
+  return (texture);
 }
 
 
 var _generate = Object.freeze({
-	generateHoveredTile: generateHoveredTile,
-	generateBackground: generateBackground
+	createGridBuffer: createGridBuffer,
+	redrawGridBuffer: redrawGridBuffer,
+	createBackgroundBuffer: createBackgroundBuffer
 });
 
 /**
  * @class Poxi
  */
 var Poxi = function Poxi(obj) {
+  if ( obj === void 0 ) obj = {};
+
+  // buffers
   this.bg = null;
-  this.hover = null;
   this.view = null;
+  this.grid = null;
+  this.tile = null;
+  this.gridTexture = null;
   this.events = {};
   this.camera = new Camera(this);
   this.renderer = new WGLRenderer(this);
@@ -2368,20 +2490,33 @@ var Poxi = function Poxi(obj) {
   this.states = {
     paused: true
   };
-  this.cursor = null;
-  this.cursors = {};
+  this.hideGrid = false;
   this.createView();
-  this.hover = this.generateHoveredTile();
-  // apply sizing
-  if (obj.width >= 0 && obj.height >= 0) {
-    this.resize(obj.width, obj.height);
-  } else {
-    this.resize(view.width, view.height);
-  }
+  this.applySettings(obj);
   this.init();
 };
 
-var prototypeAccessors = { activeCursor: {} };
+/**
+ * @param {Object} obj
+ */
+Poxi.prototype.applySettings = function applySettings (obj) {
+  var grid = !DEFAULT_GRID_HIDDEN;
+  var width = DEFAULT_WIDTH;
+  var height = DEFAULT_HEIGHT;
+  // apply sizing
+  if (obj.width >= 0) {
+    width = obj.width | 0;
+  }
+  if (obj.height >= 0) {
+    height = obj.height | 0;
+  }
+  // apply grid
+  if (obj.grid !== void 0) {
+    grid = !!obj.grid;
+  }
+  this.hideGrid = !grid;
+  this.resize(width, height);
+};
 
 Poxi.prototype.init = function init () {
   this.camera.scale(0);
@@ -2421,6 +2556,16 @@ Poxi.prototype.isViewElement = function isViewElement (el) {
 };
 
 /**
+ * Is it necessary to show the grid
+ * @return {Boolean}
+ */
+Poxi.prototype.showGrid = function showGrid () {
+  return (
+    !this.hideGrid && this.camera.s > (MIN_SCALE + HIDE_GRID)
+  );
+};
+
+/**
  * Event emitter
  * @param {String} kind
  * @param {Function} fn
@@ -2449,14 +2594,6 @@ Poxi.prototype.processEmitter = function processEmitter (hash, fn) {
   if (this.frames === 0 && hash === DRAW_HASH) {
     this.states.paused = false;
   }
-};
-
-/**
- * Simply redraws the stage synchronous
- */
-Poxi.prototype.redraw = function redraw () {
-  this.clear();
-  this.render();
 };
 
 /**
@@ -2517,34 +2654,37 @@ Poxi.prototype.exportAsDataUrl = function exportAsDataUrl () {
 };
 
 /**
- * @param {String} kind
- * @param {String} path
+ * Returns given batches from the editor
+ * @param {Boolean} relative
+ * @return {Array}
  */
-Poxi.prototype.addCursor = function addCursor (kind, path) {
-    var this$1 = this;
+Poxi.prototype.getBatches = function getBatches (relative) {
+    if ( relative === void 0 ) relative = false;
 
-  var cursor = this.cursor;
-  // reserve property, so we have access
-  // to it even before the image got loaded
-  this.cursors[kind] = null;
-  loadImage(path, function (img) {
-    this$1.cursors[kind] = img;
-  });
+  var data = [];
+  var sindex = this.editor.sindex;
+  var batches = this.editor.batches;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    // only take stack relative batches
+    if (relative && sindex - ii < 0) { continue; }
+    data.push(batches[ii]);
+  }
+  return (data);
 };
 
 /**
- * Set active cursor
- * @param {String} kind
+ * Get given color at mouse position
+ * @param {Number} mx
+ * @param {Number} my
+ * @return {String}
  */
-prototypeAccessors.activeCursor.set = function (kind) {
-  if (this.cursors[kind] !== void 0) {
-    this.cursor = kind;
-  } else {
-    this.cursor = null;
-  }
+Poxi.prototype.getColorAtMouseOffset = function getColorAtMouseOffset (mx, my) {
+  var relative = this.editor.getRelativeOffset(mx, my);
+  var rx = relative.x;
+  var ry = relative.y;
+  var color = this.editor.getStackRelativeTileColorAt(rx, ry);
+  return (color ? rgbaToHex(color) : null);
 };
-
-Object.defineProperties( Poxi.prototype, prototypeAccessors );
 
 inherit(Poxi, _render);
 inherit(Poxi, _generate);

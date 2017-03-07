@@ -41,36 +41,11 @@ body {
   cursor: pointer;
 }
 
-#download {
-  left: 5px;
-  bottom: 5px;
-}
-
-#bucket {
-  bottom: 28px;
-  left: 5px;
-}
-
-#rectangle {
-  bottom: 51px;
-  left: 5px;
-}
-
-#ellipse {
-  bottom: 74px;
-  left: 5px;
-}
-
-#tiled {
-  bottom: 52px;
-  left: 5px;
-}
-
 .dropdown-content {
   display: none;
   position: absolute;
   background-color: rgba(255,255,255,0.9);
-  min-width: 104px;
+  min-width: 100px;
   z-index: 1;
   font-size: 10px;
   text-align: center;
@@ -78,26 +53,49 @@ body {
 
 .dropdown-content a {
   color: black;
-  padding: 12px 16px;
+  padding: 12px 0px;
   text-decoration: none;
   display: block;
   border-bottom: 1px solid rgba(0,0,0,0.035);
   cursor: pointer;
 }
 
-.color {
-  outline: none;
-  background: rgba(0,0,0,0);
-  -webkit-appearance: none;
-  border: none;
-  width: 75%;
-  cursor: pointer;
+input[type="color"] {
+	opacity: 0;
+	display: block;
+	width: 32px;
+	height: 32px;
+	border: none;
+  padding: 0px;
 }
 
-.wrapper {
-  width: 100%;
-  margin-top: -15px;
-  margin-bottom: -9px;
+.color-wrapper {
+  background: transparent;
+  width: 8px;
+  height: 23px;
+  border-radius: 14px;
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  opacity: 0.65;
+  transition: opacity .125s ease-in-out;
+  -moz-transition: opacity .125s ease-in-out;
+  -webkit-transition: opacity .125s ease-in-out;
+  top: 2px;
+  vertical-align: bottom;
+  position: relative;
+}
+
+.color-wrapper:hover {
+  opacity: 0.9;
+}
+
+#color {
+  opacity: 0 !important;
+  width: 28px;
+  top: -1px;
+  margin: 0;
+  padding: 0;
 }
 
 .dropdown-content a:hover {
@@ -106,4 +104,66 @@ body {
 
 .dropdown:hover .dropdown-content {
   display: block;
+}
+
+.bottom-menu {
+  position: absolute;
+  left: 0px;
+  bottom: 0px;
+  background: rgba(31, 31, 31, 0.95);
+  height: 42px;
+  width: 100%;
+  cursor: default;
+  display: inline;
+  text-align: center;
+}
+
+.bottom-menu-items {
+  height: inherit;
+}
+
+.bottom-menu-items .item {
+  top: 7px;
+  width: 28px;
+  height: 28px;
+  position: relative;
+  opacity: 0.295;
+  padding-right: 8px;
+  padding-left: 8px;
+  cursor: pointer;
+  transition: opacity .125s ease-in-out;
+  -moz-transition: opacity .125s ease-in-out;
+  -webkit-transition: opacity .125s ease-in-out;
+}
+
+.bottom-menu-items .item:hover {
+  opacity: 0.55;
+}
+
+.bottom-menu-items .item:active {
+  opacity: 0.75;
+}
+
+#download {
+  float: right;
+}
+
+.cursor {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  display: none;
+}
+
+#cursors {
+  opacity: 0.75;
+}
+
+.unavailable:hover {
+  -webkit-filter: blur(2px);
+  -moz-filter: blur(2px);
+  -o-filter: blur(2px);
+  -ms-filter: blur(2px);
+  filter: blur(2px);
+  cursor: default;
 }

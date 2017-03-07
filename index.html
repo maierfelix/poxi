@@ -6,23 +6,39 @@
   </head>
   <body>
 
-    <div id="menu" class="dropdown-content">
-      <div class="wrapper">
-        <input id="color" type="color" class="color" value="#ff0000"/>
+    <div class="bottom-menu">
+      <div class="bottom-menu-items">
+        <img id="tiled" src="assets/img/pencil.png" class="item" />
+        <img id="erase" src="assets/img/eraser.png" class="item unavailable" />
+        <span id="color_view" class="color-wrapper">
+          <input id="color" type="color" class="item" value="#ff0000"/>
+        </span>
+        <img id="pipette" src="assets/img/pipette.png" class="item" />
+        <img id="bucket" src="assets/img/bucket.png" class="item" />
+        <img id="download" src="assets/img/download.png" class="item" />
+        <!--<img src="assets/img/select.png" class="item" />-->
       </div>
-      <a tabindex="0" id="tiled" >Tiled</a>
-      <a tabindex="0" id="bucket" >Bucket</a>
-      <a tabindex="0" id="download" >Save</a>
     </div>
+
+    <!-- hd cursors -->
+    <div id="cursors">
+      <img id="ctiled" src="assets/img/pencil.png" class="cursor" />
+      <img id="cerase" src="assets/img/eraser.png" class="cursor" />
+      <img id="cpipette" src="assets/img/pipette.png" class="cursor" />
+      <img id="cbucket" src="assets/img/bucket.png" class="cursor" />
+    </div>
+
+    <div id="menu" class="dropdown-content"></div>
 
     <input id="file" type="file" title=" " />
     <!--<button id="ellipse" class="btn">Ellipse</button>
     <button id="rectangle" class="btn">Rectangle</button>-->
     <script type="text/javascript" src="./keyboardjs.js"></script>
-    <script type="text/javascript" src="./dist/poxi.js"></script>
+    <script type="text/javascript" src="../../dist/poxi.js"></script>
     <script type="text/javascript" src="./main.js"></script>
     <script>
       (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
     </script>
+
   </body>
 </html>
