@@ -7,6 +7,9 @@ canvas {
 body {
   margin: 0;
   overflow: hidden;
+  font-family: Verdana,sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 #file {
@@ -35,42 +38,132 @@ body {
   font-variant: normal;
   font-weight: 500;
   line-height: 16px;
+  cursor: pointer;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: rgba(255,255,255,0.9);
+  min-width: 100px;
+  z-index: 1;
+  font-size: 10px;
+  text-align: center;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 0px;
+  text-decoration: none;
+  display: block;
+  border-bottom: 1px solid rgba(0,0,0,0.035);
+  cursor: pointer;
+}
+
+input[type="color"] {
+	opacity: 0;
+	display: block;
+	width: 32px;
+	height: 32px;
+	border: none;
+  padding: 0px;
+}
+
+.color-wrapper {
+  background: transparent;
+  width: 8px;
+  height: 23px;
+  border-radius: 14px;
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  opacity: 0.65;
+  transition: opacity .125s ease-in-out;
+  -moz-transition: opacity .125s ease-in-out;
+  -webkit-transition: opacity .125s ease-in-out;
+  top: 2px;
+  vertical-align: bottom;
+  position: relative;
+}
+
+.color-wrapper:hover {
+  opacity: 0.9;
+}
+
+#color {
+  opacity: 0 !important;
+  width: 28px;
+  top: -1px;
+  margin: 0;
+  padding: 0;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.bottom-menu {
+  position: absolute;
+  left: 0px;
+  bottom: 0px;
+  background: rgba(31, 31, 31, 0.95);
+  height: 42px;
+  width: 100%;
+  cursor: default;
+  display: inline;
+  text-align: center;
+}
+
+.bottom-menu-items {
+  height: inherit;
+}
+
+.bottom-menu-items .item {
+  top: 7px;
+  width: 28px;
+  height: 28px;
+  position: relative;
+  opacity: 0.295;
+  padding-right: 8px;
+  padding-left: 8px;
+  cursor: pointer;
+  transition: opacity .125s ease-in-out;
+  -moz-transition: opacity .125s ease-in-out;
+  -webkit-transition: opacity .125s ease-in-out;
+}
+
+.bottom-menu-items .item:hover {
+  opacity: 0.55;
+}
+
+.bottom-menu-items .item:active {
+  opacity: 0.75;
 }
 
 #download {
-  left: 5px;
-  bottom: 5px;
+  float: right;
 }
 
-#bucket {
-  bottom: 28px;
-  left: 5px;
+.cursor {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  display: none;
 }
 
-#rectangle {
-  bottom: 51px;
-  left: 5px;
+#cursors {
+  opacity: 0.75;
 }
 
-#ellipse {
-  bottom: 74px;
-  left: 5px;
-}
-
-#tiled {
-  bottom: 52px;
-  left: 5px;
-}
-
-.color {
-  min-width: 0px;
-  width: 16px;
-  height: 19px;
-  padding: 0px;
-  margin: 0px;
-  line-height: 0px;
-  border: none;
-  background: transparent;
-  bottom: 72px;
-  left: 3px;
+.unavailable:hover {
+  -webkit-filter: blur(2px);
+  -moz-filter: blur(2px);
+  -o-filter: blur(2px);
+  -ms-filter: blur(2px);
+  filter: blur(2px);
+  cursor: default;
 }
