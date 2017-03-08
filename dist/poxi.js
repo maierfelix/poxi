@@ -799,17 +799,6 @@ function createTileAt(x, y) {
  * @param {Number} y
  * @return {Tile}
  */
-function createEmptyTileAt(x, y) {
-  var tile = this.createTileAt(x, y);
-  tile.colors[tile.cindex] = BASE_TILE_COLOR;
-  return (tile);
-}
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Tile}
- */
 function getTileByMouseOffset(x, y) {
   var position = this.getRelativeOffset(x, y);
   var tile = this.getTileAt(position.x, position.y);
@@ -887,23 +876,6 @@ function getTileOffsetAt(x, y) {
 }
 
 /**
- * Get tile by it's id
- * @param {Number} id
- * @return {Tile}
- */
-function getTileById(id) {
-  var batches = this.batches;
-  for (var ii = 0; ii < batches.length; ++ii) {
-    var tiles = batches[ii].tiles;
-    for (var jj = 0; jj < tiles.length; ++jj) {
-      var tile = tiles[jj];
-      if (tile.id === id) { return (tile); }
-    }
-  }
-  return (null);
-}
-
-/**
  * Returns rnd(0-255) rgba color array with a=1
  * @return {Array}
  */
@@ -970,13 +942,11 @@ var _tiles = Object.freeze({
 	getRelativeOffset: getRelativeOffset$1,
 	createTileAtMouseOffset: createTileAtMouseOffset,
 	createTileAt: createTileAt,
-	createEmptyTileAt: createEmptyTileAt,
 	getTileByMouseOffset: getTileByMouseOffset,
 	getTileAt: getTileAt,
 	getStackRelativeTileByMouseOffset: getStackRelativeTileByMouseOffset,
 	getStackRelativeTileAt: getStackRelativeTileAt,
 	getTileOffsetAt: getTileOffsetAt,
-	getTileById: getTileById,
 	getRandomRgbaColors: getRandomRgbaColors,
 	getTileColorAt: getTileColorAt,
 	getStackRelativeTileColorAt: getStackRelativeTileColorAt,
@@ -1396,7 +1366,6 @@ function createBatchTileAt(x, y, color) {
   }
   var tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
-  tile.colors[tile.cindex] = [0,0,0,0];
   batch.addTile(tile);
   return;
 }
