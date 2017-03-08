@@ -41,25 +41,6 @@ body {
   cursor: pointer;
 }
 
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: rgba(255,255,255,0.9);
-  min-width: 100px;
-  z-index: 1;
-  font-size: 10px;
-  text-align: center;
-}
-
-.dropdown-content a {
-  color: black;
-  padding: 12px 0px;
-  text-decoration: none;
-  display: block;
-  border-bottom: 1px solid rgba(0,0,0,0.035);
-  cursor: pointer;
-}
-
 input[type="color"] {
 	opacity: 0;
 	display: block;
@@ -96,14 +77,6 @@ input[type="color"] {
   top: -1px;
   margin: 0;
   padding: 0;
-}
-
-.dropdown-content a:hover {
-  background-color: #f1f1f1
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
 }
 
 .bottom-menu {
@@ -144,8 +117,14 @@ input[type="color"] {
   opacity: 0.75;
 }
 
+#upload {
+  float: right;
+}
 #download {
   float: right;
+}
+#beautify {
+  float: left;
 }
 
 .cursor {
@@ -159,11 +138,32 @@ input[type="color"] {
   opacity: 0.75;
 }
 
-.unavailable:hover {
-  -webkit-filter: blur(2px);
-  -moz-filter: blur(2px);
-  -o-filter: blur(2px);
-  -ms-filter: blur(2px);
-  filter: blur(2px);
-  cursor: default;
+.unavailable {
+  pointer-events: none;
+  cursor: inherit;
+}
+
+.dropdown-content {
+  height: auto;
+  position: absolute;
+  background: rgba(0,0,0,0.1);
+  padding-bottom: 2px;
+}
+
+.dropdown-wrapper {
+  height: inherit;
+  background: rgba(0,0,0,0);
+  padding-top: 2px;
+  max-width: 164px;
+}
+
+.dropdown-wrapper div {
+  margin: 5px;
+  float: left;
+  width: 18px;
+  height: 18px;
+  position: relative;
+  opacity: 0.75;
+  cursor: pointer;
+  height: 18px;
 }
