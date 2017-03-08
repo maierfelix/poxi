@@ -799,6 +799,17 @@ function createTileAt(x, y) {
  * @param {Number} y
  * @return {Tile}
  */
+function createEmptyTileAt(x, y) {
+  var tile = this.createTileAt(x, y);
+  tile.colors[tile.cindex] = BASE_TILE_COLOR;
+  return (tile);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Tile}
+ */
 function getTileByMouseOffset(x, y) {
   var position = this.getRelativeOffset(x, y);
   var tile = this.getTileAt(position.x, position.y);
@@ -959,6 +970,7 @@ var _tiles = Object.freeze({
 	getRelativeOffset: getRelativeOffset$1,
 	createTileAtMouseOffset: createTileAtMouseOffset,
 	createTileAt: createTileAt,
+	createEmptyTileAt: createEmptyTileAt,
 	getTileByMouseOffset: getTileByMouseOffset,
 	getTileAt: getTileAt,
 	getStackRelativeTileByMouseOffset: getStackRelativeTileByMouseOffset,
@@ -1000,21 +1012,6 @@ function createRawBufferAt(ctx, x, y) {
 }
 
 /**
- * Warning: does not update boundings!
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color
- */
-function createRawTileAt(x, y, color) {
-  var tile = new Tile();
-  tile.x = x;
-  tile.y = y;
-  tile.colors[0] = color;
-  // push in without updating boundings each time
-  this.tiles.push(tile);
-}
-
-/**
  * Access cached imageData
  * @param {Number} x
  * @param {Number} y
@@ -1048,7 +1045,6 @@ function getRawColorAt(x, y) {
 
 var _raw = Object.freeze({
 	createRawBufferAt: createRawBufferAt,
-	createRawTileAt: createRawTileAt,
 	getRawColorAt: getRawColorAt
 });
 
@@ -1400,6 +1396,7 @@ function createBatchTileAt(x, y, color) {
   }
   var tile = this.createTileAt(x, y);
   tile.colors.unshift(color);
+  tile.colors[tile.cindex] = [0,0,0,0];
   batch.addTile(tile);
   return;
 }
@@ -1809,7 +1806,11 @@ prototypeAccessors.fillStyle.get = function () {
  */
 prototypeAccessors.fillStyle.set = function (value) {
   if (typeof value === "string") {
-    this._fillStyle = hexToRgba(value);
+    if (value[0] === "#") {
+      this._fillStyle = hexToRgba(value);
+    } else {
+      throw new Error("Invalid or unsupported color format " + String(value));
+    }
   }
   else if (value instanceof Array && value.length === 4) {
     this._fillStyle = value;

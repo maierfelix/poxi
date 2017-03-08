@@ -17,10 +17,12 @@
 
   document.body.appendChild(stage.view); // push view into body
 
-  keyboardJS.bind("ctrl > z", () => {
+  keyboardJS.bind("ctrl > z", (e) => {
+    e.preventDefault();
     stage.editor.undo();
   });
-  keyboardJS.bind("ctrl > y", () => {
+  keyboardJS.bind("ctrl > y", (e) => {
+    e.preventDefault();
     stage.editor.redo();
   });
 
@@ -31,7 +33,8 @@
     menuActive = false;
   };
   (() => {
-    keyboardJS.bind("space", () => {
+    keyboardJS.bind("space", (e) => {
+      e.preventDefault();
       // close
       if (menuActive) {
         closeActiveMenu();
@@ -62,6 +65,7 @@
     window.my = y;
     if (menuActive) return;
     if (!(e.target instanceof HTMLCanvasElement)) return;
+    mouseIsOut = false;
     e.preventDefault();
     stage.editor.hover(x, y);
     // drag before drawing to stay in position (drag+draw)
@@ -69,7 +73,7 @@
     if (lpressed && modes.tiled) {
       stage.editor.drawTileAtMouseOffset(x, y);
       let batch = stage.editor.batches[stage.editor.batches.length - 1];
-      stage.editor.applyPixelSmoothing(batch);
+      if (beautiful) stage.editor.applyPixelSmoothing(batch);
     }
     else if (modes.rectangle && modes.rectangleStart) {
       let batch = stage.editor.getLatestTileBatchOperation();
@@ -91,7 +95,6 @@
       else return;
     }
     if (!(e.target instanceof HTMLCanvasElement)) return;
-    cursors.style.opacity = 0.5;
     // right key to drag
     if (e.which === 3) {
       rpressed = true;
@@ -99,6 +102,7 @@
     }
     // left key to select
     if (e.which === 1) {
+      cursors.style.opacity = 0.5;
       if (modes.tiled) {
         stage.editor.startBatchedDrawing(e.clientX, e.clientY);
         lpressed = true;
@@ -172,15 +176,21 @@
     stage.editor.mx = -0;
     stage.editor.my = -0;
     mouseIsOut = true;
+    lastMode = getActiveMode();
+    resetCursors();
   };
 
   // handle mouse outside window
   stage.view.addEventListener("mouseout", onMouseOut);
   stage.view.addEventListener("mouseleave", onMouseOut);
 
+  let changeFillColor = (color) => {
+    stage.editor.fillStyle = color;
+    color_view.style.background = color;
+  };
+
   let colorChange = (e) => {
-    stage.editor.fillStyle = e.value;
-    color_view.style.background = e.value;
+    changeFillColor(e.value);
     closeActiveMenu();
   };
   // color picker
@@ -239,6 +249,12 @@
     modes.ellipse = true;
   };*/
 
+  let beautiful = false;
+  beautify.onclick = () => {
+    beautiful = !beautiful;
+    beautify.style.opacity = beautiful ? 1.0 : 0.295;
+  };
+
   let resetModes = () => {
     for (let key in modes) {
       modes[key] = false;
@@ -250,21 +266,30 @@
     };
   };
 
-  let setActiveCursor = (kind) => {
-    let el = document.querySelector("#c" + kind);
+  let resetCursors = () => {
     let children = cursors.children;
     for (let key in children) {
       if (children[key] instanceof HTMLElement) {
         children[key].style.display = "none";
       }
     };
+  };
+  let setActiveCursor = (kind) => {
+    let el = document.querySelector("#c" + kind);
+    resetCursors();
     el.style.display = "block";
   };
   window.addEventListener("mousemove", (e) => {
-    let el = document.querySelector("#c" + getActiveMode());
+    let cursor = getActiveMode();
+    let el = document.querySelector("#c" + cursor);
     if (!el) return;
-    el.style.left = e.clientX + 10 + "px";
-    el.style.top = e.clientY + 10 + "px";
+    if (mouseIsOut) {
+      resetCursors();
+    } else {
+      setActiveCursor(cursor);
+    }
+    el.style.left = e.clientX + 11 + "px";
+    el.style.top = e.clientY + 14 + "px";
   });
   modes.tiled = true;
   setActiveCursor("tiled");
