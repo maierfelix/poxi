@@ -193,23 +193,6 @@ export function getTileOffsetAt(x, y) {
 };
 
 /**
- * Get tile by it's id
- * @param {Number} id
- * @return {Tile}
- */
-export function getTileById(id) {
-  let batches = this.batches;
-  for (let ii = 0; ii < batches.length; ++ii) {
-    let tiles = batches[ii].tiles;
-    for (let jj = 0; jj < tiles.length; ++jj) {
-      let tile = tiles[jj];
-      if (tile.id === id) return (tile);
-    };
-  };
-  return (null);
-};
-
-/**
  * Returns rnd(0-255) rgba color array with a=1
  * @return {Array}
  */

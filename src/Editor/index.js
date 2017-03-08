@@ -49,7 +49,11 @@ class Editor {
    */
   set fillStyle(value) {
     if (typeof value === "string") {
-      this._fillStyle = hexToRgba(value);
+      if (value[0] === "#") {
+        this._fillStyle = hexToRgba(value);
+      } else {
+        throw new Error("Invalid or unsupported color format " + String(value));
+      }
     }
     else if (value instanceof Array && value.length === 4) {
       this._fillStyle = value;

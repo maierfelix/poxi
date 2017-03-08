@@ -21,21 +21,6 @@ export function createRawBufferAt(ctx, x, y) {
 };
 
 /**
- * Warning: does not update boundings!
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color
- */
-export function createRawTileAt(x, y, color) {
-  let tile = new Tile();
-  tile.x = x;
-  tile.y = y;
-  tile.colors[0] = color;
-  // push in without updating boundings each time
-  this.tiles.push(tile);
-};
-
-/**
  * Access cached imageData
  * @param {Number} x
  * @param {Number} y
