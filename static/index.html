@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link href="./style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <script type="text/javascript" src="./bundle.js"></script>
+    <script type="text/javascript" src="./stats.js"></script>
+    <script>
+      var stats = new Stats();
+      document.body.appendChild(stats.dom);
+      stats.dom.style.left = "";
+      stats.dom.style.right = "0px";
+      requestAnimationFrame(function loop() {
+        stats.update();
+        requestAnimationFrame(loop)
+      });
+    </script>
+  </body>
+</html>

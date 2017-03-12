@@ -1,256 +1,164 @@
-import Tile from "./Editor/Tile/index";
-import Camera from "./Camera/index";
-import Editor from "./Editor/index";
-import Renderer from "./Renderer/index";
+import extend from "./extend";
 
-import {
-  MIN_SCALE,
-  HIDE_GRID,
-  DRAW_HASH,
-  DEFAULT_WIDTH,
-  DEFAULT_HEIGHT,
-  DEFAULT_GRID_HIDDEN
-} from "./cfg";
+import * as _select from "./area/select";
 
-import {
-  inherit,
-  loadImage,
-  rgbaToHex,
-  hashFromString,
-  colorToRgbaString,
-  createCanvasBuffer
-} from "./utils";
+import * as _camera from "./camera/functions";
 
-import * as _render from "./render";
-import * as _generate from "./generate";
+import * as _emitter from "./event/emitter";
+import * as _listener from "./event/listener";
+
+import * as _env from "./env/functions";
+
+import * as _blend from "./filter/blend";
+import * as _invert from "./filter/invert";
+import * as _onion from "./filter/onion";
+import * as _replace from "./filter/replace";
+import * as _shading from "./filter/shading";
+import * as _smoothing from "./filter/smoothing";
+
+import * as _buffer from "./render/buffer";
+import * as _build from "./render/build";
+import * as _draw from "./render/draw";
+import * as _generate from "./render/generate";
+import * as _render from "./render/render";
+import * as _resize from "./render/resize";
+import * as _shaders from "./render/shaders";
+
+import * as _redo from "./stack/redo";
+import * as _state from "./stack/state";
+import * as _undo from "./stack/undo";
+
+import * as _read from "./storage/read";
+import * as _write from "./storage/write";
+
+import * as _fill from "./transform/fill";
+import * as _rotate from "./transform/rotate";
+
+import * as _setup from "./setup";
+
+import { MIN_SCALE } from "./cfg";
+
+import Boundings from "./bounds/index";
 
 /**
- * @class Poxi
+ * @class {Poxi}
  */
 class Poxi {
-
   /**
-   * @param {Object} obj
+   * @constructor
    */
-  constructor(obj = {}) {
-    // buffers
-    this.bg = null;
+  constructor() {
+    // # webgl related
+    // wgl context
+    this.gl = null;
+    // canvas reference
     this.view = null;
-    this.grid = null;
-    this.tile = null;
-    this.gridTexture = null;
-    this.events = {};
-    this.camera = new Camera(this);
-    this.renderer = new Renderer(this);
-    this.editor = new Editor(this);
-    // fps
-    this.last = 0;
-    this.width = 0;
-    this.height = 0;
-    this.frames = 0;
+    // empty texture
+    this.empty = null;
+    // webgl program
+    this.program = null;
+    // global boundings
+    this.bounds = new Boundings();
+    // # camera related
+    this.cx = 0;
+    this.cy = 0;
+    this.cw = 0;
+    this.ch = 0;
+    // camera render scale
+    this.cr = MIN_SCALE;
+    this.cs = MIN_SCALE;
+    // last camera position
+    this.lcx = 1;
+    this.lcy = 1;
+    // camera drag related
+    this.dx = 0;
+    this.dy = 0;
+    // camera zoom related
+    this.lx = 0;
+    this.ly = 0;
+    // selection related
+    this.sx = 0;
+    this.sy = 0;
+    this.sw = -0;
+    this.sh = -0;
+    // mouse offset
+    this.mx = 0;
+    this.my = 0;
+    this.rmx = 0;
+    this.rmy = 0;
+    // stack related
+    this.stack = [];
+    this.sindex = 0;
+    // layer related
+    this.layers = [];
+    // general cache
+    this.cache = {
+      bg: null,
+      grid: null,
+      gridTexture: null,
+      // wgl cache
+      gl: {
+        // empty texture
+        empty: null,
+        // general buffers
+        buffers: {},
+        // we use buffered uv coords
+        vertices: {},
+        // texture pool
+        textures: {}
+      }
+    };
     this.states = {
-      paused: true
+      drawing: false,
+      dragging: false,
+      select: false,
+      selecting: false
     };
-    this.hideGrid = false;
-    this.createView();
-    this.applySettings(obj);
-    this.init();
+    this.setup();
   }
-
-  /**
-   * @param {Object} obj
-   */
-  applySettings(obj) {
-    let grid = !DEFAULT_GRID_HIDDEN;
-    let width = DEFAULT_WIDTH;
-    let height = DEFAULT_HEIGHT;
-    // apply sizing
-    if (obj.width >= 0) {
-      width = obj.width | 0;
-    }
-    if (obj.height >= 0) {
-      height = obj.height | 0;
-    }
-    // apply grid
-    if (obj.grid !== void 0) {
-      grid = !!obj.grid;
-    }
-    this.hideGrid = !grid;
-    this.resize(width, height);
-  }
-
-  init() {
-    this.camera.scale(0);
-    this.renderLoop();
-  }
-
-  createView() {
-    let canvas = document.createElement("canvas");
-    canvas.width = this.width;
-    canvas.height = this.height;
-    this.view = canvas;
-    this.renderer.setup(canvas);
-  }
-
-  renderLoop() {
-    // try again to render in 16ms
-    if (this.states.paused === true) {
-      setTimeout(() => this.renderLoop(), 16);
-    } else {
-      requestAnimationFrame(() => {
-        this.events[DRAW_HASH].fn();
-        this.frames++;
-        this.renderLoop();
-      });
-    }
-  }
-
-  /**
-   * @param {HTMLCanvasElement} el
-   */
-  isViewElement(el) {
-    return (
-      el && el instanceof HTMLCanvasElement
-    );
-  }
-
-  /**
-   * Is it necessary to show the grid
-   * @return {Boolean}
-   */
-  showGrid() {
-    return (
-      !this.hideGrid && this.camera.s > (MIN_SCALE + HIDE_GRID)
-    );
-  }
-
-  /**
-   * Event emitter
-   * @param {String} kind
-   * @param {Function} fn
-   */
-  on(kind, fn) {
-    if (!(typeof kind === "string")) {
-      throw new Error("Expected emitter kind to be string");
-    }
-    if (!(fn instanceof Function)) {
-      throw new Error("Received emitter trigger is not a function");
-    }
-    let hash = hashFromString(kind);
-    if (this.events[hash]) this.events[hash] = null; // safely clean old emitters
-    this.events[hash] = {
-      fn: fn
-    };
-    this.processEmitter(hash, fn);
-  }
-
-  /**
-   * @param {Number} hash
-   * @param {Function} fn
-   */
-  processEmitter(hash, fn) {
-    // begin drawing as soon as we got something to do there
-    if (this.frames === 0 && hash === DRAW_HASH) {
-      this.states.paused = false;
-    }
-  }
-
-  /**
-   * Export the current view to base64 encoded png string
-   * @return {String}
-   */
-  exportAsDataUrl() {
-    let editor = this.editor;
-    let batches = editor.batches;
-    let bounds = editor.boundings;
-    let rx = bounds.x;
-    let ry = bounds.y;
-    let width = bounds.w;
-    let height = bounds.h;
-    let ctx = createCanvasBuffer(width, height);
-    let view = ctx.canvas;
-    let sindex = editor.sindex;
-    for (let ii = 0; ii < batches.length; ++ii) {
-      let batch = batches[ii];
-      // ignore future batches
-      if (sindex < ii) continue;
-      // background
-      if (batch.isBackground) {
-        ctx.fillStyle = colorToRgbaString(batch.bgcolor);
-        ctx.fillRect(
-          0, 0,
-          view.width, view.height
-        );
-        continue;
-      }
-      // buffer
-      if (batch.isBuffered) {
-        ctx.drawImage(
-          batch.buffer.view,
-          (batch.x - rx) | 0, (batch.y - ry) | 0,
-          batch.width | 0, batch.height | 0
-        );
-        continue;
-      }
-      // tiles
-      if (batch.tiles.length) {
-        let tiles = batch.tiles;
-        for (let ii = 0; ii < tiles.length; ++ii) {
-          let tile = tiles[ii];
-          let x = (tile.x - rx) | 0;
-          let y = (tile.y - ry) | 0;
-          let color = colorToRgbaString(tile.colors[tile.cindex]);
-          ctx.fillStyle = color;
-          ctx.fillRect(
-            x, y,
-            1, 1
-          );
-        };
-        continue;
-      }
-    };
-    return (view.toDataURL());
-  }
-
-  /**
-   * Returns given batches from the editor
-   * @param {Boolean} relative
-   * @return {Array}
-   */
-  getBatches(relative = false) {
-    let data = [];
-    let sindex = this.editor.sindex;
-    let batches = this.editor.batches;
-    for (let ii = 0; ii < batches.length; ++ii) {
-      // only take stack relative batches
-      if (relative && sindex - ii < 0) continue;
-      data.push(batches[ii]);
-    };
-    return (data);
-  }
-
-  /**
-   * Get given color at mouse position
-   * @param {Number} mx
-   * @param {Number} my
-   * @return {String}
-   */
-  getColorAtMouseOffset(mx, my) {
-    let relative = this.editor.getRelativeOffset(mx, my);
-    let rx = relative.x;
-    let ry = relative.y;
-    let color = this.editor.getStackRelativeTileColorAt(rx, ry);
-    return (color ? rgbaToHex(color) : null);
-  }
-
 };
 
-inherit(Poxi, _render);
-inherit(Poxi, _generate);
+extend(Poxi, _select);
 
-// apply to window
+extend(Poxi, _camera);
+
+extend(Poxi, _emitter);
+extend(Poxi, _listener);
+
+extend(Poxi, _env);
+
+extend(Poxi, _blend);
+extend(Poxi, _invert);
+extend(Poxi, _onion);
+extend(Poxi, _replace);
+extend(Poxi, _shading);
+extend(Poxi, _smoothing);
+
+extend(Poxi, _buffer);
+extend(Poxi, _build);
+extend(Poxi, _draw);
+extend(Poxi, _generate);
+extend(Poxi, _render);
+extend(Poxi, _resize);
+extend(Poxi, _shaders);
+
+extend(Poxi, _redo);
+extend(Poxi, _state);
+extend(Poxi, _undo);
+
+extend(Poxi, _read);
+extend(Poxi, _write);
+
+extend(Poxi, _fill);
+extend(Poxi, _rotate);
+
+extend(Poxi, _setup);
+
 if (typeof window !== "undefined") {
   window.Poxi = Poxi;
+  window.stage = new Poxi();
 } else {
-  throw new Error("Please run Poxi inside a browser");
+  throw new Error("Poxi only runs inside the browser");
 }
+
+export default Poxi;

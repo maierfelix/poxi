@@ -2,12 +2,12 @@
   "name": "poxi",
   "version": "0.3.8",
   "description": "A hackable pixel editor",
-  "license": "MIT",
+  "license": "BSD-2-Clause",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/maierfelix/poxi.git"
   },
-  "main": "dist/poxi.js",
+  "main": "main.js",
   "homepage": "https://github.com/maierfelix/poxi#readme",
   "author": "Felix Maier <xilefmai@gmail.com>",
   "contributors": [
@@ -16,19 +16,16 @@
   "bugs": {
     "url": "https://github.com/maierfelix/poxi/issues"
   },
+  "keywords": [],
   "scripts": {
-    "start": "npm run dist && node dist/poxi",
-    "build": "npm run dist && npm run minify",
-    "dist": "rollup -c rollup/config.build.js",
-    "minify": "rollup -c rollup/config.minify.js"
+    "start": "electron ."
   },
   "engines": {
-    "node": ">= 4.x"
+    "node": ">= 6.x"
   },
   "devDependencies": {
-    "rollup": "^0.36.4",
-    "rollup-plugin-buble": "^0.14.0",
-    "rollup-plugin-uglify": "^1.0.1"
+    "electron": "^1.6.2",
+    "rollup": "^0.41.4"
   },
   "dependencies": {}
 }

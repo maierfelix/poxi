@@ -1,5 +1,3 @@
-import { hashFromString } from "./utils";
-
 // default view size
 export const DEFAULT_WIDTH = 480;
 export const DEFAULT_HEIGHT = 320;
@@ -7,12 +5,14 @@ export const DEFAULT_HEIGHT = 320;
 export const DEFAULT_GRID_HIDDEN = false;
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 0.1;
+export const MIN_SCALE = 1.25;
 export const MAX_SCALE = 32;
 export const MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2
 export const UNSET_TILE_COLOR = 2;
-export const BASE_TILE_COLOR = [0,0,0,0];
+export const BASE_TILE_COLOR = [0, 0, 0, 0];
+export const SELECTION_COLOR = [1, 1, 1, 0.2];
+export const TILE_HOVER_COLOR = [1, 1, 1, 0.2];
 
 // 32-bit ints are allowed at maximum
 export const MAX_SAFE_INTEGER = (2 ** 31) - 1;
@@ -38,13 +38,11 @@ export const BATCH_BUFFER_SIZE = {
   MIN_L: 1
 };
 
-export const DRAW_HASH = hashFromString("draw");
-
 // Maximum allowed items inside stack
-export const STACK_LIMIT = 255;
+export const STACK_LIMIT = 128;
 
 // WebGL texture limit
-export const WGL_TEXTURE_LIMIT = 1e3;
+export const WGL_TEXTURE_LIMIT = STACK_LIMIT * 2;
 
 // WebGL supported or not
 export const WGL_SUPPORTED = (

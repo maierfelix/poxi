@@ -4,41 +4,12 @@ import {
 } from "./cfg";
 
 /**
- * @param {Class} cls
- * @param {Array} prot
- */
-export function inherit(cls, prot) {
-  let key = null;
-  for (key in prot) {
-    if (prot[key] instanceof Function) {
-      cls.prototype[key] = prot[key];
-    }
-  };
-}
-
-/**
- * Returns a unique integer
+ * Returns unique integer
  * @return {Number}
  */
 let uidx = 0;
 export function uid() {
-  return (uidx++);
-};
-
-/**
- * String to hashcode like on our island java
- * @param {String} str
- * @return {Number}
- */
-export function hashFromString(str) {
-  let hash = 0;
-  let length = str.length;
-  for (let ii = 0; ii < length; ++ii) {
-    let ch = str.charCodeAt(ii);
-    hash = ((hash << 5) - hash) + ch;
-    hash |= 0;
-  }
-  return (hash);
+  return (++uidx);
 };
 
 /**
@@ -47,10 +18,10 @@ export function hashFromString(str) {
  * @return {CanvasRenderingContext2D}
  */
 export function createCanvasBuffer(width, height) {
-  let canvas = document.createElement("canvas");
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  let ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
   applyImageSmoothing(ctx, false);
   return (ctx);
 };
@@ -71,7 +42,7 @@ export function applyImageSmoothing(ctx, state) {
  * @param {Function} resolve
  */
 export function loadImage(path, resolve) {
-  let img = new Image();
+  const img = new Image();
   img.addEventListener("load", () => {
     resolve(img);
   });
@@ -105,10 +76,10 @@ export function rgbAlphaToAlphaByte(a) {
  * @return {Array}
  */
 export function rgbaToBytes(rgba) {
-  let r = rgba[0] / 255;
-  let g = rgba[1] / 255;
-  let b = rgba[2] / 255;
-  let a = rgba[3];
+  const r = rgba[0] / 255;
+  const g = rgba[1] / 255;
+  const b = rgba[2] / 255;
+  const a = rgba[3];
   return ([r, g, b, a]);
 };
 
@@ -117,10 +88,10 @@ export function rgbaToBytes(rgba) {
  * @return {String}
  */
 export function colorToRgbaString(color) {
-  let r = color[0];
-  let g = color[1];
-  let b = color[2];
-  let a = color[3];
+  const r = color[0];
+  const g = color[1];
+  const b = color[2];
+  const a = color[3];
   return (`rgba(${r},${g},${b},${a})`);
 };
 
@@ -129,10 +100,10 @@ export function colorToRgbaString(color) {
  * @return {Array}
  */
 export function hexToRgba(hex) {
-  let r = parseInt(hex.substring(1,3), 16);
-  let g = parseInt(hex.substring(3,5), 16);
-  let b = parseInt(hex.substring(5,7), 16);
-  return ([r,g,b,1]);
+  const r = parseInt(hex.substring(1,3), 16);
+  const g = parseInt(hex.substring(3,5), 16);
+  const b = parseInt(hex.substring(5,7), 16);
+  return ([r, g, b, 1]);
 };
 
 /**
@@ -140,10 +111,10 @@ export function hexToRgba(hex) {
  * @return {String}
  */
 export function rgbaToHex(rgba) {
-  let r = rgba[0];
-  let g = rgba[1];
-  let b = rgba[2];
-  let a = rgba[3];
+  const r = rgba[0];
+  const g = rgba[1];
+  const b = rgba[2];
+  const a = rgba[3];
   return (
     "#" +
     ("0" + parseInt(r, 10).toString(16)).slice(-2) +
@@ -178,24 +149,6 @@ export function isGhostColor(color) {
 };
 
 /**
- * @param {Number} a
- * @param {Number} b
- * @return {Number}
- */
-export function sortAscending(a, b) {
-  return (a - b);
-};
-
-/**
- * @param {Number} a
- * @param {Number} b
- * @return {Number}
- */
-export function sortDescending(a, b) {
-  return (b - a);
-};
-
-/**
  * Creates and returns an webgl context
  * @param {HTMLCanvasElement} canvas
  * @return {WebGLRenderingContext}
@@ -204,7 +157,7 @@ export function getWGLContext(canvas) {
   if (!WGL_SUPPORTED) {
     throw new Error("Your browser doesn't support WebGL.");
   }
-  let opts = {
+  const opts = {
     alpha: false,
     antialias: false,
     premultipliedAlpha: false,
