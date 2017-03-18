@@ -44,12 +44,10 @@ export function click(x, y) {
  * @param {Number} y
  */
 export function hover(x, y) {
+  x = x | 0;
+  y = y | 0;
   this.mx = x;
   this.my = y;
-  const relative = this.getRelativeTileOffset(x, y);
-  this.rmx = relative.x * TILE_SIZE;
-  this.rmy = relative.y * TILE_SIZE;
-  this.redraw();
 };
 
 /**
@@ -88,6 +86,8 @@ export function getRelativeOffset(x, y) {
  * @return {Object}
  */
 export function getRelativeTileOffset(x, y) {
+  x = x | 0;
+  y = y | 0;
   const rel = this.getRelativeOffset(x, y);
   return (
     this.getTileOffsetAt(rel.x, rel.y)
@@ -100,6 +100,8 @@ export function getRelativeTileOffset(x, y) {
  * @return {Object}
  */
 export function getTileOffsetAt(x, y) {
+  x = x | 0;  
+  y = y | 0;
   const half = TILE_SIZE / 2;
   const xx = roundTo(x - half, TILE_SIZE);
   const yy = roundTo(y - half, TILE_SIZE);

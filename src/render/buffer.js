@@ -51,4 +51,5 @@ export function updateTexture(texture, canvas) {
   const gl = this.gl;
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+  gl.bindTexture(gl.TEXTURE_2D, null);
 };

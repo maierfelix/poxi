@@ -1,6 +1,7 @@
 const fs = require("fs");
 const url = require("url");
 const path = require("path");
+const buble = require("rollup-plugin-buble");
 const rollup = require("rollup");
 const electron = require("electron");
 
@@ -8,7 +9,8 @@ const bundleSource = () => {
   return new Promise((resolve, reject) => {
     // rollup import statements and open electron afterwards
     rollup.rollup({
-      entry: __dirname + "/src/index.js"
+      entry: __dirname + "/src/index.js",
+      plugins: [ buble() ],
     }).then((bundle) => {
       const result = bundle.generate({
         format: "cjs"
@@ -78,6 +80,7 @@ initializeStage().then((old) => {
     bundleSource().then(() => {
       old.win.reload();
       old.win.webContents.reloadIgnoringCache();
+      old.win.webContents.openDevTools();
       console.log("Refreshed!", "#" + Date.now());
     });
   };

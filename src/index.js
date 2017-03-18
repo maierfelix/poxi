@@ -67,9 +67,6 @@ class Poxi {
     // camera render scale
     this.cr = MIN_SCALE;
     this.cs = MIN_SCALE;
-    // last camera position
-    this.lcx = 1;
-    this.lcy = 1;
     // camera drag related
     this.dx = 0;
     this.dy = 0;
@@ -84,8 +81,6 @@ class Poxi {
     // mouse offset
     this.mx = 0;
     this.my = 0;
-    this.rmx = 0;
-    this.rmy = 0;
     // stack related
     this.stack = [];
     this.sindex = 0;
@@ -108,11 +103,35 @@ class Poxi {
         textures: {}
       }
     };
+    // last things
+    this.last = {
+      cx: 1, cy: 1,
+      mx: 0, my: 0
+    };
+    // shared buffer related
+    this.buffers = {
+      erasing: null,
+      drawing: null,
+      boundingColor: [1, 0, 0, 0.1]
+    };
+    // keyboard related
+    this.keys = {};
+    // clipboard related
+    this.clipboard = {
+      cut: null,
+      copy: null
+    };
+    // stage stages
     this.states = {
       drawing: false,
       dragging: false,
       select: false,
       selecting: false
+    };
+    // mode related
+    this.modes = {
+      draw: false,
+      erase: false
     };
     this.setup();
   }

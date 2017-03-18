@@ -43,6 +43,23 @@ Layer.prototype.pushBatch = function(batch) {
 };
 
 /**
+ * @param {Number} id
+ * @return {Number}
+ */
+Layer.prototype.getBatchById = function(id) {
+  let result = null;
+  const batches = this.batches;
+  for (let ii = 0; ii < batches.length; ++ii) {
+    const batch = batches[ii];
+    if (batch.id === id) {
+      result = batch;
+      break;
+    }
+  };
+  return (result);
+};
+
+/**
  * Generates and updates the local view buffer, based on all stored batches
  */
 Layer.prototype.updateBuffer = function() {
@@ -58,6 +75,8 @@ Layer.prototype.updateBoundings = function() {
     const bounds = batch.bounds;
     const bx = bounds.x; const by = bounds.y;
     const bw = bx + bounds.w; const bh = by + bounds.h;
+    // ignore empty batches
+    if (bounds.w === 0 && bounds.h === 0) continue;
     // calculate x
     if (x < 0 && bx < x) x = bx;
     else if (x >= 0 && (bx < 0 || bx < x)) x = bx;
@@ -69,7 +88,7 @@ Layer.prototype.updateBoundings = function() {
     // calculate height
     if (bh > h) h = bh;
   };
-  // update our boundings property
+  // update our boundings
   this.bounds.update(x, y, -x + w, -y + h);
 };
 

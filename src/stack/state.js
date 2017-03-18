@@ -8,7 +8,7 @@ export function refreshStack() {
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
   }
-  this.updateGlobalBoundings();
+  //this.updateGlobalBoundings();
 };
 
 /**
@@ -20,18 +20,12 @@ export function currentStackOperation() {
 };
 
 /**
- * @param {Array} op
+ * @param {Command} cmd
  * @param {Boolean} state
  */
-export function fire(op, state) {
-  op.batch.tiles.map((tile) => {
-    const cindex = tile.cindex;
-    if (state) {
-      // redo
-      tile.cindex -= (tile.cindex > 0 ? 1 : 0);
-    } else {
-      // undo
-      tile.cindex += (tile.cindex < tile.colors.length - 1 ? 1 : 0);
-    }
-  });
+export function fire(cmd, state) {
+  if (cmd.batch.isEraser) {
+    if (state) cmd.batch.dejectErasedTiles();
+    else cmd.batch.injectErasedTiles();
+  }
 };

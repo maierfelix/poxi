@@ -1,19 +1,23 @@
+import Command from "./cmd";
+
 export function redo() {
   if (this.sindex < this.stack.length - 1) {
     this.sindex++;
-    const op = this.currentStackOperation();
-    this.fire(op, true);
+    const cmd = this.currentStackOperation();
+    this.fire(cmd, true);
   }
 };
 
 /**
- * @param {Object} op
+ * @param {Number} kind
+ * @param {Batch} batch
  */
-export function enqueue(op) {
+export function enqueue(kind, batch) {
   // our stack index is out of position
   // => clean up all more recent batches
   this.refreshStack();
-  this.stack.push(op);
+  const cmd = new Command(kind, batch);
+  this.stack.push(cmd);
   this.redo();
   this.undo();
   this.redo();

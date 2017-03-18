@@ -1,25 +1,10 @@
-import { alphaByteToRgbAlpha } from "../utils";
+import {
+  colorToRgbaString,
+  createCanvasBuffer,
+  alphaByteToRgbAlpha
+} from "../utils";
 
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Batch}
- */
-export function getBatchByPoint(x, y) {
-  const layers = this.layers;
-  for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = layers.length - 1 - ii;
-    const batches = layers[idx].batches;
-    for (let jj = 0; jj < batches.length; ++jj) {
-      const jdx = batches.length - 1 - jj;
-      const batch = batches[jdx];
-      if (!batch.isPointInside(x, y)) continue;
-      if (this.sindex < jdx) continue;
-      return (batch);
-    };
-  };
-  return (null);
-};
+import Batch from "../batch/index";
 
 /**
  * Access raw pixel
@@ -27,32 +12,52 @@ export function getBatchByPoint(x, y) {
  * @param {Number} y
  * @return {Array}
  */
-export function getRawPixelAt(x, y) {
-  // normalize coordinates
-  const xx = x - this.cx;
-  const yy = y - this.cy;
-  // abort if point isn't inside our global boundings
-  if (
-    (xx < 0 || xx >= this.cw) ||
-    (yy < 0 || yy >= this.ch)
-  ) return (null);
-  const batch = this.getBatchByPoint(xx, yy);
-  console.log(batch, xx, yy, x, y);
-  /*
-  // now extract the data
-  const data = batch.buffer.data;
-  // imagedata array is 1d
-  const idx = (yy * this.cw + xx) * 4;
-  // get each color value
-  const r = data[idx + 0];
-  const g = data[idx + 1];
-  const b = data[idx + 2];
-  const a = data[idx + 3];
-  const color = [r, g, b, alphaByteToRgbAlpha(a)];
-  // dont return anything if we got no valid color
-  if (a <= 0) return (null);
-  // finally return the color array
-  return (color);*/
+export function getPixelAt(x, y) {
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii; // reversed
+    const batches = layers[idx].batches;
+    for (let jj = 0; jj < batches.length; ++jj) {
+      const jdx = batches.length - 1 - jj;
+      const batch = batches[jdx];
+      if (batch.isEraser) continue;
+      if (!batch.bounds.isPointInside(x, y)) continue;
+      let pixel = batch.getRawPixelAt(x, y);
+      if (pixel !== null) return (pixel);
+    };
+  };
+  return (null);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Object}
+ */
+export function getPixelsAt(x, y) {
+  const result = [];
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii; // reversed
+    const batches = layers[idx].batches;
+    for (let jj = 0; jj < batches.length; ++jj) {
+      const jdx = batches.length - 1 - jj;
+      const batch = batches[jdx];
+      if (batch.isEraser) continue;
+      if (!batch.bounds.isPointInside(x, y)) continue;
+      let pixel = batch.getRawPixelAt(x, y);
+      if (pixel === null) continue;
+      result.push({
+        x, y,
+        batch: batch,
+        pixel: pixel
+      });
+    };
+  };
+  return ({
+    x, y,
+    pixels: result
+  });
 };
 
 /**
@@ -71,10 +76,39 @@ export function getLayerByPoint(x, y) {
 };
 
 /**
- * @param {Number} x
- * @param {Number} y
+ * @param {Number} id
+ * @return {Batch}
  */
-export function drawTileAt(x, y) {
-  const layer = this.getLayerByPoint(x, y);
-  console.log(layer);
+export function getBatchById(id) {
+  let result = null;
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii;
+    const layer = layers[idx];
+    let batch = layer.getBatchById(id);
+    if (batch !== null) {
+      result = batch;
+      break;
+    }
+  };
+  return (result);
+};
+
+/**
+ * @return {Layer}
+ */
+export function getCurrentLayer() {
+  if (this.layers.length) {
+    return (this.layers[this.layers.length - 1]);
+  }
+  return (null);
+};
+
+/**
+ * @return {Batch}
+ */
+export function createDynamicBatch() {
+  const batch = new Batch(this);
+  batch.isDynamic = true;
+  return (batch);
 };

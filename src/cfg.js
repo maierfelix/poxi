@@ -5,13 +5,15 @@ export const DEFAULT_HEIGHT = 320;
 export const DEFAULT_GRID_HIDDEN = false;
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 1.25;
+export const MIN_SCALE = 0.75;
 export const MAX_SCALE = 32;
 export const MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2
 export const UNSET_TILE_COLOR = 2;
+export const ERASE_TILE_COLOR = [0, 1, 0, 0.1];
 export const BASE_TILE_COLOR = [0, 0, 0, 0];
-export const SELECTION_COLOR = [1, 1, 1, 0.2];
+export const SELECTION_COLOR = [1, 1, 1, 0.1];
+export const SELECTION_COLOR_ACTIVE = [1, 1, 1, 0.2];
 export const TILE_HOVER_COLOR = [1, 1, 1, 0.2];
 
 // 32-bit ints are allowed at maximum
@@ -53,3 +55,8 @@ export const WGL_SUPPORTED = (
 export const WASM_SUPPORTED = (
   typeof WebAssembly !== "undefined"
 );
+
+// dev mode state
+export let MODES = {
+  DEV: true
+};

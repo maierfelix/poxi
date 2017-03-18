@@ -49,8 +49,8 @@ export function redrawGridBuffer() {
   buffer.stroke();
   buffer.closePath();
   this.updateTexture(texture, buffer.canvas);
-  this.lcx = this.cx;
-  this.lcy = this.cy;
+  this.last.cx = this.cx;
+  this.last.cy = this.cy;
 };
 
 /**
@@ -64,24 +64,24 @@ export function createBackgroundBuffer() {
   const cw = this.cw;
   const ch = this.ch;
   const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+  const buffer = canvas.getContext("2d");
   canvas.width = cw;
   canvas.height = ch;
   // dark rectangles
-  ctx.fillStyle = "#1f1f1f";
-  ctx.fillRect(0, 0, cw, ch);
+  buffer.fillStyle = "#1f1f1f";
+  buffer.fillRect(0, 0, cw, ch);
   // bright rectangles
-  ctx.fillStyle = "#212121";
+  buffer.fillStyle = "#212121";
   for (let yy = 0; yy < ch; yy += size*2) {
     for (let xx = 0; xx < cw; xx += size*2) {
       // applied 2 times to increase saturation
-      ctx.fillRect(xx, yy, size, size);
-      ctx.fillRect(xx, yy, size, size);
+      buffer.fillRect(xx, yy, size, size);
+      buffer.fillRect(xx, yy, size, size);
     };
   };
   for (let yy = size; yy < ch; yy += size*2) {
     for (let xx = size; xx < cw; xx += size*2) {
-      ctx.fillRect(xx, yy, size, size);
+      buffer.fillRect(xx, yy, size, size);
     };
   };
   const texture = this.bufferTexture("background", canvas, false);

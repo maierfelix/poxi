@@ -71,6 +71,33 @@ export function rgbAlphaToAlphaByte(a) {
 };
 
 /**
+ * @return {Array}
+ */
+export function randomRgbaColor() {
+  const r = (Math.random() * 256) | 0;
+  const g = (Math.random() * 256) | 0;
+  const b = (Math.random() * 256) | 0;
+  return ([r, g, b, 1]);
+};
+
+let velo = 12;
+let rr = 127; let rrr = 1;
+let rg = 12; let rrg = 1;
+let rb = 108; let rrb = 1;
+export function getRainbowColor() {
+  rr += rrr;
+  if (rr >= 255) rrr = -velo;
+  else if (rr <= 0) rrr = velo;
+  rg += rrg;
+  if (rg >= 255) rrg = -velo;
+  else if (rg <= 0) rrg = velo;
+  rb += rrb;
+  if (rb >= 255) rrb = -velo;
+  else if (rb <= 0) rrb = velo;
+  return ([rr, rg, rb, velo]);
+};
+
+/**
  * Convert rgba to rgba byte color
  * @param {Array} rgba
  * @return {Array}
