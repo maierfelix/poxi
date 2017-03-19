@@ -89,6 +89,8 @@ class Poxi {
     // general cache
     this.cache = {
       bg: null,
+      fg: null,
+      fgTexture: null,
       grid: null,
       gridTexture: null,
       // wgl cache

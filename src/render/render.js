@@ -10,6 +10,10 @@ import {
 } from "../cfg";
 
 import { roundTo } from "../math";
+import {
+  colorToRgbaString,
+  createCanvasBuffer
+} from "../utils";
 
 export function redraw() {
   // only redraw texture if it's absolutely necessary
@@ -28,6 +32,7 @@ export function render() {
     this.renderHoveredTile();
   }
   if (selection) this.renderSelection();
+  if (MODES.DEV) this.renderStats();
 };
 
 export function renderBackground() {
@@ -52,11 +57,26 @@ export function renderLayers() {
   const cy = this.cy | 0;
   const cr = this.cr;
   const layers = this.layers;
+  // draw global boundings
+  /*if (MODES.DEV) {
+    (() => {
+      const bounds = this.bounds;
+      const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+      const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+      const w = (bounds.w * TILE_SIZE) * cr;
+      const h = (bounds.h * TILE_SIZE) * cr;
+      this.drawRectangle(
+        x, y,
+        w, h,
+        [0, 255, 0, 0.1]
+      );
+    })();
+  }*/
   for (let ii = 0; ii < this.layers.length; ++ii) {
     const layer = layers[ii];
     const bounds = layer.bounds;
     if (layer.states.hidden) continue;
-    if (!this.boundsInsideView(bounds)) continue;
+    //if (!this.boundsInsideView(bounds)) continue;
     if (MODES.DEV) {
       const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
       const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
@@ -96,7 +116,7 @@ export function renderLayer(layer) {
       // don't ignore our drawing batch
       if (drawing === null || drawing !== batch) continue;
     }
-    if (!this.boundsInsideView(bounds)) continue;
+    if (!batch.isBackground && !this.boundsInsideView(bounds)) continue;
     // batch is a background, fill the whole screen
     if (batch.isBackground) {
       this.drawRectangle(
@@ -167,5 +187,39 @@ export function renderSelection() {
     xx, yy,
     ww, hh,
     color
+  );
+};
+
+export function renderStats() {
+  const buffer = this.cache.fg;
+  const bounds = this.bounds;
+  const view = buffer.canvas;
+  const texture = this.cache.fgTexture;
+  const mx = this.last.mx;
+  const my = this.last.my;
+  // clear
+  buffer.clearRect(0, 0, this.cw, this.ch);
+  // font style
+  buffer.font = "10px Verdana";
+  buffer.fillStyle = "#fff";
+  // stats
+  buffer.fillText(`Mouse: x: ${mx}, y: ${my}`, 8, 16);
+  buffer.fillText(`GPU textures: ${Object.keys(this.cache.gl.textures).length}`, 8, 28);
+  buffer.fillText(`Boundings: x: ${bounds.x}, y: ${bounds.y}, w: ${bounds.w}, h: ${bounds.h}`, 8, 40);
+  buffer.fillText(`Camera scale: ${this.cr}`, 8, 52);
+  buffer.fillText(`Stack: ${this.sindex + 1}:${this.stack.length}`, 8, 64);
+  // mouse color
+  let color = this.getPixelAt(mx, my);
+  if (color !== null) {
+    buffer.fillStyle = colorToRgbaString(color);
+    buffer.fillRect(8, this.ch - 16, 8, 8);
+    buffer.fillStyle = "#fff";
+    buffer.fillText(`${color[0]}, ${color[1]}, ${color[2]}, ${color[3]}`, 24, this.ch - 8);
+  }
+  // update texture, then draw it
+  this.updateTexture(texture, view);
+  this.drawImage(
+    texture,
+    0, 0, view.width, view.height
   );
 };

@@ -87,3 +87,19 @@ export function createBackgroundBuffer() {
   const texture = this.bufferTexture("background", canvas, false);
   return (texture);
 };
+
+/**
+ * @return {CanvasRenderingContext2D}
+ */
+export function createForegroundBuffer() {
+  const cw = this.cw;
+  const ch = this.ch;
+  const buffer = createCanvasBuffer(cw, ch);
+  if (this.cache.fg !== null) {
+    this.cache.fg = null;
+    this.destroyTexture(this.cache.fgTexture);
+  }
+  this.cache.fg = buffer;
+  this.cache.fgTexture = this.bufferTexture("foreground", buffer.canvas, true);
+  return (buffer);
+};

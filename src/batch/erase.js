@@ -71,5 +71,6 @@ export function erase(x, y) {
     //batch.resizeByBufferData();
     batch.refreshBuffer();
   };
-  //this.refreshBuffer();
+  this.refreshBuffer();
+  return;
 };

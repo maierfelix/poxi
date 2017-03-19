@@ -26,8 +26,9 @@ export function resize(width, height) {
   gl.disable(gl.DEPTH_TEST);
   gl.disable(gl.STENCIL_TEST);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  // re-generate our bg
+  // re-generate our bg and fg
   this.cache.bg = this.createBackgroundBuffer();
+  this.cache.fg = this.createForegroundBuffer();
   // re-generate our grid
   this.cache.grid = this.createGridBuffer();
   this.redrawGridBuffer();

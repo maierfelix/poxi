@@ -8,7 +8,6 @@ import { alphaByteToRgbAlpha } from "../utils";
 export function createRawBufferAt(ctx, x, y) {
   const view = ctx.canvas;
   this.bounds.update(x, y, view.width, view.height);
-  this.isBuffered = true;
   this.isRawBuffer = true;
   this.isBackground = false;
   this.buffer = {
@@ -25,6 +24,7 @@ export function createRawBufferAt(ctx, x, y) {
  * @return {Array}
  */
 export function getRawPixelAt(x, y) {
+  if (this.isBackground) return (this.color);
   // normalize coordinates
   const xx = x - this.bounds.x;
   const yy = y - this.bounds.y;

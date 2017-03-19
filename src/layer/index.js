@@ -59,13 +59,6 @@ Layer.prototype.getBatchById = function(id) {
   return (result);
 };
 
-/**
- * Generates and updates the local view buffer, based on all stored batches
- */
-Layer.prototype.updateBuffer = function() {
-  this.buffer = null;
-};
-
 Layer.prototype.updateBoundings = function() {
   let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
@@ -75,6 +68,8 @@ Layer.prototype.updateBoundings = function() {
     const bounds = batch.bounds;
     const bx = bounds.x; const by = bounds.y;
     const bw = bx + bounds.w; const bh = by + bounds.h;
+    // ignore backgrounds
+    if (batch.isBackground) continue;
     // ignore empty batches
     if (bounds.w === 0 && bounds.h === 0) continue;
     // calculate x

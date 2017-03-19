@@ -26,11 +26,11 @@ class Batch {
   constructor(instance) {
     this.id = uid();
     this.instance = instance;
+    this.erased = [];
     // buffer related
     this.data = null;
     this.buffer = null;
-    this.erased = [];
-    this.isBuffered = false;
+    this.texture = null;
     // relative boundings
     this.bounds = new Boundings();
     // background related
@@ -49,6 +49,19 @@ class Batch {
   }
 };
 
+/**
+ * @return {Number}
+ */
+Batch.prototype.getStackIndex = function() {
+  const id = this.id;
+  const commands = this.instance.stack;
+  for (let ii = 0; ii < commands.length; ++ii) {
+    const cmd = commands[ii];
+    if (cmd.batch.id === id) return (ii);
+  };
+  return (-1);
+};
+
 Batch.prototype.kill = function() {
   const id = this.id;
   const instance = this.instance;
@@ -57,6 +70,14 @@ Batch.prototype.kill = function() {
     const batches = layers[ii].batches;
     for (let jj = 0; jj < batches.length; ++jj) {
       const batch = batches[jj];
+      // also kill references in erased cell array
+      if (batch.isEraser) {
+        for (let kk = 0; kk < batch.erased.length; ++kk) {
+          const tile = batch.erased[kk];
+          if (tile.batch.id === id) continue;
+          batch.erased.splice(kk, 1);
+        };
+      }
       if (batch.id === id) {
         batch.bounds = null;
         batch.erased = null;

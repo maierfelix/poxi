@@ -162,6 +162,7 @@ export function onMouseMove(e) {
   else {
     const relative = this.getRelativeTileOffset(x, y);
     let color = this.getPixelAt(relative.x, relative.y);
+    //console.log(color);
     /*if (color) {
       color = rgbaToBytes(color);
       color[3] = 0.1;
