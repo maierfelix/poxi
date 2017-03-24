@@ -8,16 +8,22 @@
 
     <div class="bottom-menu">
       <div class="bottom-menu-items">
-        <img id="beautify" src="assets/img/beautify.png" class="item" />
+        <img id="select" src="assets/img/select.png" class="item" />
+        <img id="move" src="assets/img/move.png" class="item unavailable" />
+        <img class="item" style="opacity: 0; float: left;" />
+        <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
+        <img id="arc" src="assets/img/circle_stroke.png" class="item" />
         <img id="tiled" src="assets/img/pencil.png" class="item" />
-        <img id="erase" src="assets/img/eraser.png" class="item unavailable" />
+        <img id="erase" src="assets/img/eraser.png" class="item" />
         <span id="color_view" class="color-wrapper">
           <input id="color" type="color" class="item" value="#ff0000"/>
         </span>
         <img id="pipette" src="assets/img/pipette.png" class="item" />
-        <img id="bucket" src="assets/img/bucket.png" class="item unavailable" />
+        <img id="bucket" src="assets/img/bucket.png" class="item" />
         <img id="download" src="assets/img/download.png" class="item" />
-        <img id="upload" src="assets/img/upload.png" class="item" />
+       <img class="item" style="opacity: 0; float: right;" />
+        <img class="item" style="opacity: 0; float: right;" />
+        <img class="item" style="opacity: 0; float: right;" />
         <!--<img src="assets/img/select.png" class="item" />-->
       </div>
     </div>
@@ -30,22 +36,26 @@
       <img id="cbucket" src="assets/img/bucket.png" class="cursor" />
     </div>
 
-    <div id="menu" class="dropdown-content">
+    <!--<div id="menu" class="dropdown-content">
       <div id="colors" class="dropdown-wrapper">
         <div style="background: #ff0000"></div>
         <div style="background: #ff0000"></div>
       </div>
-    </div>
+    </div>-->
 
     <input id="file" type="file" title=" " />
-    <!--<button id="ellipse" class="btn">Ellipse</button>
-    <button id="rectangle" class="btn">Rectangle</button>-->
-    <script type="text/javascript" src="./keyboardjs.js"></script>
-    <script type="text/javascript" src="./dist/poxi.js"></script>
-    <script type="text/javascript" src="./main.js"></script>
-    <script>
-      (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
-    </script>
 
+    <script type="text/javascript" src="./bundle.js"></script>
+    <script type="text/javascript" src="./stats.js"></script>
+    <script>
+      var stats = new Stats();
+      document.body.appendChild(stats.dom);
+      stats.dom.style.left = "";
+      stats.dom.style.right = "0px";
+      requestAnimationFrame(function loop() {
+        stats.update();
+        requestAnimationFrame(loop)
+      });
+    </script>
   </body>
 </html>
