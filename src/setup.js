@@ -14,6 +14,7 @@ export function setup() {
   this.resize(width, height);
   this.scale(0);
   this.modes.draw = true;
+  tiled.style.opacity = 1.0;
   const draw = () => {
     requestAnimationFrame(() => draw());
     this.clear();
@@ -24,5 +25,6 @@ export function setup() {
   (() => {
     this.layers.push(new Layer());
   })();
+  this.setupUi();
   document.body.appendChild(view);
 };

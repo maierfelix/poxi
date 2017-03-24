@@ -1,4 +1,7 @@
-import { MAX_SAFE_INTEGER } from "../cfg";
+import {
+  SETTINGS,
+  MAX_SAFE_INTEGER
+} from "../cfg";
 
 import {
   colorToRgbaString,
@@ -7,6 +10,77 @@ import {
 } from "../utils";
 
 import Batch from "../batch/index";
+import CommandKind from "../stack/kind";
+
+export function resetModes() {
+  for (let key in this.modes) {
+    this.resetSelection();
+    this.modes[key] = false;
+  };
+  this.resetActiveUiButtons();
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function insertImage(ctx, x, y) {
+  const layer = this.getCurrentLayer();
+  const batch = this.createDynamicBatch();
+  batch.drawImage(ctx, x, y);
+  layer.addBatch(batch);
+  this.enqueue(CommandKind.DRAW_IMAGE, batch);
+};
+
+/**
+ * @return {String}
+ */
+export function exportAsDataUrl() {
+  if (!(this.cache.main instanceof CanvasRenderingContext2D)) return ("");
+  const buffer = this.cache.main;
+  const view = buffer.canvas;
+  return (view.toDataURL("image/png"));
+};
+
+/**
+ * @param {Number} x0
+ * @param {Number} y0
+ * @param {Number} x1
+ * @param {Number} y1
+ */
+export function insertLine(x0, y0, x1, y1) {
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = (x0 < x1) ? 2 : -2;
+  const sy = (y0 < y1) ? 2 : -2;
+  let err = dx - dy;
+
+  const last = this.last;
+  const batch = (
+    this.states.drawing ?
+    this.buffers.drawing :
+    this.buffers.erasing
+  );
+  while (true) {
+    const relative = this.getRelativeTileOffset(x0, y0);
+    if (last.mx !== relative.x || last.my !== relative.y) {
+      if (this.states.drawing) {
+        const w = SETTINGS.PENCIL_SIZE;
+        const h = SETTINGS.PENCIL_SIZE;
+        batch.drawTile(relative.x, relative.y, w, h, this.fillStyle);
+      }
+      else if (this.states.erasing) {
+        batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+      }
+    }
+    last.mx = relative.x; last.my = relative.y;
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  };
+};
 
 /**
  * Access raw pixel
@@ -23,7 +97,6 @@ export function getPixelAt(x, y) {
     for (let jj = 0; jj < batches.length; ++jj) {
       const jdx = batches.length - 1 - jj;
       const batch = batches[jdx];
-      if (batch.isBackground) return (batch.color);
       if (batch.isEraser) continue;
       if (!batch.bounds.isPointInside(x, y)) continue;
       if (batch.getStackIndex() > sindex) continue;
@@ -49,15 +122,6 @@ export function getPixelsAt(x, y) {
     for (let jj = 0; jj < batches.length; ++jj) {
       const jdx = batches.length - 1 - jj;
       const batch = batches[jdx];
-      // return bg batch only
-      if (batch.isBackground) {
-        return ({
-          x, y,
-          color: batch.color,
-          isBackground: true,
-          pixels: []
-        });
-      }
       if (batch.isEraser) continue;
       if (!batch.bounds.isPointInside(x, y)) continue;
       if (batch.getStackIndex() > sindex) continue;
@@ -72,8 +136,7 @@ export function getPixelsAt(x, y) {
   };
   return ({
     x, y,
-    pixels: result,
-    isBackground: false
+    pixels: result
   });
 };
 
@@ -126,8 +189,11 @@ export function getCurrentLayer() {
  */
 export function createDynamicBatch() {
   const batch = new Batch(this);
-  batch.isDynamic = true;
   return (batch);
+};
+
+export function refreshMainTexture() {
+  this.createMainBuffer();
 };
 
 export function updateGlobalBoundings() {

@@ -30,11 +30,8 @@ export function fillBucket(x, y, color) {
   // flood fill
   const result = this.binaryFloodFill(batch, x, y, base, color);
   // ups, we filled infinite
-  if (result) {
-    this.refreshStack();
-    return;
-  }
-  layer.batches.push(batch);
+  if (result) return;
+  layer.addBatch(batch);
   const kind = result ? CommandKind.BACKGROUND : CommandKind.FILL;
   this.enqueue(kind, batch);
   this.updateGlobalBoundings();
@@ -88,15 +85,16 @@ export function binaryFloodFill(batch, x, y, base, color) {
     const idx = y * gw + x;
     // set this grid tile to 2, if it got traced earlier as a color match
     if (grid[idx] === 1) grid[idx] = 2;
-    let nn = (y-1) * gw + x;
-    let ee = y * gw + (x+1);
-    let ss = (y+1) * gw + x;
-    let ww = y * gw + (x-1);
+    const nn = (y-1) * gw + x;
+    const ee = y * gw + (x+1);
+    const ss = (y+1) * gw + x;
+    const ww = y * gw + (x-1);
+    // abort if we possibly go infinite
     if (
-      grid[nn] === void 0 ||
-      grid[ee] === void 0 ||
-      grid[ss] === void 0 ||
-      grid[ww] === void 0
+      (y - 1 < -1 || y - 1 > gh) ||
+      (x + 1 < -1 || x + 1 > gw) ||
+      (y + 1 < -1 || y + 1 > gh) ||
+      (x - 1 < -1 || x - 1 > gw)
     ) return (true);
     if (grid[nn] === 1) queue.push({x, y:y-1});
     if (grid[ee] === 1) queue.push({x:x+1, y});
@@ -120,11 +118,9 @@ export function binaryFloodFill(batch, x, y, base, color) {
   batch.buffer = buffer;
   batch.data = buffer.getImageData(0, 0, gw, gh).data;
   batch.bounds.update(bx, by, gw, gh);
-  batch.isDynamic = false;
-  batch.isRawBuffer = true;
   batch.isResized = true;
   batch.resizeByBufferData();
-  batch.refreshBuffer();
+  batch.refreshTexture();
 
   // finally free things from memory
   grid = null;

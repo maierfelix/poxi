@@ -1,21 +1,8 @@
-import { alphaByteToRgbAlpha } from "../utils";
+import { TILE_SIZE } from "../cfg";
 
-/**
- * @param {CanvasRenderingContext2D}
- * @param {Number} x
- * @param {Number} y
- */
-export function createRawBufferAt(ctx, x, y) {
-  const view = ctx.canvas;
-  this.bounds.update(x, y, view.width, view.height);
-  this.isRawBuffer = true;
-  this.isBackground = false;
-  this.buffer = {
-    ctx,
-    view: ctx.canvas,
-    data: ctx.getImageData(0, 0, view.width, view.height)
-  };
-};
+import { alignToGrid } from "../math";
+
+import { alphaByteToRgbAlpha } from "../utils";
 
 /**
  * Access cached imageData
@@ -24,7 +11,6 @@ export function createRawBufferAt(ctx, x, y) {
  * @return {Array}
  */
 export function getRawPixelAt(x, y) {
-  if (this.isBackground) return (this.color);
   // normalize coordinates
   const xx = x - this.bounds.x;
   const yy = y - this.bounds.y;
@@ -42,4 +28,24 @@ export function getRawPixelAt(x, y) {
   if (a <= 0) return (null);
   // finally return the color array
   return (color);
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function drawImage(ctx, x, y) {
+  const view = ctx.canvas;
+  const ww = view.width;
+  const hh = view.height;
+  const xx = alignToGrid(x - (ww / 2) | 0);
+  const yy = alignToGrid(y - (hh / 2) | 0);
+  this.prepareBuffer(xx, yy);
+  this.buffer = ctx;
+  this.bounds.x = xx;
+  this.bounds.y = yy;
+  this.bounds.w = ww;
+  this.bounds.h = hh;
+  this.refreshTexture();
 };

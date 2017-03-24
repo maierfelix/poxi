@@ -6,7 +6,11 @@ import {
   MAGIC_SCALE
 } from "../cfg";
 
-import { roundTo, zoomScale } from "../math";
+import {
+  roundTo,
+  zoomScale,
+  alignToGrid
+} from "../math";
 
 /**
  * @param {Number} dir
@@ -103,8 +107,8 @@ export function getTileOffsetAt(x, y) {
   x = x | 0;  
   y = y | 0;
   const half = TILE_SIZE / 2;
-  const xx = roundTo(x - half, TILE_SIZE);
-  const yy = roundTo(y - half, TILE_SIZE);
+  const xx = alignToGrid(x - half);
+  const yy = alignToGrid(y - half);
   return ({
     x: (xx / TILE_SIZE) | 0,
     y: (yy / TILE_SIZE) | 0

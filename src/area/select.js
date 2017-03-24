@@ -1,4 +1,20 @@
 /**
+ * @return {Object}
+ */
+export function getSelection() {
+  let x = this.sx; let y = this.sy;
+  let w = this.sw; let h = this.sh;
+  if (w < 0) x += w;
+  if (h < 0) y += h;
+  w = w < 0 ? -w : w;
+  h = h < 0 ? -h : h;
+  return ({
+    x: x, y: y,
+    w: w, h: h
+  });
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  */

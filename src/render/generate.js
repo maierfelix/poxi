@@ -4,8 +4,10 @@ import {
   GRID_LINE_WIDTH
 } from "../cfg";
 
-import { createCanvasBuffer } from "../utils";
-import { roundTo } from "../math";
+import {
+  createCanvasBuffer,
+  applyImageSmoothing
+} from "../utils";
 
 /**
  * @return {CanvasRenderingContext2D}
@@ -95,6 +97,7 @@ export function createForegroundBuffer() {
   const cw = this.cw;
   const ch = this.ch;
   const buffer = createCanvasBuffer(cw, ch);
+  applyImageSmoothing(buffer, true);
   if (this.cache.fg !== null) {
     this.cache.fg = null;
     this.destroyTexture(this.cache.fgTexture);
@@ -102,4 +105,43 @@ export function createForegroundBuffer() {
   this.cache.fg = buffer;
   this.cache.fgTexture = this.bufferTexture("foreground", buffer.canvas, true);
   return (buffer);
+};
+
+export function createMainBuffer() {
+  const ww = this.bounds.w;
+  const hh = this.bounds.h;
+  const buffer = createCanvasBuffer(ww || 1, hh || 1);
+  if (this.cache.main !== null) {
+    this.cache.main = null;
+    this.destroyTexture(this.cache.mainTexture);
+  }
+  this.cache.main = buffer;
+  this.cache.mainTexture = this.bufferTexture("main", buffer.canvas, false);
+  this.updateMainBuffer();
+  return (buffer);
+};
+
+export function updateMainBuffer() {
+  const layers = this.layers;
+  const sindex = this.sindex;
+  const buffer = this.cache.main;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const layer = layers[ii];
+    const lx = layer.x;
+    const ly = layer.y;
+    const batches = layer.batches;
+    for (let jj = 0; jj < batches.length; ++jj) {
+      const batch = batches[jj];
+      const x = batch.bounds.x;
+      const y = batch.bounds.y;
+      const w = batch.bounds.w;
+      const h = batch.bounds.h;
+      if (sindex - jj < 0) continue;
+      buffer.drawImage(
+        batch.buffer.canvas,
+        lx + (x - this.bounds.x), ly + (y - this.bounds.y)
+      );
+    };
+  };
+  this.updateTexture(this.cache.mainTexture, buffer.canvas);
 };

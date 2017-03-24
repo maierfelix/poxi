@@ -11,6 +11,7 @@ import extend from "../extend";
 import Boundings from "../bounds/index";
 
 import * as _raw from "./raw";
+import * as _tile from "./tile";
 import * as _erase from "./erase";
 import * as _resize from "./resize";
 import * as _boundings from "./boundings";
@@ -33,19 +34,12 @@ class Batch {
     this.texture = null;
     // relative boundings
     this.bounds = new Boundings();
-    // background related
-    this.color = null;
-    this.isBackground = false;
     // batch got resized or not
     this.isResized = false;
     // we use this batch for erasing
     this.isEraser = false;
-    // if we only have raw data
-    this.isRawBuffer = false;
-    // if set true, then our batch gets possibly resized
-    // many times and we don't know it's size until we
-    // can turn it into a static rawbuffer
-    this.isDynamic = false;
+    // indicates if we should force to render this batch
+    this.forceRendering = false;
   }
 };
 
@@ -60,6 +54,13 @@ Batch.prototype.getStackIndex = function() {
     if (cmd.batch.id === id) return (ii);
   };
   return (-1);
+};
+
+Batch.prototype.clear = function() {
+  this.buffer.clearRect(
+    0, 0,
+    this.bounds.w, this.bounds.h
+  );
 };
 
 Batch.prototype.kill = function() {
@@ -100,27 +101,7 @@ Batch.prototype.getColorAt = function(x, y) {
   // nothing buffered
   if (this.isEmpty()) return (null);
   // use image data for raw buffers
-  // return background color if batch is a filled background
-  if (this.isBackground) return (this.color);
   return (this.getRawColorAt(x, y));
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @param {Array} color 
- */
-Batch.prototype.drawTileAt = function(x, y, color) {
-  const bounds = this.bounds;
-  const instance = this.instance;
-  this.prepareBuffer(x, y);
-  this.resizeByOffset(x, y);
-  this.buffer.fillStyle = colorToRgbaString(color);
-  this.buffer.fillRect(
-    x - bounds.x, y - bounds.y,
-    1, 1
-  );
-  this.refreshBuffer();
 };
 
 /**
@@ -141,7 +122,7 @@ Batch.prototype.prepareBuffer = function(x, y) {
   }
 };
 
-Batch.prototype.refreshBuffer = function() {
+Batch.prototype.refreshTexture = function() {
   const bounds = this.bounds;
   const instance = this.instance;
   this.data = this.buffer.getImageData(0, 0, bounds.w, bounds.h).data;
@@ -179,6 +160,7 @@ Batch.prototype.isEmpty = function() {
 };
 
 extend(Batch, _raw);
+extend(Batch, _tile);
 extend(Batch, _erase);
 extend(Batch, _resize);
 extend(Batch, _boundings);

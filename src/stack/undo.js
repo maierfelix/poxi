@@ -4,6 +4,7 @@ export function undo() {
     this.fire(cmd, false);
     this.sindex--;
   }
+  this.refreshMainTexture();
 };
 
 /**

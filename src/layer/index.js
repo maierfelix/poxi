@@ -10,7 +10,7 @@ class Layer {
   /**
    * @constructor
    */
-  constructor() {
+  constructor(instance) {
     this.id = uid();
     // position
     this.x = 0;
@@ -37,9 +37,9 @@ class Layer {
  * Push batch and auto update layer boundings
  * @param {Batch} batch
  */
-Layer.prototype.pushBatch = function(batch) {
+Layer.prototype.addBatch = function(batch) {
   this.batches.push(batch);
-  this.updateBoundings();
+  if (!batch.isEmpty()) this.updateBoundings();
 };
 
 /**
@@ -68,8 +68,6 @@ Layer.prototype.updateBoundings = function() {
     const bounds = batch.bounds;
     const bx = bounds.x; const by = bounds.y;
     const bw = bx + bounds.w; const bh = by + bounds.h;
-    // ignore backgrounds
-    if (batch.isBackground) continue;
     // ignore empty batches
     if (bounds.w === 0 && bounds.h === 0) continue;
     // calculate x

@@ -6,6 +6,7 @@ There are two kinds of batches:
 
 1. Simple buffered batches which are transformable
 2. Raw buffered batches (e.g. imported images), which doesn't contain any specific tile data but grant access to the typed Uint8 pixel data.
+3. Erased batches which contain erased pixels
 
 Batches store a bounding property, which contains their dynamic position on the grid and their absolute width and height. Batch boundings get automatically updated as soon as their content changes.
 

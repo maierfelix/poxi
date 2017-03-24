@@ -1,6 +1,7 @@
 import extend from "./extend";
 
 import * as _select from "./area/select";
+import * as _area_functions from "./area/functions";
 
 import * as _camera from "./camera/functions";
 
@@ -33,6 +34,9 @@ import * as _write from "./storage/write";
 
 import * as _fill from "./transform/fill";
 import * as _rotate from "./transform/rotate";
+import * as _insert from "./transform/insert";
+
+import * as _ui from "./ui/index";
 
 import * as _setup from "./setup";
 
@@ -88,6 +92,8 @@ class Poxi {
     this.layers = [];
     // general cache
     this.cache = {
+      main: null,
+      mainTexture: null,
       bg: null,
       fg: null,
       fgTexture: null,
@@ -108,10 +114,15 @@ class Poxi {
     // last things
     this.last = {
       cx: 1, cy: 1,
-      mx: 0, my: 0
+      // mouse move coordinates
+      mx: 0, my: 0,
+      // mouse down coordinates
+      mdx: 0, mdy: 0
     };
     // shared buffer related
     this.buffers = {
+      arc: null,
+      rect: null,
       erasing: null,
       drawing: null,
       boundingColor: [1, 0, 0, 0.1]
@@ -120,11 +131,12 @@ class Poxi {
     this.keys = {};
     // clipboard related
     this.clipboard = {
-      cut: null,
       copy: null
     };
     // stage stages
     this.states = {
+      arc: false,
+      rect: false,
       drawing: false,
       dragging: false,
       select: false,
@@ -132,14 +144,22 @@ class Poxi {
     };
     // mode related
     this.modes = {
+      arc: false,
+      fill: false,
+      rect: false,
       draw: false,
-      erase: false
+      erase: false,
+      select: false,
+      pipette: false
     };
+    // global fill style
+    this.fillStyle = [255, 0, 0, 1];
     this.setup();
   }
 };
 
 extend(Poxi, _select);
+extend(Poxi, _area_functions);
 
 extend(Poxi, _camera);
 
@@ -172,6 +192,9 @@ extend(Poxi, _write);
 
 extend(Poxi, _fill);
 extend(Poxi, _rotate);
+extend(Poxi, _insert);
+
+extend(Poxi, _ui);
 
 extend(Poxi, _setup);
 

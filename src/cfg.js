@@ -58,5 +58,11 @@ export const WASM_SUPPORTED = (
 
 // dev mode state
 export let MODES = {
-  DEV: true
+  DEV: false
+};
+
+// different settings
+export let SETTINGS = {
+  PENCIL_SIZE: 2,
+  ERASER_SIZE: 2
 };

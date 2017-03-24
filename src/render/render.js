@@ -9,7 +9,6 @@ import {
   SELECTION_COLOR_ACTIVE
 } from "../cfg";
 
-import { roundTo } from "../math";
 import {
   colorToRgbaString,
   createCanvasBuffer
@@ -22,12 +21,41 @@ export function redraw() {
   }
 };
 
+/**
+ * Returns state if we can render
+ * a cached version of our view buffer
+ * @return {Boolean}
+ */
+export function canRenderCachedBuffer() {
+  return (
+    this.cache.main !== null &&
+    !this.states.drawing &&
+    !this.states.erasing &&
+    !this.states.arc &&
+    !this.states.rect
+  );
+};
+
 /** Main render method */
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
   this.renderBackground();
   this.renderGrid();
-  this.renderLayers();
+  if (this.canRenderCachedBuffer()) {
+    const bounds = this.bounds;
+    const cx = this.cx | 0;
+    const cy = this.cy | 0;
+    const cr = this.cr;
+    const ww = this.cache.main.canvas.width;
+    const hh = this.cache.main.canvas.height;
+    this.drawImage(
+      this.cache.mainTexture,
+      cx + (bounds.x * TILE_SIZE) * cr, cy + (bounds.y * TILE_SIZE) * cr,
+      (ww * TILE_SIZE) * cr, (hh * TILE_SIZE) * cr
+    );
+  } else {
+    this.renderLayers();
+  }
   if (!this.states.select || !selection) {
     this.renderHoveredTile();
   }
@@ -58,20 +86,6 @@ export function renderLayers() {
   const cr = this.cr;
   const layers = this.layers;
   // draw global boundings
-  /*if (MODES.DEV) {
-    (() => {
-      const bounds = this.bounds;
-      const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
-      const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
-      const w = (bounds.w * TILE_SIZE) * cr;
-      const h = (bounds.h * TILE_SIZE) * cr;
-      this.drawRectangle(
-        x, y,
-        w, h,
-        [0, 255, 0, 0.1]
-      );
-    })();
-  }*/
   for (let ii = 0; ii < this.layers.length; ++ii) {
     const layer = layers[ii];
     const bounds = layer.bounds;
@@ -112,23 +126,12 @@ export function renderLayer(layer) {
     const bounds = batch.bounds;
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0 && !batch.isEraser) {
-      const drawing = this.buffers.drawing;
-      // don't ignore our drawing batch
-      if (drawing === null || drawing !== batch) continue;
+      if (!batch.forceRendering) continue;
     }
-    if (!batch.isBackground && !this.boundsInsideView(bounds)) continue;
-    // batch is a background, fill the whole screen
-    if (batch.isBackground) {
-      this.drawRectangle(
-        0, 0,
-        this.cw, this.ch,
-        batch.color
-      );
-      continue;
-    }
+    if (!this.boundsInsideView(bounds)) continue;
     // draw batch boundings
     const x = (cx + (lx + (bounds.x * TILE_SIZE) * cr)) | 0;
-    const y = (cy + (lx + (bounds.y * TILE_SIZE) * cr)) | 0;
+    const y = (cy + (ly + (bounds.y * TILE_SIZE) * cr)) | 0;
     const w = (bounds.w * TILE_SIZE) * cr;
     const h = (bounds.h * TILE_SIZE) * cr;
     if (MODES.DEV) {
@@ -212,14 +215,88 @@ export function renderStats() {
   let color = this.getPixelAt(mx, my);
   if (color !== null) {
     buffer.fillStyle = colorToRgbaString(color);
-    buffer.fillRect(8, this.ch - 16, 8, 8);
+    buffer.fillRect(8, 70, 8, 8);
     buffer.fillStyle = "#fff";
-    buffer.fillText(`${color[0]}, ${color[1]}, ${color[2]}, ${color[3]}`, 24, this.ch - 8);
+    buffer.fillText(`${color[0]}, ${color[1]}, ${color[2]}, ${color[3]}`, 22, 77);
+  }
+  /*if (MODES.DEV) {
+    const bounds = this.bounds;
+    const cr = this.cr;
+    const xx = ((this.cx | 0) + ((bounds.x * TILE_SIZE) * cr)) | 0;
+    const yy = ((this.cy | 0) + ((bounds.y * TILE_SIZE) * cr)) | 0;
+    const ww = (bounds.w * TILE_SIZE) * cr;
+    const hh = (bounds.h * TILE_SIZE) * cr;
+    this.drawResizeRectangle(xx, yy, ww, hh, "#313131");
+  }*/
+  if (this.sw !== 0 && this.sh !== 0) {
+    this.drawSelectionShape();
   }
   // update texture, then draw it
   this.updateTexture(texture, view);
   this.drawImage(
     texture,
     0, 0, view.width, view.height
+  );
+};
+
+export function drawSelectionShape() {
+  const cr = this.cr;
+  const s = this.getSelection();
+  const xx = ((this.cx | 0) + ((s.x * TILE_SIZE) * cr)) | 0;
+  const yy = ((this.cy | 0) + ((s.y * TILE_SIZE) * cr)) | 0;
+  const ww = (s.w * TILE_SIZE) * cr;
+  const hh = (s.h * TILE_SIZE) * cr;
+  const size = TILE_SIZE * cr;
+  const buffer = this.cache.fg;
+  buffer.strokeStyle = "rgba(255,255,255,0.7)";
+  buffer.lineWidth = 0.45 * cr;
+  buffer.setLineDash([size, size]);
+  buffer.strokeRect(
+    xx, yy,
+    ww, hh
+  );
+};
+
+/**
+ * Draw resizable rectangle around given rectangle corners
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} w
+ * @param {Number} h
+ * @param {String} color
+ */
+export function drawResizeRectangle(x, y, w, h, color) {
+  const cr = this.cr;
+  const ww = 4 * cr;
+  const hh = 4 * cr;
+  const buffer = this.cache.fg;
+  buffer.strokeStyle = color;
+  buffer.lineWidth = Math.max(0.4, 0.45 * cr);
+  // main rectangle
+  buffer.strokeRect(
+    x, y,
+    w, h
+  );
+  return;
+  buffer.lineWidth = Math.max(0.4, 0.3 * cr);
+  // left rectangle
+  buffer.strokeRect(
+    x - ww, (y + (h / 2) - hh / 2),
+    ww, hh
+  );
+  // right rectangle
+  buffer.strokeRect(
+    x + w, (y + (h / 2) - hh / 2),
+    ww, hh
+  );
+  // top rectangle
+  buffer.strokeRect(
+    (x + (w / 2) - ww / 2), y - hh,
+    ww, hh
+  );
+  // bottom rectangle
+  buffer.strokeRect(
+    (x + (w / 2) - ww / 2), (y + h),
+    ww, hh
   );
 };

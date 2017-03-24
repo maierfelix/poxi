@@ -1,3 +1,5 @@
+import { TILE_SIZE } from "./cfg";
+
 /**
  * @param {Number} x
  * @return {Number}
@@ -8,7 +10,15 @@ export function zoomScale(x) {
     x < 0 ? x + 1 :
     x + 1
   );
-}
+};
+
+/**
+ * @param {Number} x
+ * @return {Boolean}
+ */
+export function isPowerOfTwo(x) {
+  return ((x & (x - 1)) === 0);
+};
 
 /**
  * @param {Number} x
@@ -18,6 +28,27 @@ export function zoomScale(x) {
 export function roundTo(x, t) {
   const i = 1 / t;
   return (Math.round(x * i) / i);
+};
+
+/**
+ * @param {Number} value
+ * @return {Number}
+ */
+export function alignToGrid(value) {
+  return (roundTo(value, TILE_SIZE));
+};
+
+/**
+ * @param {Number} x1
+ * @param {Number} y1
+ * @param {Number} x2
+ * @param {Number} y2
+ * @return {Number}
+ */
+export function pointDistance(x1, y1, x2, y2) {
+  const xx = Math.pow(x2 - x1, 2);
+  const yy = Math.pow(y2 - y1, 2);
+  return (Math.sqrt(xx + yy));
 };
 
 /**

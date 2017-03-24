@@ -46,6 +46,8 @@ export function resizeByBufferData() {
   const bounds = this.bounds;
   const bx = bounds.x; const by = bounds.y;
   const bw = bounds.w; const bh = bounds.h;
+  const ox = bounds.x; const oy = bounds.y;
+  const ow = bounds.w; const oh = bounds.h;
   let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
   for (let ii = 0; ii < data.length; ii += 4) {
@@ -68,11 +70,12 @@ export function resizeByBufferData() {
   };
   const nx = (w - (-x + w));
   const ny = (h - (-y + h));
-  // update boundings
-  this.bounds.x += nx;
-  this.bounds.w = (-x + w) + 1;
-  this.bounds.y += ny;
-  this.bounds.h = (-y + h) + 1;
+  const nbx = bounds.x + nx; const nby = bounds.y + ny;
+  const nbw = (-x + w) + 1; const nbh = (-y + h) + 1;
+  // abort if nothing has changed
+  if (ox === nbx && oy === nby && ow === nbw && oh === nbh) return;
+  bounds.x = nbx; bounds.y = nby;
+  bounds.w = nbw; bounds.h = nbh;
   // redraw the old buffer without the resized tiles
   const buffer = createCanvasBuffer(bounds.w, bounds.h);
   buffer.drawImage(
@@ -82,5 +85,5 @@ export function resizeByBufferData() {
   this.buffer = buffer;
   // trigger a full resize of our buffer
   this.isResized = true;
-  this.refreshBuffer();
+  return;
 };
