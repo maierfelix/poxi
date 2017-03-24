@@ -2494,7 +2494,7 @@ var Command = function Command(kind, batch) {
   this.batch = batch;
 };
 
-function redo() {
+function redo$1() {
   if (this.sindex < this.stack.length - 1) {
     this.sindex++;
     var cmd = this.currentStackOperation();
@@ -2520,7 +2520,7 @@ function enqueue(kind, batch) {
 
 
 var _redo = Object.freeze({
-	redo: redo,
+	redo: redo$1,
 	enqueue: enqueue
 });
 
@@ -2550,6 +2550,7 @@ function currentStackOperation() {
  * @param {Boolean} state
  */
 function fire(cmd, state) {
+  if (!cmd) { return; }
   if (cmd.batch.isEraser) {
     if (state) { cmd.batch.dejectErasedTiles(); }
     else { cmd.batch.injectErasedTiles(); }
@@ -2563,7 +2564,7 @@ var _state = Object.freeze({
 	fire: fire
 });
 
-function undo() {
+function undo$1() {
   if (this.sindex >= 0) {
     var cmd = this.currentStackOperation();
     this.fire(cmd, false);
@@ -2592,7 +2593,7 @@ function dequeue(from, to) {
 
 
 var _undo = Object.freeze({
-	undo: undo,
+	undo: undo$1,
 	dequeue: dequeue
 });
 
@@ -2927,6 +2928,13 @@ function setupUi() {
     this$1.fillStyle = hexToRgba(color.value);
   };
   color_view.style.background = rgbaToHex(this.fillStyle);
+
+  undo.onclick = function (e) {
+    this$1.undo();
+  };
+  redo.onclick = function (e) {
+    this$1.redo();
+  };
 
   download.onclick = function (e) {
     var link = document.createElement("a");

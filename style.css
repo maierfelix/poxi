@@ -123,6 +123,12 @@ input[type="color"] {
 #download {
   float: right;
 }
+#undo {
+  float: right;
+}
+#redo {
+  float: right;
+}
 #beautify {
   float: left;
 }
