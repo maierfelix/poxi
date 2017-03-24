@@ -178,7 +178,7 @@ var _area_functions = Object.freeze({
 
 
 var TILE_SIZE = 8;
-var MIN_SCALE = 0.75;
+var MIN_SCALE = 1;
 var MAX_SCALE = 32;
 var MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2
@@ -781,11 +781,11 @@ function onMouseMove(e) {
   var relative = this.getRelativeTileOffset(x, y);
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
-  if (last.mx === relative.x && last.my === relative.y) { return; }
-  this.hover(x, y);
   if (this.states.dragging) {
     this.drag(x, y);
   }
+  this.hover(x, y);
+  if (last.mx === relative.x && last.my === relative.y) { return; }
   if (this.states.arc) {
     var batch = this.buffers.arc;
     batch.clear();
