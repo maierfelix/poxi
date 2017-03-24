@@ -1,8 +1,8 @@
-canvas {
+/*canvas {
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
-}
+}*/
 
 body {
   margin: 0;
@@ -59,9 +59,9 @@ input[type="color"] {
   width: 28px;
   height: 28px;
   opacity: 0.65;
-  transition: opacity .125s ease-in-out;
-  -moz-transition: opacity .125s ease-in-out;
-  -webkit-transition: opacity .125s ease-in-out;
+  transition: opacity 0.1s ease-in-out;
+  -moz-transition: opacity 0.1s ease-in-out;
+  -webkit-transition: opacity 0.1s ease-in-out;
   top: 2px;
   vertical-align: bottom;
   position: relative;
@@ -84,7 +84,7 @@ input[type="color"] {
   left: 0px;
   bottom: 0px;
   background: rgba(31, 31, 31, 0.95);
-  height: 42px;
+  height: 38px;
   width: 100%;
   cursor: default;
   display: inline;
@@ -96,17 +96,17 @@ input[type="color"] {
 }
 
 .bottom-menu-items .item {
-  top: 7px;
-  width: 28px;
-  height: 28px;
+  top: 6px;
+  width: 26px;
+  height: 26px;
   position: relative;
   opacity: 0.295;
   padding-right: 8px;
   padding-left: 8px;
   cursor: pointer;
-  transition: opacity .125s ease-in-out;
-  -moz-transition: opacity .125s ease-in-out;
-  -webkit-transition: opacity .125s ease-in-out;
+  transition: opacity 0.1s ease-in-out;
+  -moz-transition: opacity 0.1s ease-in-out;
+  -webkit-transition: opacity 0.1s ease-in-out;
 }
 
 .bottom-menu-items .item:hover {
@@ -126,6 +126,18 @@ input[type="color"] {
 #beautify {
   float: left;
 }
+#select {
+  float: left;
+}
+#move {
+  float: left;
+}
+#arc {
+  float: left;
+}
+#rectangle {
+  float: left;
+}
 
 .cursor {
   position: absolute;
@@ -139,8 +151,7 @@ input[type="color"] {
 }
 
 .unavailable {
-  pointer-events: none;
-  cursor: inherit;
+  cursor: not-allowed !important;
 }
 
 .dropdown-content {
