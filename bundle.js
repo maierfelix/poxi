@@ -935,8 +935,9 @@ function onKeyDown(e) {
       location.reload();
     break;
     default:
-      e.preventDefault();
+      return;
     break;
+    e.preventDefault();
   }
 }
 
