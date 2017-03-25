@@ -184,3 +184,38 @@ input[type="color"] {
   cursor: pointer;
   height: 18px;
 }
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  opacity: 0;
+  visibility: hidden;
+  min-width: 110px;
+  font-size: 10px;
+  background-color: rgba(0,0,0,0.25);
+  color: #fff;
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 0px;
+  position: absolute;
+  z-index: 1;
+  transition: opacity 0.25s ease-in-out;
+  -moz-transition: opacity 0.25s ease-in-out;
+  -webkit-transition: opacity 0.25s ease-in-out;
+  bottom: 100%;
+  left: 50%; 
+  margin-left: -60px;
+}
+
+.tooltip:hover .tooltiptext {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tooltiptext:hover {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}

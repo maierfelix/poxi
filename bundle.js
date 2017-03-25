@@ -84,7 +84,8 @@ var CommandKind = {
   RECT_FILL: 7,
   RECT_STROKE: 8,
   ARC_FILL: 9,
-  ARC_STROKE: 10
+  ARC_STROKE: 10,
+  FLOOD_FILL: 11
 };
 
 /**
@@ -651,10 +652,6 @@ function onMouseDown(e) {
   var relative = this.getRelativeTileOffset(x, y);
   if (e.which === 1) {
     this.resetSelection();
-    // debug helper
-    (function () {
-      //console.log(relative.x, relative.y);
-    })();
     if (this.modes.select) {
       this.states.selecting = true;
       this.selectFrom(x, y);
@@ -703,6 +700,19 @@ function onMouseDown(e) {
       batch$3.isEraser = true;
       layer$3.addBatch(batch$3);
     }
+    else if (this.modes.stroke) {
+      this.states.stroke = true;
+      this.buffers.stroke = this.createDynamicBatch();
+      var batch$4 = this.buffers.stroke;
+      var layer$4 = this.getCurrentLayer();
+      batch$4.forceRendering = true;
+      batch$4.prepareBuffer(relative.x, relative.y);
+      batch$4.refreshTexture();
+      layer$4.addBatch(batch$4);
+    }
+    else if (this.modes.flood) {
+      this.floodPaint(relative.x, relative.y);
+    }
     else if (this.modes.fill) {
       this.fillBucket(relative.x, relative.y, this.fillStyle);
     }
@@ -718,51 +728,10 @@ function onMouseDown(e) {
     this.states.dragging = true;
     this.click(x, y);
   }
-  this.last.mdx = x; this.last.mdy = y;
-}
-
-/**
- * @param {Event} e
- */
-function onMouseUp(e) {
-  e.preventDefault();
-  if (!(e.target instanceof HTMLCanvasElement)) { return; }
   if (e.which === 1) {
-    if (this.modes.arc) {
-      var batch = this.buffers.arc;
-      batch.forceRendering = false;
-      this.states.arc = false;
-      this.enqueue(CommandKind.ARC_FILL, batch);
-      this.buffers.arc = null;
-    }
-    else if (this.modes.rect) {
-      var batch$1 = this.buffers.rect;
-      batch$1.forceRendering = false;
-      this.states.rect = false;
-      this.enqueue(CommandKind.RECT_FILL, batch$1);
-      this.buffers.rect = null;
-    }
-    else if (this.modes.select) {
-      this.states.selecting = false;
-    }
-    else if (this.states.drawing) {
-      var batch$2 = this.buffers.drawing;
-      batch$2.forceRendering = false;
-      this.states.drawing = false;
-      this.enqueue(CommandKind.DRAW, batch$2);
-      this.buffers.drawing = null;
-    }
-    else if (this.states.erasing) {
-      var batch$3 = this.buffers.erasing;
-      batch$3.forceRendering = false;
-      this.states.erasing = false;
-      if (batch$3.isEmpty()) { batch$3.kill(); }
-      else { this.enqueue(CommandKind.ERASE, batch$3); }
-      this.buffers.erasing = null;
-    }
-  }
-  if (e.which === 3) {
-    this.states.dragging = false;
+    this.last.mdx = x; this.last.mdy = y;
+    var start = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
+    this.last.mdrx = start.x; this.last.mdry = start.y;
   }
 }
 
@@ -805,18 +774,25 @@ function onMouseMove(e) {
     layer.updateBoundings();
     batch$1.refreshTexture();
   }
-  else if (this.states.drawing) {
-    var batch$2 = this.buffers.drawing;
-    this.insertLine(x, y, lastx, lasty);
+  else if (this.states.stroke) {
+    var batch$2 = this.buffers.stroke;
+    batch$2.clear();
+    this.insertLine(this.last.mdrx, this.last.mdry, relative.x, relative.y);
     layer.updateBoundings();
     batch$2.refreshTexture();
   }
+  else if (this.states.drawing) {
+    var batch$3 = this.buffers.drawing;
+    this.insertLine(x, y, lastx, lasty);
+    layer.updateBoundings();
+    batch$3.refreshTexture();
+  }
   else if (this.states.erasing) {
-    var batch$3 = this.buffers.erasing;
+    var batch$4 = this.buffers.erasing;
     var layer$1 = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    batch$3.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
-    if (!batch$3.isEmpty()) { layer$1.updateBoundings(); }
+    batch$4.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+    if (!batch$4.isEmpty()) { layer$1.updateBoundings(); }
   }
   else if (this.states.dragging) {
     this.drag(x, y);
@@ -826,6 +802,58 @@ function onMouseMove(e) {
   }
   lastx = x; lasty = y;
   last.mx = relative.x; last.my = relative.y;
+}
+
+/**
+ * @param {Event} e
+ */
+function onMouseUp(e) {
+  e.preventDefault();
+  if (!(e.target instanceof HTMLCanvasElement)) { return; }
+  if (e.which === 1) {
+    if (this.modes.arc) {
+      var batch = this.buffers.arc;
+      batch.forceRendering = false;
+      this.states.arc = false;
+      this.enqueue(CommandKind.ARC_FILL, batch);
+      this.buffers.arc = null;
+    }
+    else if (this.modes.rect) {
+      var batch$1 = this.buffers.rect;
+      batch$1.forceRendering = false;
+      this.states.rect = false;
+      this.enqueue(CommandKind.RECT_FILL, batch$1);
+      this.buffers.rect = null;
+    }
+    else if (this.modes.stroke) {
+      var batch$2 = this.buffers.stroke;
+      batch$2.forceRendering = false;
+      this.states.stroke = false;
+      this.enqueue(CommandKind.STROKE, batch$2);
+      this.buffers.stroke = null;
+    }
+    else if (this.modes.select) {
+      this.states.selecting = false;
+    }
+    else if (this.states.drawing) {
+      var batch$3 = this.buffers.drawing;
+      batch$3.forceRendering = false;
+      this.states.drawing = false;
+      this.enqueue(CommandKind.DRAW, batch$3);
+      this.buffers.drawing = null;
+    }
+    else if (this.states.erasing) {
+      var batch$4 = this.buffers.erasing;
+      batch$4.forceRendering = false;
+      this.states.erasing = false;
+      if (batch$4.isEmpty()) { batch$4.kill(); }
+      else { this.enqueue(CommandKind.ERASE, batch$4); }
+      this.buffers.erasing = null;
+    }
+  }
+  if (e.which === 3) {
+    this.states.dragging = false;
+  }
 }
 
 /**
@@ -923,8 +951,8 @@ var _listener = Object.freeze({
 	onMouseOut: onMouseOut,
 	onMouseLeave: onMouseLeave,
 	onMouseDown: onMouseDown,
-	onMouseUp: onMouseUp,
 	onMouseMove: onMouseMove,
+	onMouseUp: onMouseUp,
 	onKeyDown: onKeyDown,
 	onKeyUp: onKeyUp,
 	onContextmenu: onContextmenu,
@@ -1069,6 +1097,24 @@ function drawTile(x, y, w, h, color) {
 }
 
 /**
+ * Fastest way to draw a tile
+ * This method doesnt do auto resizing!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} w
+ * @param {Number} h
+ * @param {Array} color
+ */
+function drawSilentTile(x, y, w, h, color) {
+  var bounds = this.bounds;
+  this.buffer.fillStyle = colorToRgbaString(color);
+  this.buffer.fillRect(
+    x - bounds.x, y - bounds.y,
+    w, h
+  );
+}
+
+/**
  * @param {Number} x
  * @param {Number} y
  * @param {Number} size
@@ -1140,6 +1186,7 @@ function eraseTileAt(x, y) {
 var _tile = Object.freeze({
 	drawAt: drawAt,
 	drawTile: drawTile,
+	drawSilentTile: drawSilentTile,
 	clearAt: clearAt,
 	clearRect: clearRect$1,
 	eraseTileAt: eraseTileAt
@@ -1449,19 +1496,6 @@ function resetModes() {
 }
 
 /**
- * @param {CanvasRenderingContext2D} ctx
- * @param {Number} x
- * @param {Number} y
- */
-function insertImage(ctx, x, y) {
-  var layer = this.getCurrentLayer();
-  var batch = this.createDynamicBatch();
-  batch.drawImage(ctx, x, y);
-  layer.addBatch(batch);
-  this.enqueue(CommandKind.DRAW_IMAGE, batch);
-}
-
-/**
  * @return {String}
  */
 function exportAsDataUrl() {
@@ -1469,47 +1503,6 @@ function exportAsDataUrl() {
   var buffer = this.cache.main;
   var view = buffer.canvas;
   return (view.toDataURL("image/png"));
-}
-
-/**
- * @param {Number} x0
- * @param {Number} y0
- * @param {Number} x1
- * @param {Number} y1
- */
-function insertLine(x0, y0, x1, y1) {
-  var this$1 = this;
-
-  var dx = Math.abs(x1 - x0);
-  var dy = Math.abs(y1 - y0);
-  var sx = (x0 < x1) ? 1 : -1;
-  var sy = (y0 < y1) ? 1 : -1;
-  var err = dx - dy;
-
-  var last = this.last;
-  var batch = (
-    this.states.drawing ?
-    this.buffers.drawing :
-    this.buffers.erasing
-  );
-  while (true) {
-    var relative = this$1.getRelativeTileOffset(x0, y0);
-    if (last.mx !== relative.x || last.my !== relative.y) {
-      if (this$1.states.drawing) {
-        var w = SETTINGS.PENCIL_SIZE;
-        var h = SETTINGS.PENCIL_SIZE;
-        batch.drawTile(relative.x, relative.y, w, h, this$1.fillStyle);
-      }
-      else if (this$1.states.erasing) {
-        batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
-      }
-    }
-    last.mx = relative.x; last.my = relative.y;
-    if (x0 === x1 && y0 === y1) { break; }
-    var e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x0 += sx; }
-    if (e2 < dx) { err += dx; y0 += sy; }
-  }
 }
 
 /**
@@ -1660,9 +1653,7 @@ function updateGlobalBoundings() {
 
 var _env = Object.freeze({
 	resetModes: resetModes,
-	insertImage: insertImage,
 	exportAsDataUrl: exportAsDataUrl,
-	insertLine: insertLine,
 	getPixelAt: getPixelAt,
 	getPixelsAt: getPixelsAt,
 	getLayerByPoint: getLayerByPoint,
@@ -2156,7 +2147,8 @@ function canRenderCachedBuffer() {
     !this.states.drawing &&
     !this.states.erasing &&
     !this.states.arc &&
-    !this.states.rect
+    !this.states.rect &&
+    !this.states.stroke
   );
 }
 
@@ -2731,10 +2723,55 @@ function binaryFloodFill(batch, x, y, base, color) {
   return (false);
 }
 
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Void}
+ */
+function floodPaint(x, y) {
+  var this$1 = this;
+
+  var color = this.fillStyle;
+  var base = this.getPixelAt(x, y);
+  // empty base tile or colors to fill are the same
+  if (base === null || colorsMatch(base, color)) { return; }
+  var xx = this.bounds.x;
+  var yy = this.bounds.y;
+  var ww = this.bounds.w;
+  var hh = this.bounds.h;
+  var layer = this.getCurrentLayer();
+  var batch = this.createDynamicBatch();
+  batch.prepareBuffer(xx, yy);
+  batch.resizeByOffset(xx, yy);
+  batch.resizeByOffset(xx + ww, yy + hh);
+  // flood paint
+  var count = 0;
+  for (var ii = 0; ii < ww * hh; ++ii) {
+    var x$1 = (ii % ww);
+    var y$1 = (ii / ww) | 0;
+    var pixel = this$1.getPixelAt(xx + x$1, yy + y$1);
+    if (pixel === null) { continue; }
+    if (!colorsMatch(base, pixel)) { continue; }
+    batch.drawTile(xx + x$1, yy + y$1, 1, 1, color);
+    count++;
+  }
+  // nothing changed
+  if (count <= 0) {
+    batch.kill();
+    return;
+  }
+  batch.isResized = true;
+  batch.refreshTexture();
+  layer.addBatch(batch);
+  this.enqueue(CommandKind.FLOOD_FILL, batch);
+  return;
+}
+
 
 var _fill = Object.freeze({
 	fillBucket: fillBucket,
-	binaryFloodFill: binaryFloodFill
+	binaryFloodFill: binaryFloodFill,
+	floodPaint: floodPaint
 });
 
 
@@ -2742,6 +2779,63 @@ var _fill = Object.freeze({
 var _rotate = Object.freeze({
 
 });
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Number} x
+ * @param {Number} y
+ */
+function insertImage(ctx, x, y) {
+  var layer = this.getCurrentLayer();
+  var batch = this.createDynamicBatch();
+  batch.drawImage(ctx, x, y);
+  layer.addBatch(batch);
+  this.enqueue(CommandKind.DRAW_IMAGE, batch);
+}
+
+/**
+ * @param {Number} x0
+ * @param {Number} y0
+ * @param {Number} x1
+ * @param {Number} y1
+ */
+function insertLine(x0, y0, x1, y1) {
+  var this$1 = this;
+
+  var dx = Math.abs(x1 - x0);
+  var dy = Math.abs(y1 - y0);
+  var sx = (x0 < x1) ? 1 : -1;
+  var sy = (y0 < y1) ? 1 : -1;
+  var err = dx - dy;
+
+  var last = this.last;
+  var batch = (
+    this.states.drawing ?
+    this.buffers.drawing :
+    this.states.stroke ? 
+    this.buffers.stroke :
+    this.buffers.erasing
+  );
+  while (true) {
+    var w = SETTINGS.PENCIL_SIZE;
+    var h = SETTINGS.PENCIL_SIZE;
+    if (this$1.states.drawing) {
+      var relative = this$1.getRelativeTileOffset(x0, y0);
+      batch.drawTile(relative.x, relative.y, w, h, this$1.fillStyle);
+    }
+    else if (this$1.states.erasing) {
+      var relative$1 = this$1.getRelativeTileOffset(x0, y0);
+      batch.clearAt(relative$1.x, relative$1.y, SETTINGS.ERASER_SIZE);
+    }
+    else if (this$1.states.stroke) {
+      batch.drawTile(x0, y0, w, h, this$1.fillStyle);
+    }
+    if (x0 === x1 && y0 === y1) { break; }
+    var e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
 
 /**
  * Inserts stroked arc at given position
@@ -2864,6 +2958,8 @@ function insertRectangleAt(batch, x1, y1, x2, y2, color, filled) {
 
 
 var _insert = Object.freeze({
+	insertImage: insertImage,
+	insertLine: insertLine,
 	strokeArc: strokeArc,
 	insertArc: insertArc,
 	fillRect: fillRect,
@@ -2878,8 +2974,16 @@ function resetActiveUiButtons() {
   erase.style.removeProperty("opacity");
   bucket.style.removeProperty("opacity");
   select.style.removeProperty("opacity");
+  stroke.style.removeProperty("opacity");
   pipette.style.removeProperty("opacity");
   rectangle.style.removeProperty("opacity");
+  paint_all.style.removeProperty("opacity");
+}
+
+function setUiColor(value) {
+  color_hex.innerHTML = String(value).toUpperCase();
+  color_view.style.background = value;
+  this.fillStyle = hexToRgba(value);
 }
 
 function setupUi() {
@@ -2910,8 +3014,12 @@ function setupUi() {
   select.onclick = function (e) {
     this$1.resetModes();
     this$1.modes.select = true;
-    this$1.states.drawing = false;
     select.style.opacity = 1.0;
+  };
+  stroke.onclick = function (e) {
+    this$1.resetModes();
+    this$1.modes.stroke = true;
+    stroke.style.opacity = 1.0;
   };
   arc.onclick = function (e) {
     this$1.resetModes();
@@ -2923,11 +3031,15 @@ function setupUi() {
     this$1.modes.rect = true;
     rectangle.style.opacity = 1.0;
   };
-  color.onchange = function (e) {
-    color_view.style.background = color.value;
-    this$1.fillStyle = hexToRgba(color.value);
+  paint_all.onclick = function (e) {
+    this$1.resetModes();
+    this$1.modes.flood = true;
+    paint_all.style.opacity = 1.0;
   };
-  color_view.style.background = rgbaToHex(this.fillStyle);
+  color.onchange = function (e) {
+    this$1.setUiColor(color.value);
+  };
+  this.setUiColor(rgbaToHex(this.fillStyle));
 
   undo.onclick = function (e) {
     this$1.undo();
@@ -2980,6 +3092,7 @@ function setupUi() {
 
 var _ui = Object.freeze({
 	resetActiveUiButtons: resetActiveUiButtons,
+	setUiColor: setUiColor,
 	setupUi: setupUi
 });
 
@@ -3162,12 +3275,15 @@ var Poxi = function Poxi() {
     // mouse move coordinates
     mx: 0, my: 0,
     // mouse down coordinates
-    mdx: 0, mdy: 0
+    mdx: 0, mdy: 0,
+    // mouse down relative coordinates
+    mdrx: 0, mdry: 0
   };
   // shared buffer related
   this.buffers = {
     arc: null,
     rect: null,
+    stroke: false,
     erasing: null,
     drawing: null,
     boundingColor: [1, 0, 0, 0.1]
@@ -3182,6 +3298,7 @@ var Poxi = function Poxi() {
   this.states = {
     arc: false,
     rect: false,
+    stroke: false,
     drawing: false,
     dragging: false,
     select: false,
@@ -3194,7 +3311,9 @@ var Poxi = function Poxi() {
     rect: false,
     draw: false,
     erase: false,
+    flood: false,
     select: false,
+    stroke: false,
     pipette: false
   };
   // global fill style
@@ -3248,5 +3367,3 @@ if (typeof window !== "undefined") {
 } else {
   throw new Error("Poxi only runs inside the browser");
 }
-
-module.exports = Poxi;

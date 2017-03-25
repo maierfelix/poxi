@@ -7,25 +7,69 @@
   <body>
     <div class="bottom-menu">
       <div class="bottom-menu-items">
-        <img id="select" src="assets/img/select.png" class="item" />
-        <img id="move" src="assets/img/move.png" class="item unavailable" />
+        <a class="tooltip" style="float: left;">
+          <img id="select" src="assets/img/select.png" class="item" />
+          <span class="tooltiptext">Selection</span>
+        </a>
+        <a class="tooltip" style="float: left;">
+          <img id="move" src="assets/img/move.png" class="item unavailable" />
+          <span class="tooltiptext">Unavailable</span>
+        </a>
         <img class="item" style="opacity: 0; float: left;" />
-        <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
-        <img id="arc" src="assets/img/circle_stroke.png" class="item" />
-        <img id="tiled" src="assets/img/pencil.png" class="item" />
-        <img id="erase" src="assets/img/eraser.png" class="item" />
-        <span id="color_view" class="color-wrapper">
-          <input id="color" type="color" class="item" value="#ff0000"/>
-        </span>
-        <img id="pipette" src="assets/img/pipette.png" class="item" />
-        <img id="bucket" src="assets/img/bucket.png" class="item" />
-        <img id="download" src="assets/img/download.png" class="item" />
-        <a href="https://github.com/maierfelix/poxi">
+        <a class="tooltip" style="float: left;">
+          <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
+          <span class="tooltiptext">Stroked Rectangle</span>
+        </a>
+        <a class="tooltip" style="float: left;">
+          <img id="arc" src="assets/img/circle_stroke.png" class="item" />
+          <span class="tooltiptext">Stroked Circle</span>
+        </a>
+        <a class="tooltip">
+          <img id="stroke" src="assets/img/stroke.png" class="item" />
+          <span class="tooltiptext">Stroked Line</span>
+        </a>
+        <a class="tooltip">
+          <img id="tiled" src="assets/img/pencil.png" class="item" />
+          <span class="tooltiptext">Pencil</span>
+        </a>
+        <a class="tooltip">
+          <img id="erase" src="assets/img/eraser.png" class="item" />
+          <span class="tooltiptext">Eraser</span>
+        </a>
+        <a class="tooltip">
+          <span id="color_view" class="color-wrapper">
+            <input id="color" type="color" class="item" value="#ff0000"/>
+          </span>
+          <span id="color_hex" class="tooltiptext" style="margin-bottom: 4px;"></span>
+        </a>
+        <a class="tooltip">
+          <img id="pipette" src="assets/img/pipette.png" class="item" />
+          <span class="tooltiptext">Pipette</span>
+        </a>
+        <a class="tooltip">
+          <img id="bucket" src="assets/img/bucket.png" class="item" />
+          <span class="tooltiptext">Bucket</span>
+        </a>
+        <a class="tooltip">
+          <img id="paint_all" src="assets/img/palette.png" class="item" />
+          <span class="tooltiptext">Flood Paint</span>
+        </a>
+        <a href="https://github.com/maierfelix/poxi" style="float: right;">
           <img src="assets/img/github.png" class="item" style="float:right;" />
         </a>
+        <a class="tooltip" style="float: right;">
+          <img id="download" src="assets/img/download.png" class="item" />
+          <span class="tooltiptext">Download</span>
+        </a>
         <img class="item" style="opacity: 0; float: right;" />
-        <img id="redo" src="assets/img/undo.png" class="item" />
-        <img id="undo" src="assets/img/redo.png" class="item" />
+        <a class="tooltip" style="float: right;">
+          <img id="redo" src="assets/img/undo.png" class="item" />
+          <span class="tooltiptext">Undo</span>
+        </a>
+        <a class="tooltip" style="float: right;">
+          <img id="undo" src="assets/img/redo.png" class="item" />
+          <span class="tooltiptext">Redo</span>
+        </a>
         <!--<img src="assets/img/select.png" class="item" />-->
       </div>
     </div>
