@@ -28,14 +28,26 @@
           <img id="stroke" src="assets/img/stroke.png" class="item" />
           <span class="tooltiptext">Stroked Line</span>
         </a>
-        <a class="tooltip">
+        <div class="dropdown">
           <img id="tiled" src="assets/img/pencil.png" class="item" />
-          <span class="tooltiptext">Pencil</span>
-        </a>
-        <a class="tooltip">
+          <div id="pencil-size" class="dropdown-content">
+            <a href="#">1</a>
+            <a href="#">2</a>
+            <a href="#">4</a>
+            <a href="#">8</a>
+            <a href="#">16</a>
+          </div>
+        </div>
+        <div class="dropdown">
           <img id="erase" src="assets/img/eraser.png" class="item" />
-          <span class="tooltiptext">Eraser</span>
-        </a>
+          <div id="eraser-size" class="dropdown-content">
+            <a href="#">1</a>
+            <a href="#">2</a>
+            <a href="#">4</a>
+            <a href="#">8</a>
+            <a href="#">16</a>
+          </div>
+        </div>
         <a class="tooltip">
           <span id="color_view" class="color-wrapper">
             <input id="color" type="color" class="item" value="#ff0000"/>

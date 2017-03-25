@@ -642,11 +642,37 @@ function onMouseLeave(e) {
 }
 
 /**
+ * @param {HTMLElement} el
+ */
+function processUIClick(el) {
+  var parent = el.parentNode;
+  if (!parent) { return; }
+  var id = parent.id;
+  if (id === "pencil-size") {
+    var value = el.innerHTML;
+    SETTINGS.PENCIL_SIZE = parseInt(value);
+    this.resetModes();
+    this.modes.draw = true;
+    tiled.style.opacity = 1.0;
+  }
+  else if (id === "eraser-size") {
+    var value$1 = el.innerHTML;
+    SETTINGS.ERASER_SIZE = parseInt(value$1);
+    this.resetModes();
+    this.modes.erase = true;
+    erase.style.opacity = 1.0;
+  }
+}
+
+/**
  * @param {Event} e
  */
 function onMouseDown(e) {
   e.preventDefault();
-  if (!(e.target instanceof HTMLCanvasElement)) { return; }
+  if (!(e.target instanceof HTMLCanvasElement)) {
+    this.processUIClick(e.target);
+    return;
+  }
   var x = e.clientX;
   var y = e.clientY;
   var relative = this.getRelativeTileOffset(x, y);
@@ -950,6 +976,7 @@ var _listener = Object.freeze({
 	onResize: onResize,
 	onMouseOut: onMouseOut,
 	onMouseLeave: onMouseLeave,
+	processUIClick: processUIClick,
 	onMouseDown: onMouseDown,
 	onMouseMove: onMouseMove,
 	onMouseUp: onMouseUp,

@@ -219,3 +219,39 @@ input[type="color"] {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  font-size: 10px;
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  background-color: rgba(0,0,0,0.25);
+  z-index: 1;
+  margin-top: -167px;
+  margin-left: -17px;
+  min-width: 77px;
+  transition: opacity 0.25s ease-in-out;
+  -moz-transition: opacity 0.25s ease-in-out;
+  -webkit-transition: opacity 0.25s ease-in-out;
+}
+
+.dropdown-content a {
+  padding: 6px 0px;
+  text-decoration: none;
+  display: block;
+  color: #fff;
+}
+
+.dropdown-content a:hover {
+  background-color: rgba(0,0,0,0.45);
+}
+
+.dropdown:hover .dropdown-content {
+  visibility: visible;
+  opacity: 1;
+}
