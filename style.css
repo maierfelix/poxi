@@ -195,8 +195,8 @@ input[type="color"] {
   visibility: hidden;
   min-width: 110px;
   font-size: 10px;
-  background-color: rgba(0,0,0,0.25);
-  color: #fff;
+  background-color: rgba(31, 31, 31, 0.95);
+  color: #838383;
   text-align: center;
   padding: 4px 0;
   border-radius: 0px;
@@ -205,9 +205,10 @@ input[type="color"] {
   transition: opacity 0.25s ease-in-out;
   -moz-transition: opacity 0.25s ease-in-out;
   -webkit-transition: opacity 0.25s ease-in-out;
-  bottom: 100%;
-  left: 50%; 
+  bottom: 102%;
+  left: 50%;
   margin-left: -60px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 .tooltip:hover .tooltiptext {
@@ -226,11 +227,15 @@ input[type="color"] {
 }
 
 .dropdown-content {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-left: 1px solid rgba(255,255,255,0.05);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-radius: 0px;
   font-size: 10px;
   visibility: hidden;
   opacity: 0;
   position: absolute;
-  background-color: rgba(0,0,0,0.25);
+  background-color: rgba(31, 31, 31, 0.95);
   z-index: 1;
   margin-top: -167px;
   margin-left: -17px;
@@ -241,14 +246,16 @@ input[type="color"] {
 }
 
 .dropdown-content a {
+  border-bottom: 1px solid rgba(30, 30, 30, 0.95);
   padding: 6px 0px;
   text-decoration: none;
   display: block;
-  color: #fff;
+  color: #5c5c5c;
 }
 
 .dropdown-content a:hover {
-  background-color: rgba(0,0,0,0.45);
+  background-color: rgba(38, 38, 38, 0.95);
+  color: #717171;
 }
 
 .dropdown:hover .dropdown-content {

@@ -886,7 +886,6 @@ function onMouseUp(e) {
  * @param {Event} e
  */
 function onKeyDown(e) {
-  e.preventDefault();
   var code = e.keyCode;
   this.keys[code] = 1;
   switch (code) {
@@ -934,6 +933,9 @@ function onKeyDown(e) {
     // f5
     case 116:
       location.reload();
+    break;
+    default:
+      e.preventDefault();
     break;
   }
 }
