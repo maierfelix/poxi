@@ -39,6 +39,24 @@ export function drawTile(x, y, w, h, color) {
 };
 
 /**
+ * Fastest way to draw a tile
+ * This method doesnt do auto resizing!
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} w
+ * @param {Number} h
+ * @param {Array} color
+ */
+export function drawSilentTile(x, y, w, h, color) {
+  const bounds = this.bounds;
+  this.buffer.fillStyle = colorToRgbaString(color);
+  this.buffer.fillRect(
+    x - bounds.x, y - bounds.y,
+    w, h
+  );
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  * @param {Number} size

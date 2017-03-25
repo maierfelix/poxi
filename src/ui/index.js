@@ -11,8 +11,16 @@ export function resetActiveUiButtons() {
   erase.style.removeProperty("opacity");
   bucket.style.removeProperty("opacity");
   select.style.removeProperty("opacity");
+  stroke.style.removeProperty("opacity");
   pipette.style.removeProperty("opacity");
   rectangle.style.removeProperty("opacity");
+  paint_all.style.removeProperty("opacity");
+};
+
+export function setUiColor(value) {
+  color_hex.innerHTML = String(value).toUpperCase();
+  color_view.style.background = value;
+  this.fillStyle = hexToRgba(value);
 };
 
 export function setupUi() {
@@ -41,8 +49,12 @@ export function setupUi() {
   select.onclick = (e) => {
     this.resetModes();
     this.modes.select = true;
-    this.states.drawing = false;
     select.style.opacity = 1.0;
+  };
+  stroke.onclick = (e) => {
+    this.resetModes();
+    this.modes.stroke = true;
+    stroke.style.opacity = 1.0;
   };
   arc.onclick = (e) => {
     this.resetModes();
@@ -54,11 +66,22 @@ export function setupUi() {
     this.modes.rect = true;
     rectangle.style.opacity = 1.0;
   };
-  color.onchange = (e) => {
-    color_view.style.background = color.value;
-    this.fillStyle = hexToRgba(color.value);
+  paint_all.onclick = (e) => {
+    this.resetModes();
+    this.modes.flood = true;
+    paint_all.style.opacity = 1.0;
   };
-  color_view.style.background = rgbaToHex(this.fillStyle);
+  color.onchange = (e) => {
+    this.setUiColor(color.value);
+  };
+  this.setUiColor(rgbaToHex(this.fillStyle));
+
+  undo.onclick = (e) => {
+    this.undo();
+  };
+  redo.onclick = (e) => {
+    this.redo();
+  };
 
   download.onclick = (e) => {
     const link = document.createElement("a");

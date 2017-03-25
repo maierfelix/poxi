@@ -72,10 +72,6 @@ export function onMouseDown(e) {
   const relative = this.getRelativeTileOffset(x, y);
   if (e.which === 1) {
     this.resetSelection();
-    // debug helper
-    (() => {
-      //console.log(relative.x, relative.y);
-    })();
     if (this.modes.select) {
       this.states.selecting = true;
       this.selectFrom(x, y);
@@ -124,6 +120,19 @@ export function onMouseDown(e) {
       batch.isEraser = true;
       layer.addBatch(batch);
     }
+    else if (this.modes.stroke) {
+      this.states.stroke = true;
+      this.buffers.stroke = this.createDynamicBatch();
+      const batch = this.buffers.stroke;
+      const layer = this.getCurrentLayer();
+      batch.forceRendering = true;
+      batch.prepareBuffer(relative.x, relative.y);
+      batch.refreshTexture();
+      layer.addBatch(batch);
+    }
+    else if (this.modes.flood) {
+      this.floodPaint(relative.x, relative.y);
+    }
     else if (this.modes.fill) {
       this.fillBucket(relative.x, relative.y, this.fillStyle);
     }
@@ -139,51 +148,10 @@ export function onMouseDown(e) {
     this.states.dragging = true;
     this.click(x, y);
   }
-  this.last.mdx = x; this.last.mdy = y;
-};
-
-/**
- * @param {Event} e
- */
-export function onMouseUp(e) {
-  e.preventDefault();
-  if (!(e.target instanceof HTMLCanvasElement)) return;
   if (e.which === 1) {
-    if (this.modes.arc) {
-      const batch = this.buffers.arc;
-      batch.forceRendering = false;
-      this.states.arc = false;
-      this.enqueue(CommandKind.ARC_FILL, batch);
-      this.buffers.arc = null;
-    }
-    else if (this.modes.rect) {
-      const batch = this.buffers.rect;
-      batch.forceRendering = false;
-      this.states.rect = false;
-      this.enqueue(CommandKind.RECT_FILL, batch);
-      this.buffers.rect = null;
-    }
-    else if (this.modes.select) {
-      this.states.selecting = false;
-    }
-    else if (this.states.drawing) {
-      const batch = this.buffers.drawing;
-      batch.forceRendering = false;
-      this.states.drawing = false;
-      this.enqueue(CommandKind.DRAW, batch);
-      this.buffers.drawing = null;
-    }
-    else if (this.states.erasing) {
-      const batch = this.buffers.erasing;
-      batch.forceRendering = false;
-      this.states.erasing = false;
-      if (batch.isEmpty()) batch.kill();
-      else this.enqueue(CommandKind.ERASE, batch);
-      this.buffers.erasing = null;
-    }
-  }
-  if (e.which === 3) {
-    this.states.dragging = false;
+    this.last.mdx = x; this.last.mdy = y;
+    const start = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
+    this.last.mdrx = start.x; this.last.mdry = start.y;
   }
 };
 
@@ -202,11 +170,11 @@ export function onMouseMove(e) {
   const relative = this.getRelativeTileOffset(x, y);
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
-  if (last.mx === relative.x && last.my === relative.y) return;
-  this.hover(x, y);
   if (this.states.dragging) {
     this.drag(x, y);
   }
+  this.hover(x, y);
+  if (last.mx === relative.x && last.my === relative.y) return;
   if (this.states.arc) {
     const batch = this.buffers.arc;
     batch.clear();
@@ -223,6 +191,13 @@ export function onMouseMove(e) {
     const ww = relative.x - start.x;
     const hh = relative.y - start.y;
     this.strokeRect(batch, start.x, start.y, ww, hh, this.fillStyle);
+    layer.updateBoundings();
+    batch.refreshTexture();
+  }
+  else if (this.states.stroke) {
+    const batch = this.buffers.stroke;
+    batch.clear();
+    this.insertLine(this.last.mdrx, this.last.mdry, relative.x, relative.y);
     layer.updateBoundings();
     batch.refreshTexture();
   }
@@ -247,6 +222,58 @@ export function onMouseMove(e) {
   }
   lastx = x; lasty = y;
   last.mx = relative.x; last.my = relative.y;
+};
+
+/**
+ * @param {Event} e
+ */
+export function onMouseUp(e) {
+  e.preventDefault();
+  if (!(e.target instanceof HTMLCanvasElement)) return;
+  if (e.which === 1) {
+    if (this.modes.arc) {
+      const batch = this.buffers.arc;
+      batch.forceRendering = false;
+      this.states.arc = false;
+      this.enqueue(CommandKind.ARC_FILL, batch);
+      this.buffers.arc = null;
+    }
+    else if (this.modes.rect) {
+      const batch = this.buffers.rect;
+      batch.forceRendering = false;
+      this.states.rect = false;
+      this.enqueue(CommandKind.RECT_FILL, batch);
+      this.buffers.rect = null;
+    }
+    else if (this.modes.stroke) {
+      const batch = this.buffers.stroke;
+      batch.forceRendering = false;
+      this.states.stroke = false;
+      this.enqueue(CommandKind.STROKE, batch);
+      this.buffers.stroke = null;
+    }
+    else if (this.modes.select) {
+      this.states.selecting = false;
+    }
+    else if (this.states.drawing) {
+      const batch = this.buffers.drawing;
+      batch.forceRendering = false;
+      this.states.drawing = false;
+      this.enqueue(CommandKind.DRAW, batch);
+      this.buffers.drawing = null;
+    }
+    else if (this.states.erasing) {
+      const batch = this.buffers.erasing;
+      batch.forceRendering = false;
+      this.states.erasing = false;
+      if (batch.isEmpty()) batch.kill();
+      else this.enqueue(CommandKind.ERASE, batch);
+      this.buffers.erasing = null;
+    }
+  }
+  if (e.which === 3) {
+    this.states.dragging = false;
+  }
 };
 
 /**

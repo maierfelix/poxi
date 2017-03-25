@@ -5,7 +5,7 @@ export const DEFAULT_HEIGHT = 320;
 export const DEFAULT_GRID_HIDDEN = false;
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 0.75;
+export const MIN_SCALE = 1;
 export const MAX_SCALE = 32;
 export const MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2

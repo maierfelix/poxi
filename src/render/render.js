@@ -32,7 +32,8 @@ export function canRenderCachedBuffer() {
     !this.states.drawing &&
     !this.states.erasing &&
     !this.states.arc &&
-    !this.states.rect
+    !this.states.rect &&
+    !this.states.stroke
   );
 };
 

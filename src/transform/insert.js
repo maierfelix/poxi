@@ -3,6 +3,61 @@ import { SETTINGS } from "../cfg";
 import CommandKind from "../stack/kind";
 
 /**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function insertImage(ctx, x, y) {
+  const layer = this.getCurrentLayer();
+  const batch = this.createDynamicBatch();
+  batch.drawImage(ctx, x, y);
+  layer.addBatch(batch);
+  this.enqueue(CommandKind.DRAW_IMAGE, batch);
+};
+
+/**
+ * @param {Number} x0
+ * @param {Number} y0
+ * @param {Number} x1
+ * @param {Number} y1
+ */
+export function insertLine(x0, y0, x1, y1) {
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = (x0 < x1) ? 1 : -1;
+  const sy = (y0 < y1) ? 1 : -1;
+  let err = dx - dy;
+
+  const last = this.last;
+  const batch = (
+    this.states.drawing ?
+    this.buffers.drawing :
+    this.states.stroke ? 
+    this.buffers.stroke :
+    this.buffers.erasing
+  );
+  while (true) {
+    const w = SETTINGS.PENCIL_SIZE;
+    const h = SETTINGS.PENCIL_SIZE;
+    if (this.states.drawing) {
+      const relative = this.getRelativeTileOffset(x0, y0);
+      batch.drawTile(relative.x, relative.y, w, h, this.fillStyle);
+    }
+    else if (this.states.erasing) {
+      const relative = this.getRelativeTileOffset(x0, y0);
+      batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+    }
+    else if (this.states.stroke) {
+      batch.drawTile(x0, y0, w, h, this.fillStyle);
+    }
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  };
+};
+
+/**
  * Inserts stroked arc at given position
  * @param {Batch} batch
  * @param {Number} x

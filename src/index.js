@@ -117,12 +117,15 @@ class Poxi {
       // mouse move coordinates
       mx: 0, my: 0,
       // mouse down coordinates
-      mdx: 0, mdy: 0
+      mdx: 0, mdy: 0,
+      // mouse down relative coordinates
+      mdrx: 0, mdry: 0
     };
     // shared buffer related
     this.buffers = {
       arc: null,
       rect: null,
+      stroke: false,
       erasing: null,
       drawing: null,
       boundingColor: [1, 0, 0, 0.1]
@@ -137,6 +140,7 @@ class Poxi {
     this.states = {
       arc: false,
       rect: false,
+      stroke: false,
       drawing: false,
       dragging: false,
       select: false,
@@ -149,7 +153,9 @@ class Poxi {
       rect: false,
       draw: false,
       erase: false,
+      flood: false,
       select: false,
+      stroke: false,
       pipette: false
     };
     // global fill style
@@ -204,5 +210,3 @@ if (typeof window !== "undefined") {
 } else {
   throw new Error("Poxi only runs inside the browser");
 }
-
-export default Poxi;

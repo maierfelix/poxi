@@ -127,3 +127,45 @@ export function binaryFloodFill(batch, x, y, base, color) {
 
   return (false);
 };
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Void}
+ */
+export function floodPaint(x, y) {
+  const color = this.fillStyle;
+  const base = this.getPixelAt(x, y);
+  // empty base tile or colors to fill are the same
+  if (base === null || colorsMatch(base, color)) return;
+  const xx = this.bounds.x;
+  const yy = this.bounds.y;
+  const ww = this.bounds.w;
+  const hh = this.bounds.h;
+  const layer = this.getCurrentLayer();
+  const batch = this.createDynamicBatch();
+  batch.prepareBuffer(xx, yy);
+  batch.resizeByOffset(xx, yy);
+  batch.resizeByOffset(xx + ww, yy + hh);
+  // flood paint
+  let count = 0;
+  for (let ii = 0; ii < ww * hh; ++ii) {
+    const x = (ii % ww);
+    const y = (ii / ww) | 0;
+    const pixel = this.getPixelAt(xx + x, yy + y);
+    if (pixel === null) continue;
+    if (!colorsMatch(base, pixel)) continue;
+    batch.drawTile(xx + x, yy + y, 1, 1, color);
+    count++;
+  };
+  // nothing changed
+  if (count <= 0) {
+    batch.kill();
+    return;
+  }
+  batch.isResized = true;
+  batch.refreshTexture();
+  layer.addBatch(batch);
+  this.enqueue(CommandKind.FLOOD_FILL, batch);
+  return;
+};
