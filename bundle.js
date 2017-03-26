@@ -231,8 +231,8 @@ var MODES = {
 
 // different settings
 var SETTINGS = {
-  PENCIL_SIZE: 2,
-  ERASER_SIZE: 2
+  PENCIL_SIZE: 1,
+  ERASER_SIZE: 1
 };
 
 /**
@@ -710,7 +710,7 @@ function onMouseDown(e) {
       var layer$2 = this.getCurrentLayer();
       batch$2.forceRendering = true;
       batch$2.prepareBuffer(relative.x, relative.y);
-      batch$2.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch$2.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
       batch$2.refreshTexture();
       layer$2.addBatch(batch$2);
     }
@@ -721,7 +721,7 @@ function onMouseDown(e) {
       var layer$3 = this.getCurrentLayer();
       batch$3.forceRendering = true;
       batch$3.prepareBuffer(relative.x, relative.y);
-      batch$3.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+      batch$3.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
       batch$3.refreshTexture();
       batch$3.isEraser = true;
       layer$3.addBatch(batch$3);
@@ -778,25 +778,31 @@ function onMouseMove(e) {
   // so we try to interpolate missed offsets
   if (this.states.dragging) {
     this.drag(x, y);
+    this.hover(x, y);
+    lastx = x; lasty = y;
+    last.mx = relative.x; last.my = relative.y;
+    return;
   }
   this.hover(x, y);
   if (last.mx === relative.x && last.my === relative.y) { return; }
   if (this.states.arc) {
     var batch = this.buffers.arc;
     batch.clear();
-    var start = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
-    var radius = pointDistance(start.x, start.y, relative.x, relative.y);
-    this.strokeArc(batch, start.x, start.y, radius, this.fillStyle);
+    var sx = this.last.mdrx;
+    var sy = this.last.mdry;
+    var radius = pointDistance(sx, sy, relative.x, relative.y);
+    this.strokeArc(batch, sx, sy, radius, this.fillStyle);
     layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.rect) {
     var batch$1 = this.buffers.rect;
     batch$1.clear();
-    var start$1 = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
-    var ww = relative.x - start$1.x;
-    var hh = relative.y - start$1.y;
-    this.strokeRect(batch$1, start$1.x, start$1.y, ww, hh, this.fillStyle);
+    var sx$1 = this.last.mdrx;
+    var sy$1 = this.last.mdry;
+    var ww = relative.x - sx$1;
+    var hh = relative.y - sy$1;
+    this.strokeRect(batch$1, sx$1, sy$1, ww, hh, this.fillStyle);
     layer.updateBoundings();
     batch$1.refreshTexture();
   }
