@@ -60,7 +60,7 @@ export function resizeByBufferData() {
     const b = data[px + 2];
     const a = data[px + 3];
     // ignore empty tiles
-    if ((r + g + b <= 0) || a <= 0) continue;
+    if (a <= 0 || (r + g + b + a <= 0)) continue;
     // x, y
     if (xx >= 0 && xx <= x) x = xx;
     if (yy >= 0 && yy <= y) y = yy;

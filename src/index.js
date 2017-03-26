@@ -10,13 +10,6 @@ import * as _listener from "./event/listener";
 
 import * as _env from "./env/functions";
 
-import * as _blend from "./filter/blend";
-import * as _invert from "./filter/invert";
-import * as _onion from "./filter/onion";
-import * as _replace from "./filter/replace";
-import * as _shading from "./filter/shading";
-import * as _smoothing from "./filter/smoothing";
-
 import * as _buffer from "./render/buffer";
 import * as _build from "./render/build";
 import * as _draw from "./render/draw";
@@ -82,6 +75,7 @@ class Poxi {
     this.sy = 0;
     this.sw = -0;
     this.sh = -0;
+    this.shape = null;
     // mouse offset
     this.mx = 0;
     this.my = 0;
@@ -142,6 +136,7 @@ class Poxi {
       rect: false,
       stroke: false,
       drawing: false,
+      lighting: false,
       dragging: false,
       select: false,
       selecting: false
@@ -152,6 +147,8 @@ class Poxi {
       fill: false,
       rect: false,
       draw: false,
+      shape: false,
+      light: false,
       erase: false,
       flood: false,
       select: false,
@@ -173,13 +170,6 @@ extend(Poxi, _emitter);
 extend(Poxi, _listener);
 
 extend(Poxi, _env);
-
-extend(Poxi, _blend);
-extend(Poxi, _invert);
-extend(Poxi, _onion);
-extend(Poxi, _replace);
-extend(Poxi, _shading);
-extend(Poxi, _smoothing);
 
 extend(Poxi, _buffer);
 extend(Poxi, _build);

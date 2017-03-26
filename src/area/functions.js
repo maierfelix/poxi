@@ -1,3 +1,11 @@
+import { SELECTION_COLOR } from "../cfg";
+
+import {
+  bytesToRgba,
+  colorToRgbaString,
+  createCanvasBuffer
+} from "../utils";
+
 import CommandKind from "../stack/kind";
 
 /**
@@ -72,4 +80,44 @@ export function clearRect(selection) {
   layer.addBatch(batch);
   this.enqueue(CommandKind.CLEAR, batch);
   return;
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Batch}
+ */
+export function getShapeByOffset(x, y) {
+  const color = this.getPixelAt(x, y);
+  if (color === null) return (null);
+  const result = this.getBinaryShape(x, y, color);
+  if (result.infinite) return (null);
+  const batch = this.createDynamicBatch();
+  const bounds = this.bounds;
+  const grid = result.grid;
+  const bx = bounds.x;
+  const by = bounds.y;
+  const bw = bounds.w;
+  const bh = bounds.h;
+  // create buffer to draw a fake shape into
+  const buffer = createCanvasBuffer(bw, bh);
+  const rgba = bytesToRgba(SELECTION_COLOR);
+  rgba[3] = 0.75;
+  buffer.fillStyle = colorToRgbaString(rgba);
+  for (let ii = 0; ii < grid.length; ++ii) {
+    const xx = (ii % bw);
+    const yy = (ii / bw) | 0;
+    if (grid[yy * bw + xx] !== 2) continue;
+    buffer.fillRect(
+      xx, yy,
+      1, 1
+    );
+  };
+  batch.buffer = buffer;
+  batch.data = buffer.getImageData(0, 0, bw, bh).data;
+  batch.bounds.update(bx, by, bw, bh);
+  batch.isResized = true;
+  batch.resizeByBufferData();
+  batch.refreshTexture();
+  return (batch);
 };

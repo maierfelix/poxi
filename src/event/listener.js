@@ -7,7 +7,9 @@ import {
 import {
   MODES,
   SETTINGS,
-  TILE_SIZE
+  TILE_SIZE,
+  LIGHT_DARKEN_IMG_PATH,
+  LIGHT_LIGHTEN_IMG_PATH
 } from "../cfg";
 
 import { pointDistance } from "../math";
@@ -62,11 +64,44 @@ export function onMouseLeave(e) {
 };
 
 /**
+ * @param {HTMLElement} el
+ */
+export function processUIClick(el) {
+  const parent = el.parentNode;
+  if (!parent) return;
+  const id = parent.id;
+  if (id === "pencil-size") {
+    const value = el.innerHTML;
+    SETTINGS.PENCIL_SIZE = parseInt(value);
+    this.resetModes();
+    this.modes.draw = true;
+    tiled.style.opacity = 1.0;
+  }
+  else if (id === "eraser-size") {
+    const value = el.innerHTML;
+    SETTINGS.ERASER_SIZE = parseInt(value);
+    this.resetModes();
+    this.modes.erase = true;
+    erase.style.opacity = 1.0;
+  }
+  else if (id === "light-size") {
+    const value = el.innerHTML;
+    SETTINGS.LIGHT_SIZE = parseInt(value);
+    this.resetModes();
+    this.modes.light = true;
+    lighting.style.opacity = 1.0;
+  }
+};
+
+/**
  * @param {Event} e
  */
 export function onMouseDown(e) {
   e.preventDefault();
-  if (!(e.target instanceof HTMLCanvasElement)) return;
+  if (!(e.target instanceof HTMLCanvasElement)) {
+    this.processUIClick(e.target);
+    return;
+  }
   const x = e.clientX;
   const y = e.clientY;
   const relative = this.getRelativeTileOffset(x, y);
@@ -104,7 +139,7 @@ export function onMouseDown(e) {
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
-      batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
       batch.refreshTexture();
       layer.addBatch(batch);
     }
@@ -115,9 +150,20 @@ export function onMouseDown(e) {
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
-      batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+      batch.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
       batch.refreshTexture();
       batch.isEraser = true;
+      layer.addBatch(batch);
+    }
+    else if (this.modes.light) {
+      this.states.lighting = true;
+      this.buffers.lighting = this.createDynamicBatch();
+      const batch = this.buffers.lighting;
+      const layer = this.getCurrentLayer();
+      batch.forceRendering = true;
+      batch.prepareBuffer(relative.x, relative.y);
+      batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
+      batch.refreshTexture();
       layer.addBatch(batch);
     }
     else if (this.modes.stroke) {
@@ -136,8 +182,12 @@ export function onMouseDown(e) {
     else if (this.modes.fill) {
       this.fillBucket(relative.x, relative.y, this.fillStyle);
     }
+    else if (this.modes.shape) {
+      const batch = this.getShapeByOffset(relative.x, relative.y);
+      this.shape = batch;
+    }
     else if (this.modes.pipette) {
-      let color = this.getPixelAt(relative.x, relative.y);
+      const color = this.getPixelAt(relative.x, relative.y);
       if (color !== null) {
         this.fillStyle = color;
         color_view.style.background = color.value = rgbaToHex(color);
@@ -172,25 +222,31 @@ export function onMouseMove(e) {
   // so we try to interpolate missed offsets
   if (this.states.dragging) {
     this.drag(x, y);
+    this.hover(x, y);
+    lastx = x; lasty = y;
+    last.mx = relative.x; last.my = relative.y;
+    return;
   }
   this.hover(x, y);
   if (last.mx === relative.x && last.my === relative.y) return;
   if (this.states.arc) {
     const batch = this.buffers.arc;
     batch.clear();
-    const start = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
-    const radius = pointDistance(start.x, start.y, relative.x, relative.y);
-    this.strokeArc(batch, start.x, start.y, radius, this.fillStyle);
+    const sx = this.last.mdrx;
+    const sy = this.last.mdry;
+    const radius = pointDistance(sx, sy, relative.x, relative.y);
+    this.strokeArc(batch, sx, sy, radius, this.fillStyle);
     layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.rect) {
     const batch = this.buffers.rect;
     batch.clear();
-    const start = this.getRelativeTileOffset(this.last.mdx, this.last.mdy);
-    const ww = relative.x - start.x;
-    const hh = relative.y - start.y;
-    this.strokeRect(batch, start.x, start.y, ww, hh, this.fillStyle);
+    const sx = this.last.mdrx;
+    const sy = this.last.mdry;
+    const ww = relative.x - sx;
+    const hh = relative.y - sy;
+    this.strokeRect(batch, sx, sy, ww, hh, this.fillStyle);
     layer.updateBoundings();
     batch.refreshTexture();
   }
@@ -211,8 +267,14 @@ export function onMouseMove(e) {
     const batch = this.buffers.erasing;
     const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
     if (!batch.isEmpty()) layer.updateBoundings();
+  }
+  else if (this.states.lighting) {
+    const batch = this.buffers.lighting;
+    const layer = this.getCurrentLayer();
+    batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
+    layer.updateBoundings();
+    batch.refreshTexture();
   }
   else if (this.states.dragging) {
     this.drag(x, y);
@@ -270,6 +332,13 @@ export function onMouseUp(e) {
       else this.enqueue(CommandKind.ERASE, batch);
       this.buffers.erasing = null;
     }
+    else if (this.states.lighting) {
+      const batch = this.buffers.lighting;
+      batch.forceRendering = false;
+      this.states.lighting = false;
+      this.enqueue(CommandKind.LIGHTING, batch);
+      this.buffers.lighting = null;
+    }
   }
   if (e.which === 3) {
     this.states.dragging = false;
@@ -280,10 +349,15 @@ export function onMouseUp(e) {
  * @param {Event} e
  */
 export function onKeyDown(e) {
-  e.preventDefault();
   const code = e.keyCode;
   this.keys[code] = 1;
   switch (code) {
+    // ctrl
+    case 17:
+      // lighting mode is darken
+      SETTINGS.LIGHTING_MODE = -(Math.abs(SETTINGS.LIGHTING_MODE));
+      lighting.src = LIGHT_DARKEN_IMG_PATH;
+    break;
     // del
     case 46:
       this.clearRect(this.getSelection());
@@ -329,6 +403,10 @@ export function onKeyDown(e) {
     case 116:
       location.reload();
     break;
+    default:
+      return;
+    break;
+    e.preventDefault();
   };
 };
 
@@ -339,10 +417,14 @@ export function onKeyUp(e) {
   e.preventDefault();
   const code = e.keyCode;
   this.keys[code] = 0;
-  if (code === 16) {
-    this.states.select = false;
-    this.states.selecting = false;
-  }
+  switch (code) {
+    // ctrl
+    case 17:
+      // lighting mode is lighten
+      SETTINGS.LIGHTING_MODE = Math.abs(SETTINGS.LIGHTING_MODE);
+      lighting.src = LIGHT_LIGHTEN_IMG_PATH;
+    break;
+  };
 };
 
 /**

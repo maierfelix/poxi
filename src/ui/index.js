@@ -4,15 +4,25 @@ import {
   rgbaToBytes
 } from "../utils";
 
+export function resetModes() {
+  for (let key in this.modes) {
+    this.resetSelection();
+    this.modes[key] = false;
+  };
+  this.resetActiveUiButtons();
+};
+
 export function resetActiveUiButtons() {
   arc.style.removeProperty("opacity");
   move.style.removeProperty("opacity");
+  shape.style.removeProperty("opacity");
   tiled.style.removeProperty("opacity");
   erase.style.removeProperty("opacity");
   bucket.style.removeProperty("opacity");
   select.style.removeProperty("opacity");
   stroke.style.removeProperty("opacity");
   pipette.style.removeProperty("opacity");
+  lighting.style.removeProperty("opacity");
   rectangle.style.removeProperty("opacity");
   paint_all.style.removeProperty("opacity");
 };
@@ -70,6 +80,16 @@ export function setupUi() {
     this.resetModes();
     this.modes.flood = true;
     paint_all.style.opacity = 1.0;
+  };
+  shape.onclick = (e) => {
+    this.resetModes();
+    this.modes.shape = true;
+    shape.style.opacity = 1.0;
+  };
+  lighting.onclick = (e) => {
+    this.resetModes();
+    this.modes.light = true;
+    lighting.style.opacity = 1.0;
   };
   color.onchange = (e) => {
     this.setUiColor(color.value);

@@ -46,4 +46,8 @@ export function selectTo(x, y) {
 export function resetSelection() {
   this.sx = this.sy = 0;
   this.sw = this.sh = -0;
+  if (this.shape !== null) {
+    this.destroyTexture(this.shape.texture);
+    this.shape = null;
+  }
 };

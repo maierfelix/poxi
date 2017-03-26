@@ -12,14 +12,6 @@ import {
 import Batch from "../batch/index";
 import CommandKind from "../stack/kind";
 
-export function resetModes() {
-  for (let key in this.modes) {
-    this.resetSelection();
-    this.modes[key] = false;
-  };
-  this.resetActiveUiButtons();
-};
-
 /**
  * @return {String}
  */
@@ -133,6 +125,20 @@ export function getCurrentLayer() {
 };
 
 /**
+ * Get batch to insert at by current active state
+ * @return {Batch}
+ */
+export function getCurrentDrawingBatch() {
+  for (let key in this.states) {
+    const state = this.states[key];
+    if (state === true && this.buffers[key]) {
+      return (this.buffers[key]);
+    }
+  };
+  return (null);
+};
+
+/**
  * @return {Batch}
  */
 export function createDynamicBatch() {
@@ -171,4 +177,70 @@ export function updateGlobalBoundings() {
   };
   // update our boundings
   this.bounds.update(x, y, -x + w, -y + h);
+};
+
+/**
+ * Uses preallocated binary grid with the size of the absolute boundings
+ * of our working area. In the next step we trace "alive cells" in the grid,
+ * then we take the boundings of the used area of our grid and crop out
+ * the relevant part. Next we can process each tile=^2 traced as inside shape
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Array} base
+ * @return {Object}
+ */
+export function getBinaryShape(x, y, base) {
+  const bounds = this.bounds;
+  const bx = bounds.x;
+  const by = bounds.y;
+  const gw = bounds.w;
+  const gh = bounds.h;
+  const isEmpty = base[3] === 0;
+  const gridl = gw * gh;
+
+  // allocate and do a basic fill onto the grid
+  let grid = new Uint8ClampedArray(gw * gh);
+  for (let ii = 0; ii < gridl; ++ii) {
+    const xx = ii % gw;
+    const yy = (ii / gw) | 0;
+    const color = this.getPixelAt(bx + xx, by + yy);
+    // empty tile based
+    if (isEmpty) { if (color !== null) continue; }
+    // color based
+    else {
+      if (color === null) continue;
+      if (!(base[0] === color[0] && base[1] === color[1] && base[2] === color[2])) continue;
+    }
+    // fill tiles with 1's if we got a color match
+    grid[yy * gw + xx] = 1;
+  };
+
+  // trace connected tiles by [x,y]=2
+  let queue = [{x: x - bx, y: y - by}];
+  while (queue.length > 0) {
+    const point = queue.pop();
+    const x = point.x;
+    const y = point.y;
+    const idx = y * gw + x;
+    // set this grid tile to 2, if it got traced earlier as a color match
+    if (grid[idx] === 1) grid[idx] = 2;
+    const nn = (y-1) * gw + x;
+    const ee = y * gw + (x+1);
+    const ss = (y+1) * gw + x;
+    const ww = y * gw + (x-1);
+    // abort if we possibly go infinite
+    if (
+      (y - 1 < -1 || y - 1 > gh) ||
+      (x + 1 < -1 || x + 1 > gw) ||
+      (y + 1 < -1 || y + 1 > gh) ||
+      (x - 1 < -1 || x - 1 > gw)
+    ) return ({ infinite: true, grid: null });
+    if (grid[nn] === 1) queue.push({x, y:y-1});
+    if (grid[ee] === 1) queue.push({x:x+1, y});
+    if (grid[ss] === 1) queue.push({x, y:y+1});
+    if (grid[ww] === 1) queue.push({x:x-1, y});
+  };
+
+  return ({ infinite: false, grid });
+
 };

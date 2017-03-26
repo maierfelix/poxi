@@ -18,6 +18,8 @@ export function getRawPixelAt(x, y) {
   const data = this.data;
   // imagedata array is 1d
   const idx = (yy * this.bounds.w + xx) * 4;
+  // pixel index out of bounds
+  if (idx < 0 || idx >= data.length) return (null);
   // get each color value
   const r = data[idx + 0];
   const g = data[idx + 1];

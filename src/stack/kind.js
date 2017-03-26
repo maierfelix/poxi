@@ -10,7 +10,8 @@ const CommandKind = {
   RECT_STROKE: 8,
   ARC_FILL: 9,
   ARC_STROKE: 10,
-  FLOOD_FILL: 11
+  FLOOD_FILL: 11,
+  LIGHTING: 12
 };
 
 export default CommandKind;

@@ -58,11 +58,20 @@ export const WASM_SUPPORTED = (
 
 // dev mode state
 export let MODES = {
-  DEV: false
+  DEV: true
 };
 
 // different settings
 export let SETTINGS = {
-  PENCIL_SIZE: 2,
-  ERASER_SIZE: 2
+  LIGHT_SIZE: 4,
+  PENCIL_SIZE: 4,
+  ERASER_SIZE: 1,
+  LIGHTING_MODE: 0.05
 };
+
+// asset path
+export const ASSET_PATH = "./assets/";
+
+// light bulb icon res
+export const LIGHT_DARKEN_IMG_PATH = ASSET_PATH + "img/light_off.png";
+export const LIGHT_LIGHTEN_IMG_PATH = ASSET_PATH + "img/light_on.png";

@@ -29,13 +29,7 @@ export function insertLine(x0, y0, x1, y1) {
   let err = dx - dy;
 
   const last = this.last;
-  const batch = (
-    this.states.drawing ?
-    this.buffers.drawing :
-    this.states.stroke ? 
-    this.buffers.stroke :
-    this.buffers.erasing
-  );
+  const batch = this.getCurrentDrawingBatch();
   while (true) {
     const w = SETTINGS.PENCIL_SIZE;
     const h = SETTINGS.PENCIL_SIZE;
@@ -46,6 +40,10 @@ export function insertLine(x0, y0, x1, y1) {
     else if (this.states.erasing) {
       const relative = this.getRelativeTileOffset(x0, y0);
       batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
+    }
+    else if (this.states.lighting) {
+      const relative = this.getRelativeTileOffset(x0, y0);
+      batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
     }
     else if (this.states.stroke) {
       batch.drawTile(x0, y0, w, h, this.fillStyle);

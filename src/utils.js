@@ -111,6 +111,19 @@ export function rgbaToBytes(rgba) {
 };
 
 /**
+ * Convert bytes to rgba color
+ * @param {Array} bytes
+ * @return {Array}
+ */
+export function bytesToRgba(bytes) {
+  const r = bytes[0] * 255;
+  const g = bytes[1] * 255;
+  const b = bytes[2] * 255;
+  const a = bytes[3];
+  return ([r, g, b, a]);
+};
+
+/**
  * @param {Array} color
  * @return {String}
  */

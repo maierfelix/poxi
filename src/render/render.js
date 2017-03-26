@@ -33,7 +33,8 @@ export function canRenderCachedBuffer() {
     !this.states.erasing &&
     !this.states.arc &&
     !this.states.rect &&
-    !this.states.stroke
+    !this.states.stroke &&
+    !this.states.lighting
   );
 };
 
@@ -60,7 +61,8 @@ export function render() {
   if (!this.states.select || !selection) {
     this.renderHoveredTile();
   }
-  if (selection) this.renderSelection();
+  if (this.shape !== null) this.renderShapeSelection();
+  else if (selection) this.renderSelection();
   if (MODES.DEV) this.renderStats();
 };
 
@@ -191,6 +193,22 @@ export function renderSelection() {
     xx, yy,
     ww, hh,
     color
+  );
+};
+
+export function renderShapeSelection() {
+  const cx = this.cx | 0;
+  const cy = this.cy | 0;
+  const cr = this.cr;
+  const batch = this.shape;
+  const bounds = batch.bounds;
+  const xx = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+  const yy = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+  const ww = (bounds.w * TILE_SIZE) * cr;
+  const hh = (bounds.h * TILE_SIZE) * cr;
+  this.drawImage(
+    batch.texture,
+    xx, yy, ww, hh
   );
 };
 

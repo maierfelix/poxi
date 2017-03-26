@@ -16,6 +16,13 @@ import * as _erase from "./erase";
 import * as _resize from "./resize";
 import * as _boundings from "./boundings";
 
+import * as _blend from "./filter/blend";
+import * as _invert from "./filter/invert";
+import * as _onion from "./filter/onion";
+import * as _replace from "./filter/replace";
+import * as _shading from "./filter/shading";
+import * as _smoothing from "./filter/smoothing";
+
 /**
  * @class Batch
  */
@@ -164,5 +171,12 @@ extend(Batch, _tile);
 extend(Batch, _erase);
 extend(Batch, _resize);
 extend(Batch, _boundings);
+
+extend(Batch, _blend);
+extend(Batch, _invert);
+extend(Batch, _onion);
+extend(Batch, _replace);
+extend(Batch, _shading);
+extend(Batch, _smoothing);
 
 export default Batch;
