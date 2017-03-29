@@ -33,7 +33,7 @@ import * as _ui from "./ui/index";
 
 import * as _setup from "./setup";
 
-import { MIN_SCALE } from "./cfg";
+import { BASE_SCALE } from "./cfg";
 
 import Boundings from "./bounds/index";
 
@@ -62,8 +62,8 @@ class Poxi {
     this.cw = 0;
     this.ch = 0;
     // camera render scale
-    this.cr = MIN_SCALE;
-    this.cs = MIN_SCALE;
+    this.cr = BASE_SCALE;
+    this.cs = BASE_SCALE;
     // camera drag related
     this.dx = 0;
     this.dy = 0;
@@ -86,8 +86,6 @@ class Poxi {
     this.layers = [];
     // general cache
     this.cache = {
-      main: null,
-      mainTexture: null,
       bg: null,
       fg: null,
       fgTexture: null,
@@ -107,6 +105,7 @@ class Poxi {
     };
     // last things
     this.last = {
+      gx: 0, gy: 0, gw: 0, gh: 0,
       cx: 1, cy: 1,
       // mouse move coordinates
       mx: 0, my: 0,

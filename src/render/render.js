@@ -1,6 +1,7 @@
 import {
   MODES,
   TILE_SIZE,
+  HIDE_GRID,
   MAGIC_SCALE,
   GRID_LINE_WIDTH,
   SELECTION_COLOR,
@@ -28,7 +29,7 @@ export function redraw() {
  */
 export function canRenderCachedBuffer() {
   return (
-    this.cache.main !== null &&
+    (this.bounds.w > 0 && this.bounds.h > 0) &&
     !this.states.drawing &&
     !this.states.erasing &&
     !this.states.arc &&
@@ -41,29 +42,34 @@ export function canRenderCachedBuffer() {
 /** Main render method */
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
-  this.renderBackground();
-  this.renderGrid();
-  if (this.canRenderCachedBuffer()) {
+  //this.renderBackground();
+  //if (this.cr > HIDE_GRID) this.renderGrid();
+  // render cached version of our working area
+  this.renderLayers();
+  /*if (this.canRenderCachedBuffer()) {
     const bounds = this.bounds;
     const cx = this.cx | 0;
     const cy = this.cy | 0;
     const cr = this.cr;
-    const ww = this.cache.main.canvas.width;
-    const hh = this.cache.main.canvas.height;
+    const ww = (this.bounds.w * TILE_SIZE) * cr;
+    const hh = (this.bounds.h * TILE_SIZE) * cr;
+    const xx = cx + (bounds.x * TILE_SIZE) * cr;
+    const yy = cy + (bounds.y * TILE_SIZE) * cr;
     this.drawImage(
-      this.cache.mainTexture,
-      cx + (bounds.x * TILE_SIZE) * cr, cy + (bounds.y * TILE_SIZE) * cr,
-      (ww * TILE_SIZE) * cr, (hh * TILE_SIZE) * cr
+      this.main.texture,
+      xx, yy,
+      ww, hh
     );
+  // render live data
   } else {
     this.renderLayers();
-  }
+  }*/
   if (!this.states.select || !selection) {
     this.renderHoveredTile();
   }
-  if (this.shape !== null) this.renderShapeSelection();
-  else if (selection) this.renderSelection();
-  if (MODES.DEV) this.renderStats();
+  //if (this.shape !== null) this.renderShapeSelection();
+  //else if (selection) this.renderSelection();
+  //if (MODES.DEV) this.renderStats();
 };
 
 export function renderBackground() {
@@ -162,7 +168,6 @@ export function renderHoveredTile() {
   const mx = this.mx;
   const my = this.my;
   const relative = this.getRelativeTileOffset(mx, my);
-  //console.log(relative.x, relative.y);
   const rx = relative.x * TILE_SIZE;
   const ry = relative.y * TILE_SIZE;
   const x = ((cx + GRID_LINE_WIDTH/2) + (rx * cr)) | 0;

@@ -2,6 +2,15 @@
  * @return {Object}
  */
 export function getSelection() {
+  // active shape selection
+  if (this.shape !== null) {
+    const bounds = this.shape.bounds;
+    return ({
+      shape: this.shape,
+      x: bounds.x, y: bounds.y,
+      w: bounds.w, h: bounds.h
+    });
+  }
   let x = this.sx; let y = this.sy;
   let w = this.sw; let h = this.sh;
   if (w < 0) x += w;
@@ -9,6 +18,7 @@ export function getSelection() {
   w = w < 0 ? -w : w;
   h = h < 0 ? -h : h;
   return ({
+    shape: null,
     x: x, y: y,
     w: w, h: h
   });

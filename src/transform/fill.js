@@ -53,9 +53,8 @@ export function fillBucket(x, y, color) {
   batch.buffer = buffer;
   batch.data = buffer.getImageData(0, 0, gw, gh).data;
   batch.bounds.update(bx, by, gw, gh);
-  batch.isResized = true;
   // auto resize batch's size by its used buffer data
-  batch.resizeByBufferData();
+  batch.resizeByMatrixData();
   batch.refreshTexture();
   layer.addBatch(batch);
   this.enqueue(CommandKind.FILL, batch);
@@ -99,7 +98,6 @@ export function floodPaint(x, y) {
     batch.kill();
     return;
   }
-  batch.isResized = true;
   batch.refreshTexture();
   layer.addBatch(batch);
   this.enqueue(CommandKind.FLOOD_FILL, batch);

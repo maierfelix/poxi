@@ -5,7 +5,6 @@ import {
 
 import {
   colorToRgbaString,
-  createCanvasBuffer,
   alphaByteToRgbAlpha
 } from "../utils";
 
@@ -16,8 +15,8 @@ import CommandKind from "../stack/kind";
  * @return {String}
  */
 export function exportAsDataUrl() {
-  if (!(this.cache.main instanceof CanvasRenderingContext2D)) return ("");
-  const buffer = this.cache.main;
+  if (!(this.main.buffer instanceof CanvasRenderingContext2D)) return ("");
+  const buffer = this.main.buffer;
   const view = buffer.canvas;
   return (view.toDataURL("image/png"));
 };
@@ -29,55 +28,26 @@ export function exportAsDataUrl() {
  * @return {Array}
  */
 export function getPixelAt(x, y) {
-  const sindex = this.sindex;
-  const layers = this.layers;
-  for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = layers.length - 1 - ii; // reversed
-    const batches = layers[idx].batches;
-    for (let jj = 0; jj < batches.length; ++jj) {
-      const jdx = batches.length - 1 - jj;
-      const batch = batches[jdx];
-      if (batch.isEraser) continue;
-      if (!batch.bounds.isPointInside(x, y)) continue;
-      if (batch.getStackIndex() > sindex) continue;
-      let pixel = batch.getRawPixelAt(x, y);
-      if (pixel !== null) return (pixel);
-    };
-  };
-  return (null);
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Object}
- */
-export function getPixelsAt(x, y) {
-  const result = [];
-  const sindex = this.sindex;
-  const layers = this.layers;
-  for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = layers.length - 1 - ii; // reversed
-    const batches = layers[idx].batches;
-    for (let jj = 0; jj < batches.length; ++jj) {
-      const jdx = batches.length - 1 - jj;
-      const batch = batches[jdx];
-      if (batch.isEraser) continue;
-      if (!batch.bounds.isPointInside(x, y)) continue;
-      if (batch.getStackIndex() > sindex) continue;
-      let pixel = batch.getRawPixelAt(x, y);
-      if (pixel === null) continue;
-      result.push({
-        x, y,
-        batch: batch,
-        pixel: pixel
-      });
-    };
-  };
-  return ({
-    x, y,
-    pixels: result
-  });
+  // normalize coordinates
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  if (this.bounds.w <= 0 && this.bounds.h <= 0) return (null);
+  // now extract the data
+  const data = this.main.data;
+  // imagedata array is 1d
+  const idx = (yy * this.bounds.w + xx) * 4;
+  // pixel index out of bounds
+  if (idx < 0 || idx >= data.length) return (null);
+  // get each color value
+  const r = data[idx + 0];
+  const g = data[idx + 1];
+  const b = data[idx + 2];
+  const a = data[idx + 3];
+  const color = [r, g, b, alphaByteToRgbAlpha(a)];
+  // dont return anything if we got no valid color
+  if (a <= 0) return (null);
+  // finally return the color array
+  return (color);
 };
 
 /**
@@ -150,10 +120,25 @@ export function refreshMainTexture() {
   this.createMainBuffer();
 };
 
+/**
+ * @return {Boolean}
+ */
+export function workingAreaHasResized() {
+  const ox = this.bounds.x; const oy = this.bounds.y;
+  const ow = this.bounds.w; const oh = this.bounds.h;
+  const nx = this.last.gx; const ny = this.last.gy;
+  const nw = this.last.gw; const nh = this.last.gh;
+  return !(
+    ox === nx && oy === ny &&
+    ow === nw && oh === nh
+  );
+};
+
 export function updateGlobalBoundings() {
   for (let ii = 0; ii < this.layers.length; ++ii) {
     this.layers[ii].updateBoundings();
   };
+  const bounds = this.bounds;
   let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
   const layers = this.layers;
@@ -175,6 +160,8 @@ export function updateGlobalBoundings() {
     // calculate height
     if (bh > h) h = bh;
   };
+  this.last.gx = bounds.x; this.last.gy = bounds.y;
+  this.last.gw = bounds.w; this.last.gh = bounds.h;
   // update our boundings
   this.bounds.update(x, y, -x + w, -y + h);
 };

@@ -1,5 +1,8 @@
 import { isPowerOfTwo } from "../math";
-import { colorToRgbaString } from "../utils";
+import {
+  colorToRgbaString,
+  rgbAlphaToAlphaByte
+} from "../utils";
 
 /**
  * @param {Number} x
@@ -31,11 +34,16 @@ export function drawTile(x, y, w, h, color) {
   if (w > 1 || h > 1) {
     this.resizeByOffset(x + w - 1, y + h - 1);
   }
-  this.buffer.fillStyle = colorToRgbaString(color);
-  this.buffer.fillRect(
-    x - bounds.x, y - bounds.y,
-    w, h
-  );
+  // => fillRect(x, y, w, h)
+  for (let ii = 0; ii < w * h; ++ii) {
+    const xx = (x - bounds.x) + ii;
+    const yy = (y - bounds.y) + ii;
+    const idx = (yy * bounds.w + xx) * 4;
+    this.data[idx + 0] = color[0];
+    this.data[idx + 1] = color[1];
+    this.data[idx + 2] = color[2];
+    this.data[idx + 3] = rgbAlphaToAlphaByte(color[3]);
+  };
 };
 
 /**

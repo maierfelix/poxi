@@ -23,6 +23,7 @@ export function setup() {
   draw();
   // add some things manually
   (() => {
+    this.main = this.createDynamicBatch();
     this.layers.push(new Layer());
   })();
   this.setupUi();

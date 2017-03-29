@@ -272,7 +272,7 @@ export function onMouseMove(e) {
   else if (this.states.lighting) {
     const batch = this.buffers.lighting;
     const layer = this.getCurrentLayer();
-    batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
+    this.insertLine(x, y, lastx, lasty);
     layer.updateBoundings();
     batch.refreshTexture();
   }
@@ -297,6 +297,8 @@ export function onMouseUp(e) {
       const batch = this.buffers.arc;
       batch.forceRendering = false;
       this.states.arc = false;
+      batch.resizeByMatrixData();
+      batch.refreshTexture();
       this.enqueue(CommandKind.ARC_FILL, batch);
       this.buffers.arc = null;
     }
@@ -304,6 +306,8 @@ export function onMouseUp(e) {
       const batch = this.buffers.rect;
       batch.forceRendering = false;
       this.states.rect = false;
+      batch.resizeByMatrixData();
+      batch.refreshTexture();
       this.enqueue(CommandKind.RECT_FILL, batch);
       this.buffers.rect = null;
     }
@@ -311,6 +315,8 @@ export function onMouseUp(e) {
       const batch = this.buffers.stroke;
       batch.forceRendering = false;
       this.states.stroke = false;
+      batch.resizeByMatrixData();
+      batch.refreshTexture();
       this.enqueue(CommandKind.STROKE, batch);
       this.buffers.stroke = null;
     }
@@ -354,9 +360,11 @@ export function onKeyDown(e) {
   switch (code) {
     // ctrl
     case 17:
-      // lighting mode is darken
-      SETTINGS.LIGHTING_MODE = -(Math.abs(SETTINGS.LIGHTING_MODE));
-      lighting.src = LIGHT_DARKEN_IMG_PATH;
+      if (this.modes.light) {
+        // lighting mode is darken
+        SETTINGS.LIGHTING_MODE = -(Math.abs(SETTINGS.LIGHTING_MODE));
+        lighting.src = LIGHT_DARKEN_IMG_PATH;
+      }
     break;
     // del
     case 46:
@@ -421,8 +429,10 @@ export function onKeyUp(e) {
     // ctrl
     case 17:
       // lighting mode is lighten
-      SETTINGS.LIGHTING_MODE = Math.abs(SETTINGS.LIGHTING_MODE);
-      lighting.src = LIGHT_LIGHTEN_IMG_PATH;
+      if (this.modes.light) {
+        SETTINGS.LIGHTING_MODE = Math.abs(SETTINGS.LIGHTING_MODE);
+        lighting.src = LIGHT_LIGHTEN_IMG_PATH;
+      }
     break;
   };
 };

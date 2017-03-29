@@ -5,8 +5,9 @@ export const DEFAULT_HEIGHT = 320;
 export const DEFAULT_GRID_HIDDEN = false;
 
 export const TILE_SIZE = 8;
-export const MIN_SCALE = 1;
+export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 32;
+export const BASE_SCALE = 1;
 export const MAGIC_SCALE = .125;
 // trace ghost tiles by alpha=^2
 export const UNSET_TILE_COLOR = 2;
@@ -58,13 +59,13 @@ export const WASM_SUPPORTED = (
 
 // dev mode state
 export let MODES = {
-  DEV: true
+  DEV: false
 };
 
 // different settings
 export let SETTINGS = {
-  LIGHT_SIZE: 4,
-  PENCIL_SIZE: 4,
+  LIGHT_SIZE: 1,
+  PENCIL_SIZE: 1,
   ERASER_SIZE: 1,
   LIGHTING_MODE: 0.05
 };

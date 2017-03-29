@@ -20,6 +20,4 @@ export function enqueue(kind, batch) {
   const cmd = new Command(kind, batch);
   this.stack.push(cmd);
   this.redo();
-  this.undo();
-  this.redo();
 };

@@ -33,6 +33,7 @@ export function insertLine(x0, y0, x1, y1) {
   while (true) {
     const w = SETTINGS.PENCIL_SIZE;
     const h = SETTINGS.PENCIL_SIZE;
+    // TODO: limit repeation rate on brush size
     if (this.states.drawing) {
       const relative = this.getRelativeTileOffset(x0, y0);
       batch.drawTile(relative.x, relative.y, w, h, this.fillStyle);

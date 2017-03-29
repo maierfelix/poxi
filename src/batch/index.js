@@ -13,7 +13,7 @@ import Boundings from "../bounds/index";
 import * as _raw from "./raw";
 import * as _tile from "./tile";
 import * as _erase from "./erase";
-import * as _resize from "./resize";
+import * as _matrix from "./matrix";
 import * as _boundings from "./boundings";
 
 import * as _blend from "./filter/blend";
@@ -41,11 +41,10 @@ class Batch {
     this.texture = null;
     // relative boundings
     this.bounds = new Boundings();
-    // batch got resized or not
-    this.isResized = false;
     // we use this batch for erasing
     this.isEraser = false;
     // indicates if we should force to render this batch
+    // even when it is not registered inside our stack yet
     this.forceRendering = false;
   }
 };
@@ -64,10 +63,10 @@ Batch.prototype.getStackIndex = function() {
 };
 
 Batch.prototype.clear = function() {
-  this.buffer.clearRect(
-    0, 0,
-    this.bounds.w, this.bounds.h
-  );
+  const data = this.data;
+  for (let ii = 0; ii < data.length; ++ii) {
+    data[ii] = 0;
+  };
 };
 
 Batch.prototype.kill = function() {
@@ -116,30 +115,33 @@ Batch.prototype.getColorAt = function(x, y) {
  * @param {Number} y
  */
 Batch.prototype.prepareBuffer = function(x, y) {
-  // we don't have a buffer to store data at yet
-  if (this.buffer === null) {
+  // we don't have a data buffer to store data at yet
+  if (this.data === null) {
     const bounds = this.bounds;
     bounds.x = x;
     bounds.y = y;
     bounds.w = 1;
     bounds.h = 1;
-    this.buffer = createCanvasBuffer(1, 1);
-    this.texture = this.instance.bufferTexture(this.id, this.buffer.canvas, false);
-    this.isResized = true;
+    this.data = new Uint8Array(4 * (bounds.w * bounds.h));
+    this.texture = this.instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
   }
 };
 
-Batch.prototype.refreshTexture = function() {
+/**
+ * @param {Boolean} state
+ */
+Batch.prototype.refreshTexture = function(resized) {
   const bounds = this.bounds;
   const instance = this.instance;
-  this.data = this.buffer.getImageData(0, 0, bounds.w, bounds.h).data;
-  if (this.isResized) {
-    instance.destroyTexture(this.texture);
-    this.texture = instance.bufferTexture(this.id, this.buffer.canvas, false);
+  if (resized) {
+    // free old texture from memory
+    if (this.texture !== null) {
+      instance.destroyTexture(this.texture);
+    }
+    this.texture = instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
   } else {
-    instance.updateTexture(this.texture, this.buffer.canvas);
+    instance.updateTexture(this.texture, this.data, bounds.w, bounds.h);
   }
-  this.isResized = false;
 };
 
 /**
@@ -155,12 +157,9 @@ Batch.prototype.isEmpty = function() {
     const xx = idx % bw;
     const yy = (idx / bw) | 0;
     const px = (yy * bw + xx) * 4;
-    const r = data[px + 0];
-    const g = data[px + 1];
-    const b = data[px + 2];
     const a = data[px + 3];
     // ignore empty tiles
-    if ((r + g + b <= 0) || a <= 0) continue;
+    if (a <= 0) continue;
     count++;
   };
   return (count <= 0);
@@ -169,7 +168,7 @@ Batch.prototype.isEmpty = function() {
 extend(Batch, _raw);
 extend(Batch, _tile);
 extend(Batch, _erase);
-extend(Batch, _resize);
+extend(Batch, _matrix);
 extend(Batch, _boundings);
 
 extend(Batch, _blend);
