@@ -1,4 +1,6 @@
 import { SETTINGS } from "../cfg";
+import { alignToGrid } from "../math";
+import { getRainbowColor } from "../color";
 
 import CommandKind from "../stack/kind";
 
@@ -22,32 +24,31 @@ export function insertImage(ctx, x, y) {
  * @param {Number} y1
  */
 export function insertLine(x0, y0, x1, y1) {
+
+  const base = 8 * this.cr;
+
   const dx = Math.abs(x1 - x0);
   const dy = Math.abs(y1 - y0);
   const sx = (x0 < x1) ? 1 : -1;
   const sy = (y0 < y1) ? 1 : -1;
-  let err = dx - dy;
+  let err = (dx - dy);
 
   const last = this.last;
   const batch = this.getCurrentDrawingBatch();
   while (true) {
-    const w = SETTINGS.PENCIL_SIZE;
-    const h = SETTINGS.PENCIL_SIZE;
+    const relative = this.getRelativeTileOffset(x0, y0);
     // TODO: limit repeation rate on brush size
     if (this.states.drawing) {
-      const relative = this.getRelativeTileOffset(x0, y0);
-      batch.drawTile(relative.x, relative.y, w, h, this.fillStyle);
+      batch.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
     }
     else if (this.states.erasing) {
-      const relative = this.getRelativeTileOffset(x0, y0);
       batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
     }
     else if (this.states.lighting) {
-      const relative = this.getRelativeTileOffset(x0, y0);
       batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
     }
     else if (this.states.stroke) {
-      batch.drawTile(x0, y0, w, h, this.fillStyle);
+      batch.drawTile(x0, y0, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
     }
     if (x0 === x1 && y0 === y1) break;
     const e2 = 2 * err;
@@ -153,24 +154,22 @@ export function strokeRect(batch, x, y, width, height, color) {
  * @param {Boolean} filled
  */
 export function insertRectangleAt(batch, x1, y1, x2, y2, color, filled) {
-  let bx = x1;
-  let by = y1;
-  let width = Math.abs(x2);
-  let height = Math.abs(y2);
-  let dx = (x2 < 0 ? -1 : 1);
-  let dy = (y2 < 0 ? -1 : 1);
+  const width = Math.abs(x2);
+  const height = Math.abs(y2);
+  const dx = (x2 < 0 ? -1 : 1);
+  const dy = (y2 < 0 ? -1 : 1);
   const w = SETTINGS.PENCIL_SIZE;
   const h = SETTINGS.PENCIL_SIZE;
-  for (let yy = 0; yy < height; ++yy) {
-    for (let xx = 0; xx < width; ++xx) {
-      // ignore inner tiles if rectangle not filled
-      if (!filled) {
-        if (!(
-          (xx === 0 || xx >= width-1) ||
-          (yy === 0 || yy >= height-1))
-        ) continue;
-      }
-      batch.drawTile(bx + xx * dx, by + yy * dy, w, h, color);
-    };
-  };
+  for (let ii = 0; ii < width * height; ++ii) {
+    const xx = (ii % width);
+    const yy = (ii / width) | 0;
+    // ignore inner tiles if rectangle not filled
+    if (!filled) {
+      if (!(
+        (xx === 0 || xx >= width-1) ||
+        (yy === 0 || yy >= height-1))
+      ) continue;
+    }
+    batch.drawTile(x1 + xx * dx, y1 + yy * dy, w, h, color);
+  }
 };

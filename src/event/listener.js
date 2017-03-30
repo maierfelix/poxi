@@ -2,7 +2,7 @@ import {
   rgbaToHex,
   rgbaToBytes,
   getRainbowColor
-} from "../utils";
+} from "../color";
 
 import {
   MODES,
@@ -187,6 +187,7 @@ export function onMouseDown(e) {
       this.shape = batch;
     }
     else if (this.modes.pipette) {
+      this.states.pipette = true;
       const color = this.getPixelAt(relative.x, relative.y);
       if (color !== null) {
         this.fillStyle = color;
@@ -205,8 +206,8 @@ export function onMouseDown(e) {
   }
 };
 
-let lastx = 0;
-let lasty = 0;
+let lastx = -0;
+let lasty = -0;
 /**
  * @param {Event} e
  */
@@ -236,7 +237,6 @@ export function onMouseMove(e) {
     const sy = this.last.mdry;
     const radius = pointDistance(sx, sy, relative.x, relative.y);
     this.strokeArc(batch, sx, sy, radius, this.fillStyle);
-    layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.rect) {
@@ -247,33 +247,29 @@ export function onMouseMove(e) {
     const ww = relative.x - sx;
     const hh = relative.y - sy;
     this.strokeRect(batch, sx, sy, ww, hh, this.fillStyle);
-    layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.stroke) {
     const batch = this.buffers.stroke;
     batch.clear();
     this.insertLine(this.last.mdrx, this.last.mdry, relative.x, relative.y);
-    layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.drawing) {
     const batch = this.buffers.drawing;
     this.insertLine(x, y, lastx, lasty);
-    layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.erasing) {
     const batch = this.buffers.erasing;
     const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    if (!batch.isEmpty()) layer.updateBoundings();
+    batch.refreshTexture();
   }
   else if (this.states.lighting) {
     const batch = this.buffers.lighting;
     const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    layer.updateBoundings();
     batch.refreshTexture();
   }
   else if (this.states.dragging) {
@@ -281,6 +277,13 @@ export function onMouseMove(e) {
   }
   else if (this.states.selecting) {
     this.selectTo(x, y);
+  }
+  else if (this.states.pipette) {
+    const color = this.getPixelAt(relative.x, relative.y);
+    if (color !== null) {
+      this.fillStyle = color;
+      color_view.style.background = color.value = rgbaToHex(color);
+    }
   }
   lastx = x; lasty = y;
   last.mx = relative.x; last.my = relative.y;
@@ -297,7 +300,7 @@ export function onMouseUp(e) {
       const batch = this.buffers.arc;
       batch.forceRendering = false;
       this.states.arc = false;
-      batch.resizeByMatrixData();
+      //batch.resizeByMatrixData();
       batch.refreshTexture();
       this.enqueue(CommandKind.ARC_FILL, batch);
       this.buffers.arc = null;
@@ -306,7 +309,7 @@ export function onMouseUp(e) {
       const batch = this.buffers.rect;
       batch.forceRendering = false;
       this.states.rect = false;
-      batch.resizeByMatrixData();
+      //batch.resizeByMatrixData();
       batch.refreshTexture();
       this.enqueue(CommandKind.RECT_FILL, batch);
       this.buffers.rect = null;
@@ -315,7 +318,7 @@ export function onMouseUp(e) {
       const batch = this.buffers.stroke;
       batch.forceRendering = false;
       this.states.stroke = false;
-      batch.resizeByMatrixData();
+      //batch.resizeByMatrixData();
       batch.refreshTexture();
       this.enqueue(CommandKind.STROKE, batch);
       this.buffers.stroke = null;
@@ -344,6 +347,9 @@ export function onMouseUp(e) {
       this.states.lighting = false;
       this.enqueue(CommandKind.LIGHTING, batch);
       this.buffers.lighting = null;
+    }
+    else if (this.states.pipette) {
+      this.states.pipette = false;
     }
   }
   if (e.which === 3) {

@@ -1,10 +1,13 @@
 import { SELECTION_COLOR } from "../cfg";
 
 import {
-  bytesToRgba,
-  colorToRgbaString,
   createCanvasBuffer
 } from "../utils";
+
+import {
+  bytesToRgba,
+  colorToRgbaString
+} from "../color";
 
 import CommandKind from "../stack/kind";
 

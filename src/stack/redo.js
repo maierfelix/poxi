@@ -1,12 +1,20 @@
 import Command from "./cmd";
 
+/**
+ * @return {Void}
+ */
 export function redo() {
   if (this.sindex < this.stack.length - 1) {
     this.sindex++;
     const cmd = this.currentStackOperation();
     this.fire(cmd, true);
+  } else {
+    // prevent redo =^ stack size spamming
+    if (this.sindex !== 0) return;
   }
+  // auto update our main texture as soon as we changed our state
   this.refreshMainTexture();
+  return;
 };
 
 /**

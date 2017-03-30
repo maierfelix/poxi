@@ -6,7 +6,7 @@ import {
 import {
   colorToRgbaString,
   alphaByteToRgbAlpha
-} from "../utils";
+} from "../color";
 
 import Batch from "../batch/index";
 import CommandKind from "../stack/kind";
@@ -128,9 +128,9 @@ export function workingAreaHasResized() {
   const ow = this.bounds.w; const oh = this.bounds.h;
   const nx = this.last.gx; const ny = this.last.gy;
   const nw = this.last.gw; const nh = this.last.gh;
-  return !(
-    ox === nx && oy === ny &&
-    ow === nw && oh === nh
+  return (
+    ox !== nx || oy !== ny ||
+    ow !== nw || oh !== nh
   );
 };
 

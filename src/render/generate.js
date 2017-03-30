@@ -10,6 +10,10 @@ import {
   applyImageSmoothing
 } from "../utils";
 
+import {
+  additiveAlphaColorBlending
+} from "../color";
+
 /**
  * @return {CanvasRenderingContext2D}
  */
@@ -138,6 +142,7 @@ export function allocateMainBuffer() {
 
 export function updateMainBuffer() {
   const main = this.main;
+  const buffer = main.data;
   const layers = this.layers;
   const sindex = this.sindex;
   const x = this.bounds.x; const y = this.bounds.y;
@@ -150,10 +155,47 @@ export function updateMainBuffer() {
     const batches = layer.batches;
     for (let jj = 0; jj < batches.length; ++jj) {
       const batch = batches[jj];
-      if (sindex - jj < 0) continue;
-      const xx = lx + (batch.bounds.x - x); const yy = ly + (batch.bounds.y - y);
-      const idx = (yy * this.bounds.w + xx) * 4;
-      main.data.set(batch.data, idx);
+      const data = batch.data;
+      if (sindex - jj < 0) {
+        const erase = this.buffers.erasing;
+        // hack to display erasing batches when in erase mode
+        if (erase !== batch) continue;
+      }
+      const bw = batch.bounds.w;
+      const bh = batch.bounds.h;
+      const bx = lx + (batch.bounds.x - x);
+      const by = ly + (batch.bounds.y - y);
+      const isEraser = batch.isEraser;
+      // merge matrices
+      for (let ii = 0; ii < data.length; ii += 4) {
+        const idx = ii / 4;
+        const xx = idx % bw;
+        const yy = (idx / bw) | 0;
+        const opx = (yy * bw + xx) * 4;
+        const npx = opx + (yy * (w - bw) * 4) + (bx * 4) + ((by * 4) * w);
+        // ignore empty pixels
+        if (data[opx + 3] <= 0) continue;
+        // delete pixels if eraser batch
+        if (isEraser) {
+          buffer[npx + 0] = buffer[npx + 1] = buffer[npx + 2] = buffer[npx + 3] = 0;
+          continue;
+        }
+        // already a color here, do manual additive color blending
+        if (buffer[npx + 0] !== 0) {
+          const src = buffer.subarray(npx, npx + 4);
+          const dst = data.subarray(opx, opx + 4);
+          const color = additiveAlphaColorBlending(src, dst);
+          buffer[npx + 0] = color[0];
+          buffer[npx + 1] = color[1];
+          buffer[npx + 2] = color[2];
+          buffer[npx + 3] = color[3];
+          continue;
+        }
+        buffer[npx + 0] = data[opx + 0];
+        buffer[npx + 1] = data[opx + 1];
+        buffer[npx + 2] = data[opx + 2];
+        buffer[npx + 3] = data[opx + 3];
+      };
     };
   };
   this.updateTexture(main.texture, main.data, w, h);

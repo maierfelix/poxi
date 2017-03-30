@@ -1,4 +1,9 @@
-import { MAX_SAFE_INTEGER } from "../cfg";
+import {
+  MAX_SAFE_INTEGER,
+  BATCH_JUMP_RESIZE
+} from "../cfg";
+
+import { alphaByteToRgbAlpha } from "../color";
 
 /**
  * @param {Number} x
@@ -12,18 +17,20 @@ export function resizeByOffset(x, y) {
   const ow = bounds.w; const oh = bounds.h;
   const xx = -(bounds.x - x) | 0;
   const yy = -(bounds.y - y) | 0;
+  // resize jump factor
+  const factor = Math.round(BATCH_JUMP_RESIZE / this.instance.cr);
   // resize bound rect to left, top
   if (xx < 0) {
-    bounds.x += xx;
-    bounds.w += Math.abs(xx);
+    bounds.x += xx - factor;
+    bounds.w += Math.abs(xx - factor);
   }
   if (yy < 0) {
-    bounds.y += yy;
-    bounds.h += Math.abs(yy);
+    bounds.y += yy - factor;
+    bounds.h += Math.abs(yy - factor);
   }
   // resize bound to right, bottom
-  if (w > bounds.w) bounds.w = w;
-  if (h > bounds.h) bounds.h = h;
+  if (w > bounds.w) bounds.w = w + factor;
+  if (h > bounds.h) bounds.h = h + factor;
   // make sure we only resize if necessary
   if (ow !== bounds.w || oh !== bounds.h) {
     this.resizeArrayBuffer(
@@ -72,8 +79,8 @@ export function resizeByMatrixData() {
   bounds.x = nbx; bounds.y = nby;
   bounds.w = nbw; bounds.h = nbh;
   this.resizeArrayBuffer(
-    ox, oy,
-    ow, oh
+    ox - nbx, oy - nby,
+    nbw - ow, nbh - oh
   );
   return;
 };
@@ -96,7 +103,6 @@ export function resizeArrayBuffer(x, y, w, h) {
     const xx = idx % ow;
     const yy = (idx / ow) | 0;
     const opx = (yy * ow + xx) * 4;
-    // black magic 🦄
     const npx = opx + (yy * (nw - ow) * 4) + (x * 4) + ((y * 4) * nw);
     buffer[npx + 0] = data[opx + 0];
     buffer[npx + 1] = data[opx + 1];

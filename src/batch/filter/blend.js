@@ -1,10 +1,5 @@
 import { SETTINGS } from "../../cfg";
 
-import {
-  colorsMatch,
-  colorToRgbaString,
-} from "../../utils";
-
 import CommandKind from "../../stack/kind";
 
 /**

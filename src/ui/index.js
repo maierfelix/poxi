@@ -2,7 +2,7 @@ import {
   hexToRgba,
   rgbaToHex,
   rgbaToBytes
-} from "../utils";
+} from "../color";
 
 export function resetModes() {
   for (let key in this.modes) {

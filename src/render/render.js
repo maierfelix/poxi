@@ -10,10 +10,8 @@ import {
   SELECTION_COLOR_ACTIVE
 } from "../cfg";
 
-import {
-  colorToRgbaString,
-  createCanvasBuffer
-} from "../utils";
+import { createCanvasBuffer } from "../utils";
+import { colorToRgbaString } from "../color";
 
 export function redraw() {
   // only redraw texture if it's absolutely necessary
@@ -45,8 +43,7 @@ export function render() {
   //this.renderBackground();
   //if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
-  this.renderLayers();
-  /*if (this.canRenderCachedBuffer()) {
+  if (this.canRenderCachedBuffer()) {
     const bounds = this.bounds;
     const cx = this.cx | 0;
     const cy = this.cy | 0;
@@ -63,7 +60,7 @@ export function render() {
   // render live data
   } else {
     this.renderLayers();
-  }*/
+  }
   if (!this.states.select || !selection) {
     this.renderHoveredTile();
   }
@@ -125,39 +122,43 @@ export function renderLayer(layer) {
   const lx = layer.x * TILE_SIZE;
   const ly = layer.y * TILE_SIZE;
   const batches = layer.batches;
-  const opacity = layer.opacity;
   const sindex = this.sindex;
-  // reset renderer opacity into original state
-  const oopacity = opacity;
-  if (opacity !== 255.0) this.setOpacity(opacity);
   for (let ii = 0; ii < batches.length; ++ii) {
     const batch = batches[ii];
     const bounds = batch.bounds;
     // batch index is higher than stack index, so ignore this batch
-    if (sindex - ii < 0 && !batch.isEraser) {
+    if (sindex - ii < 0) {
       if (!batch.forceRendering) continue;
     }
-    if (!this.boundsInsideView(bounds)) continue;
-    // draw batch boundings
+    //if (!this.boundsInsideView(bounds)) continue;
     const x = (cx + (lx + (bounds.x * TILE_SIZE) * cr)) | 0;
     const y = (cy + (ly + (bounds.y * TILE_SIZE) * cr)) | 0;
     const w = (bounds.w * TILE_SIZE) * cr;
     const h = (bounds.h * TILE_SIZE) * cr;
+    // draw batch boundings
     if (MODES.DEV) {
-      if (batch.isEraser && batch.isEmpty()) continue;
       this.drawRectangle(
         x, y,
         w, h,
         this.buffers.boundingColor
       );
     }
+    // erase by alpha blending
+    if (batch.isEraser) {
+      const gl = this.gl;
+      gl.blendFuncSeparate(gl.ONE_MINUS_SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ZERO);
+    }
     this.drawImage(
       batch.texture,
       x, y,
       w, h
     );
+    // reset blending state
+    if (batch.isEraser) {
+      const gl = this.gl;
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
   };
-  if (opacity !== 255.0) this.setOpacity(oopacity);
 };
 
 export function renderHoveredTile() {

@@ -1,8 +1,9 @@
 import { isPowerOfTwo } from "../math";
+
 import {
   colorToRgbaString,
   rgbAlphaToAlphaByte
-} from "../utils";
+} from "../color";
 
 /**
  * @param {Number} x
@@ -35,6 +36,7 @@ export function drawTile(x, y, w, h, color) {
     this.resizeByOffset(x + w - 1, y + h - 1);
   }
   // => fillRect(x, y, w, h)
+  // TODO: Fix dat
   for (let ii = 0; ii < w * h; ++ii) {
     const xx = (x - bounds.x) + ii;
     const yy = (y - bounds.y) + ii;
@@ -92,38 +94,28 @@ export function clearRect(x, y, w, h) {
   for (let ii = 0; ii < w * h; ++ii) {
     const xx = (ii % w) + x;
     const yy = ((ii / w) | 0) + y;
-    const erased = this.eraseTileAt(xx, yy);
-    for (let jj = 0; jj < erased.length; ++jj) {
-      const batch = erased[jj];
-      if (batches.indexOf(batch) <= -1) batches.push(batch);
-    };
-  };
-  for (let ii = 0; ii < batches.length; ++ii) {
-    batches[ii].refreshTexture();
+    this.eraseTileAt(xx, yy);
   };
 };
 
 /**
  * @param {Number} x
  * @param {Number} y
- * @return {Array} Returns changed batches
+ * @return {Void}
  */
 export function eraseTileAt(x, y) {
-  const batches = [];
-  const pixels = this.instance.getPixelsAt(x, y).pixels;
-  if (pixels.length) this.resizeByOffset(x, y);
-  for (let ii = 0; ii < pixels.length; ++ii) {
-    this.erased.push(pixels[ii]);
-    const batch = pixels[ii].batch;
-    const pixel = pixels[ii].pixel;
-    const xx = x - batch.bounds.x;
-    const yy = y - batch.bounds.y;
-    // clear old batch
-    batch.buffer.clearRect(
-      xx, yy,
-      1, 1
-    );
-    if (batches.indexOf(batch) <= -1) batches.push(batch);
-  };
-  return (batches);
+  const bounds = this.bounds;
+  const main = this.instance.main.data;
+  const pixel = this.instance.getPixelAt(x, y);
+  if (pixel === null) return;
+  this.resizeByOffset(x, y);
+  // coordinates at this batch
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  const idx = (yy * bounds.w + xx) * 4;
+  this.data[idx + 0] = 255;
+  this.data[idx + 1] = 255;
+  this.data[idx + 2] = 255;
+  this.data[idx + 3] = 255;
+  return;
 };

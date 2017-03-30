@@ -2,8 +2,6 @@ import { TILE_SIZE } from "../cfg";
 
 import { alignToGrid } from "../math";
 
-import { alphaByteToRgbAlpha } from "../utils";
-
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {Number} x

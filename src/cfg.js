@@ -30,6 +30,9 @@ export const GRID_LINE_WIDTH = 0.25;
 // how fast we can scale with our mouse wheel
 export const ZOOM_SPEED = 15;
 
+// base step size we jump when resizing batches
+export const BATCH_JUMP_RESIZE = 32;
+
 /**
  * If a tile batch exceeds the min size,
  * we buffer it inside a shadow canvas,

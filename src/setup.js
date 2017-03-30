@@ -20,12 +20,12 @@ export function setup() {
     this.clear();
     this.render();
   };
-  draw();
   // add some things manually
   (() => {
     this.main = this.createDynamicBatch();
     this.layers.push(new Layer());
   })();
+  draw();
   this.setupUi();
   document.body.appendChild(view);
 };

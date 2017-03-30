@@ -3,6 +3,9 @@ export function undo() {
     const cmd = this.currentStackOperation();
     this.fire(cmd, false);
     this.sindex--;
+  } else {
+    // prevent empty undo stack spamming
+    return;
   }
   this.refreshMainTexture();
 };

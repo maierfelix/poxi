@@ -1,10 +1,13 @@
 import { BASE_TILE_COLOR } from "../cfg";
 
 import {
-  colorsMatch,
-  colorToRgbaString,
   createCanvasBuffer
 } from "../utils";
+
+import {
+  colorsMatch,
+  rgbAlphaToAlphaByte
+} from "../color";
 
 import CommandKind from "../stack/kind";
 
@@ -39,23 +42,26 @@ export function fillBucket(x, y, color) {
   const gh = bounds.h;
   const grid = result.grid;
   // convert cropped area into raw buffer
-  const buffer = createCanvasBuffer(gw, gh);
-  buffer.fillStyle = colorToRgbaString(color);
-  for (let ii = 0; ii < gw * gh; ++ii) {
-    const xx = ii % gw;
-    const yy = (ii / gw) | 0;
-    if (grid[yy * gw + xx] !== 2) continue;
-    buffer.fillRect(
-      xx, yy, 1, 1
-    );
+  const data = new Uint8Array(4 * (gw * gh));
+  // convert alpha color to alpha byte
+  const alpha = rgbAlphaToAlphaByte(color[3]);
+  for (let ii = 0; ii < data.length; ii += 4) {
+    const idx = ii / 4;
+    const xx = idx % gw;
+    const yy = (idx / gw) | 0;
+    const px = (yy * gw + xx) * 4;
+    if (grid[idx] !== 2) continue;
+    data[px + 0] = color[0];
+    data[px + 1] = color[1];
+    data[px + 2] = color[2];
+    data[px + 3] = alpha;
   };
   // update batch with final result
-  batch.buffer = buffer;
-  batch.data = buffer.getImageData(0, 0, gw, gh).data;
+  batch.data = data;
   batch.bounds.update(bx, by, gw, gh);
-  // auto resize batch's size by its used buffer data
-  batch.resizeByMatrixData();
-  batch.refreshTexture();
+  // auto resize batch's size by the used pixel data
+  //batch.resizeByMatrixData();
+  batch.refreshTexture(true);
   layer.addBatch(batch);
   this.enqueue(CommandKind.FILL, batch);
   // free grid from memory

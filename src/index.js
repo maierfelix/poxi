@@ -135,6 +135,7 @@ class Poxi {
       rect: false,
       stroke: false,
       drawing: false,
+      pipette: false,
       lighting: false,
       dragging: false,
       select: false,

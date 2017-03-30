@@ -2,7 +2,6 @@ import { MAX_SAFE_INTEGER } from "../cfg";
 
 import {
   uid,
-  colorToRgbaString,
   createCanvasBuffer
 } from "../utils";
 
@@ -12,7 +11,6 @@ import Boundings from "../bounds/index";
 
 import * as _raw from "./raw";
 import * as _tile from "./tile";
-import * as _erase from "./erase";
 import * as _matrix from "./matrix";
 import * as _boundings from "./boundings";
 
@@ -34,7 +32,6 @@ class Batch {
   constructor(instance) {
     this.id = uid();
     this.instance = instance;
-    this.erased = [];
     // buffer related
     this.data = null;
     this.buffer = null;
@@ -77,17 +74,9 @@ Batch.prototype.kill = function() {
     const batches = layers[ii].batches;
     for (let jj = 0; jj < batches.length; ++jj) {
       const batch = batches[jj];
-      // also kill references in erased cell array
-      if (batch.isEraser) {
-        for (let kk = 0; kk < batch.erased.length; ++kk) {
-          const tile = batch.erased[kk];
-          if (tile.batch.id === id) continue;
-          batch.erased.splice(kk, 1);
-        };
-      }
       if (batch.id === id) {
         batch.bounds = null;
-        batch.erased = null;
+        batch.data = null;
         batch.instance.destroyTexture(batch.texture);
         batches.splice(jj, 1);
         layers[ii].updateBoundings();
@@ -148,7 +137,6 @@ Batch.prototype.refreshTexture = function(resized) {
  * @return {Boolean}
  */
 Batch.prototype.isEmpty = function() {
-  if (this.isEraser) return (this.erased.length <= 0);
   const data = this.data;
   const bw = this.bounds.w;
   let count = 0;
@@ -167,7 +155,6 @@ Batch.prototype.isEmpty = function() {
 
 extend(Batch, _raw);
 extend(Batch, _tile);
-extend(Batch, _erase);
 extend(Batch, _matrix);
 extend(Batch, _boundings);
 

@@ -24,9 +24,5 @@ export function currentStackOperation() {
  * @param {Boolean} state
  */
 export function fire(cmd, state) {
-  if (!cmd) return;
-  if (cmd.batch.isEraser) {
-    if (state) cmd.batch.dejectErasedTiles();
-    else cmd.batch.injectErasedTiles();
-  }
+  //if (!cmd) return;
 };
