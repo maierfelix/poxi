@@ -114,7 +114,6 @@ export function resizeArrayBuffer(x, y, w, h) {
 };
 
 /**
- * Access cached imageData
  * @param {Number} x
  * @param {Number} y
  * @return {Array}

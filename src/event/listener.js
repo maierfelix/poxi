@@ -63,6 +63,12 @@ export function onMouseLeave(e) {
   this.onMouseUp(e);
 };
 
+export function resetListElementsActiveState(el) {
+  for (let ii = 0; ii < el.children.length; ii++) {
+    el.children[ii].classList.remove("active");
+  };
+};
+
 /**
  * @param {HTMLElement} el
  */
@@ -91,6 +97,9 @@ export function processUIClick(el) {
     this.modes.light = true;
     lighting.style.opacity = 1.0;
   }
+  else return;
+  this.resetListElementsActiveState(el.parentNode);
+  el.classList.add("active");
 };
 
 /**
@@ -119,7 +128,7 @@ export function onMouseDown(e) {
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.rect) {
@@ -129,7 +138,7 @@ export function onMouseDown(e) {
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.draw) {
@@ -140,7 +149,7 @@ export function onMouseDown(e) {
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
       batch.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.erase) {
@@ -151,7 +160,7 @@ export function onMouseDown(e) {
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
       batch.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       batch.isEraser = true;
       layer.addBatch(batch);
     }
@@ -163,7 +172,7 @@ export function onMouseDown(e) {
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
       batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.stroke) {
@@ -173,7 +182,7 @@ export function onMouseDown(e) {
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
       batch.prepareBuffer(relative.x, relative.y);
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.flood) {
@@ -237,7 +246,7 @@ export function onMouseMove(e) {
     const sy = this.last.mdry;
     const radius = pointDistance(sx, sy, relative.x, relative.y);
     this.strokeArc(batch, sx, sy, radius, this.fillStyle);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.rect) {
     const batch = this.buffers.rect;
@@ -247,30 +256,30 @@ export function onMouseMove(e) {
     const ww = relative.x - sx;
     const hh = relative.y - sy;
     this.strokeRect(batch, sx, sy, ww, hh, this.fillStyle);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.stroke) {
     const batch = this.buffers.stroke;
     batch.clear();
     this.insertLine(this.last.mdrx, this.last.mdry, relative.x, relative.y);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.drawing) {
     const batch = this.buffers.drawing;
     this.insertLine(x, y, lastx, lasty);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.erasing) {
     const batch = this.buffers.erasing;
     const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.lighting) {
     const batch = this.buffers.lighting;
     const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
-    batch.refreshTexture();
+    batch.refreshTexture(false);
   }
   else if (this.states.dragging) {
     this.drag(x, y);
@@ -301,7 +310,7 @@ export function onMouseUp(e) {
       batch.forceRendering = false;
       this.states.arc = false;
       //batch.resizeByMatrixData();
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       this.enqueue(CommandKind.ARC_FILL, batch);
       this.buffers.arc = null;
     }
@@ -310,7 +319,7 @@ export function onMouseUp(e) {
       batch.forceRendering = false;
       this.states.rect = false;
       //batch.resizeByMatrixData();
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       this.enqueue(CommandKind.RECT_FILL, batch);
       this.buffers.rect = null;
     }
@@ -319,7 +328,7 @@ export function onMouseUp(e) {
       batch.forceRendering = false;
       this.states.stroke = false;
       //batch.resizeByMatrixData();
-      batch.refreshTexture();
+      batch.refreshTexture(false);
       this.enqueue(CommandKind.STROKE, batch);
       this.buffers.stroke = null;
     }

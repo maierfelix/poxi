@@ -29,6 +29,6 @@ export function applyColorLightness(x, y, factor) {
     const g = (Math.round((t - pixel[1]) * p) + pixel[1]);
     const b = (Math.round((t - pixel[2]) * p) + pixel[2]);
     const a = pixel[3];
-    this.drawSilentTile(xx, yy, 1, 1, [r, g, b, a]);
+    //this.drawSilentTile(xx, yy, 1, 1, [r, g, b, a]);
   };
 };

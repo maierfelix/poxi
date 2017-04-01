@@ -15,9 +15,10 @@ export function drawImage(ctx, x, y) {
   const yy = alignToGrid(y - (hh / 2) | 0);
   this.prepareBuffer(xx, yy);
   this.buffer = ctx;
+  this.data = new Uint8Array(ctx.getImageData(0, 0, ww, hh).data);
   this.bounds.x = xx;
   this.bounds.y = yy;
   this.bounds.w = ww;
   this.bounds.h = hh;
-  this.refreshTexture();
+  this.refreshTexture(true);
 };

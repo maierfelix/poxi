@@ -14,7 +14,7 @@ export function insertImage(ctx, x, y) {
   const batch = this.createDynamicBatch();
   batch.drawImage(ctx, x, y);
   layer.addBatch(batch);
-  this.enqueue(CommandKind.DRAW_IMAGE, batch);
+  this.enqueue(CommandKind.INSERT_IMAGE, batch);
 };
 
 /**
@@ -39,7 +39,7 @@ export function insertLine(x0, y0, x1, y1) {
     const relative = this.getRelativeTileOffset(x0, y0);
     // TODO: limit repeation rate on brush size
     if (this.states.drawing) {
-      batch.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
     }
     else if (this.states.erasing) {
       batch.clearAt(relative.x, relative.y, SETTINGS.ERASER_SIZE);
@@ -48,7 +48,7 @@ export function insertLine(x0, y0, x1, y1) {
       batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
     }
     else if (this.states.stroke) {
-      batch.drawTile(x0, y0, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch.drawAt(x0, y0, SETTINGS.PENCIL_SIZE, this.fillStyle);
     }
     if (x0 === x1 && y0 === y1) break;
     const e2 = 2 * err;
@@ -83,17 +83,16 @@ export function insertArc(batch, x1, y1, radius, color) {
   let x2 = radius;
   let y2 = 0;
   let err = 1 - x2;
-  const w = SETTINGS.PENCIL_SIZE;
-  const h = SETTINGS.PENCIL_SIZE;
+  const size = SETTINGS.PENCIL_SIZE;
   for (; x2 >= y2;) {
-    batch.drawTile(x2 + x1, y2 + y1, w, h, color);
-    batch.drawTile(y2 + x1, x2 + y1, w, h, color);
-    batch.drawTile(-x2 + x1, y2 + y1, w, h, color);
-    batch.drawTile(-y2 + x1, x2 + y1, w, h, color);
-    batch.drawTile(-x2 + x1, -y2 + y1, w, h, color);
-    batch.drawTile(-y2 + x1, -x2 + y1, w, h, color);
-    batch.drawTile(x2 + x1, -y2 + y1, w, h, color);
-    batch.drawTile(y2 + x1, -x2 + y1, w, h, color);
+    batch.drawAt(x2 + x1, y2 + y1, size, color);
+    batch.drawAt(y2 + x1, x2 + y1, size, color);
+    batch.drawAt(-x2 + x1, y2 + y1, size, color);
+    batch.drawAt(-y2 + x1, x2 + y1, size, color);
+    batch.drawAt(-x2 + x1, -y2 + y1, size, color);
+    batch.drawAt(-y2 + x1, -x2 + y1, size, color);
+    batch.drawAt(x2 + x1, -y2 + y1, size, color);
+    batch.drawAt(y2 + x1, -x2 + y1, size, color);
     y2++;
     if (err <= 0) {
       err += 2 * y2 + 1;
@@ -158,8 +157,7 @@ export function insertRectangleAt(batch, x1, y1, x2, y2, color, filled) {
   const height = Math.abs(y2);
   const dx = (x2 < 0 ? -1 : 1);
   const dy = (y2 < 0 ? -1 : 1);
-  const w = SETTINGS.PENCIL_SIZE;
-  const h = SETTINGS.PENCIL_SIZE;
+  const size = SETTINGS.PENCIL_SIZE;
   for (let ii = 0; ii < width * height; ++ii) {
     const xx = (ii % width);
     const yy = (ii / width) | 0;
@@ -170,6 +168,6 @@ export function insertRectangleAt(batch, x1, y1, x2, y2, color, filled) {
         (yy === 0 || yy >= height-1))
       ) continue;
     }
-    batch.drawTile(x1 + xx * dx, y1 + yy * dy, w, h, color);
+    batch.drawAt(x1 + xx * dx, y1 + yy * dy, size, color);
   }
 };

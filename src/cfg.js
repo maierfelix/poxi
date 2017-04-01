@@ -31,7 +31,7 @@ export const GRID_LINE_WIDTH = 0.25;
 export const ZOOM_SPEED = 15;
 
 // base step size we jump when resizing batches
-export const BATCH_JUMP_RESIZE = 32;
+export const BATCH_JUMP_RESIZE = 16;
 
 /**
  * If a tile batch exceeds the min size,

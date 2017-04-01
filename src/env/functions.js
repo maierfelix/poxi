@@ -12,45 +12,6 @@ import Batch from "../batch/index";
 import CommandKind from "../stack/kind";
 
 /**
- * @return {String}
- */
-export function exportAsDataUrl() {
-  if (!(this.main.buffer instanceof CanvasRenderingContext2D)) return ("");
-  const buffer = this.main.buffer;
-  const view = buffer.canvas;
-  return (view.toDataURL("image/png"));
-};
-
-/**
- * Access raw pixel
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-export function getPixelAt(x, y) {
-  // normalize coordinates
-  const xx = x - this.bounds.x;
-  const yy = y - this.bounds.y;
-  if (this.bounds.w <= 0 && this.bounds.h <= 0) return (null);
-  // now extract the data
-  const data = this.main.data;
-  // imagedata array is 1d
-  const idx = (yy * this.bounds.w + xx) * 4;
-  // pixel index out of bounds
-  if (idx < 0 || idx >= data.length) return (null);
-  // get each color value
-  const r = data[idx + 0];
-  const g = data[idx + 1];
-  const b = data[idx + 2];
-  const a = data[idx + 3];
-  const color = [r, g, b, alphaByteToRgbAlpha(a)];
-  // dont return anything if we got no valid color
-  if (a <= 0) return (null);
-  // finally return the color array
-  return (color);
-};
-
-/**
  * @param {Number} x
  * @param {Number} y
  * @return {Layer}
@@ -116,8 +77,33 @@ export function createDynamicBatch() {
   return (batch);
 };
 
-export function refreshMainTexture() {
-  this.createMainBuffer();
+/**
+ * Access raw pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getPixelAt(x, y) {
+  // normalize coordinates
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  if (this.bounds.w <= 0 && this.bounds.h <= 0) return (null);
+  // now extract the data
+  const data = this.main.data;
+  // imagedata array is 1d
+  const idx = (yy * this.bounds.w + xx) * 4;
+  // pixel index out of bounds
+  if (idx < 0 || idx >= data.length) return (null);
+  // get each color value
+  const r = data[idx + 0];
+  const g = data[idx + 1];
+  const b = data[idx + 2];
+  const a = data[idx + 3];
+  const color = [r, g, b, alphaByteToRgbAlpha(a)];
+  // dont return anything if we got no valid color
+  if (a <= 0) return (null);
+  // finally return the color array
+  return (color);
 };
 
 /**
@@ -186,7 +172,7 @@ export function getBinaryShape(x, y, base) {
   const gridl = gw * gh;
 
   // allocate and do a basic fill onto the grid
-  let grid = new Uint8ClampedArray(gw * gh);
+  let grid = new Uint8Array(gw * gh);
   for (let ii = 0; ii < gridl; ++ii) {
     const xx = ii % gw;
     const yy = (ii / gw) | 0;

@@ -25,6 +25,8 @@ export function enqueue(kind, batch) {
   // our stack index is out of position
   // => clean up all more recent batches
   this.refreshStack();
+  // refresh and cache the batch's canvas copy
+  //batch.refreshCanvasBuffer();
   const cmd = new Command(kind, batch);
   this.stack.push(cmd);
   this.redo();

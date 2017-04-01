@@ -104,7 +104,7 @@ export function floodPaint(x, y) {
     batch.kill();
     return;
   }
-  batch.refreshTexture();
+  batch.refreshTexture(false);
   layer.addBatch(batch);
   this.enqueue(CommandKind.FLOOD_FILL, batch);
   return;

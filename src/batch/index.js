@@ -5,6 +5,8 @@ import {
   createCanvasBuffer
 } from "../utils";
 
+import { colorToRgbaString } from "../color";
+
 import extend from "../extend";
 
 import Boundings from "../bounds/index";
@@ -12,7 +14,6 @@ import Boundings from "../bounds/index";
 import * as _raw from "./raw";
 import * as _tile from "./tile";
 import * as _matrix from "./matrix";
-import * as _boundings from "./boundings";
 
 import * as _blend from "./filter/blend";
 import * as _invert from "./filter/invert";
@@ -59,13 +60,6 @@ Batch.prototype.getStackIndex = function() {
   return (-1);
 };
 
-Batch.prototype.clear = function() {
-  const data = this.data;
-  for (let ii = 0; ii < data.length; ++ii) {
-    data[ii] = 0;
-  };
-};
-
 Batch.prototype.kill = function() {
   const id = this.id;
   const instance = this.instance;
@@ -76,6 +70,7 @@ Batch.prototype.kill = function() {
       const batch = batches[jj];
       if (batch.id === id) {
         batch.bounds = null;
+        batch.buffer = null;
         batch.data = null;
         batch.instance.destroyTexture(batch.texture);
         batches.splice(jj, 1);
@@ -87,24 +82,11 @@ Batch.prototype.kill = function() {
 };
 
 /**
- * Get color from buffered batch
- * @param {Number} x
- * @param {Number} y
- * @return {Array}
- */
-Batch.prototype.getColorAt = function(x, y) {
-  // nothing buffered
-  if (this.isEmpty()) return (null);
-  // use image data for raw buffers
-  return (this.getRawColorAt(x, y));
-};
-
-/**
  * @param {Number} x
  * @param {Number} y
  */
 Batch.prototype.prepareBuffer = function(x, y) {
-  // we don't have a data buffer to store data at yet
+  // we don't have a buffer to store data at yet
   if (this.data === null) {
     const bounds = this.bounds;
     bounds.x = x;
@@ -113,6 +95,7 @@ Batch.prototype.prepareBuffer = function(x, y) {
     bounds.h = 1;
     this.data = new Uint8Array(4 * (bounds.w * bounds.h));
     this.texture = this.instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
+    //this.buffer = createCanvasBuffer(bounds.w, bounds.h);
   }
 };
 
@@ -121,16 +104,69 @@ Batch.prototype.prepareBuffer = function(x, y) {
  */
 Batch.prototype.refreshTexture = function(resized) {
   const bounds = this.bounds;
+  const bw = bounds.w; const bh = bounds.h;
   const instance = this.instance;
   if (resized) {
     // free old texture from memory
     if (this.texture !== null) {
       instance.destroyTexture(this.texture);
     }
-    this.texture = instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
+    this.texture = instance.bufferTexture(this.id, this.data, bw, bh);
+    //this.buffer = createCanvasBuffer(bw, bh);
   } else {
-    instance.updateTexture(this.texture, this.data, bounds.w, bounds.h);
+    instance.updateTexture(this.texture, this.data, bw, bh);
   }
+};
+
+Batch.prototype.refreshCanvasBuffer = function() {
+  const data = this.data;
+  const bounds = this.bounds;
+  const bw = bounds.w; const bh = bounds.h;
+  const color = this.getBatchColor();
+  // fill batch with active pixels
+  this.buffer.fillStyle = colorToRgbaString(color);
+  this.buffer.clearRect(0, 0, bw, bh);
+  for (let ii = 0; ii < bw * bh; ++ii) {
+    const xx = ii % bw;
+    const yy = (ii / bw) | 0;
+    const px = 4 * (yy * bw + xx);
+    if (data[px + 3] <= 0) continue;
+    this.buffer.fillRect(
+      xx, yy,
+      1, 1
+    );
+  };
+};
+
+/**
+ * We expect that the batch is single colored
+ * @return {Uint8Array}
+ */
+Batch.prototype.getBatchColor = function() {
+  const data = this.data;
+  const bounds = this.bounds;
+  const bw = bounds.w; const bh = bounds.h;
+  const color = new Uint8Array(4);
+  // calculate batch color
+  for (let ii = 0; ii < bw * bh; ++ii) {
+    const xx = ii % bw;
+    const yy = (ii / bw) | 0;
+    const px = 4 * (yy * bw + xx);
+    if (data[px + 3] <= 0) continue;
+    color[0] = data[px + 0];
+    color[1] = data[px + 1];
+    color[2] = data[px + 2];
+    color[3] = data[px + 3];
+    break;
+  };
+  return (color);
+};
+
+Batch.prototype.clear = function() {
+  const data = this.data;
+  for (let ii = 0; ii < data.length; ++ii) {
+    data[ii] = 0;
+  };
 };
 
 /**
@@ -156,7 +192,6 @@ Batch.prototype.isEmpty = function() {
 extend(Batch, _raw);
 extend(Batch, _tile);
 extend(Batch, _matrix);
-extend(Batch, _boundings);
 
 extend(Batch, _blend);
 extend(Batch, _invert);

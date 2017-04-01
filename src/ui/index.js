@@ -142,4 +142,12 @@ export function setupUi() {
     file.style.display = "none";
   });
 
+  this.modes.draw = true;
+  tiled.style.opacity = 1.0;
+
+  // setup ui list button states
+  this.processUIClick(document.querySelector("#light-size").children[0]);
+  this.processUIClick(document.querySelector("#eraser-size").children[0]);
+  this.processUIClick(document.querySelector("#pencil-size").children[0]);
+
 };

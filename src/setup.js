@@ -13,8 +13,6 @@ export function setup() {
   this.initListeners();
   this.resize(width, height);
   this.scale(0);
-  this.modes.draw = true;
-  tiled.style.opacity = 1.0;
   const draw = () => {
     requestAnimationFrame(() => draw());
     this.clear();
@@ -23,6 +21,9 @@ export function setup() {
   // add some things manually
   (() => {
     this.main = this.createDynamicBatch();
+    this.main.prepareBuffer(1, 1);
+    // link main batch bounds to global bounds
+    this.main.bounds = this.bounds;
     this.layers.push(new Layer());
   })();
   draw();

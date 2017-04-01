@@ -27,7 +27,7 @@ export function paste(x, y, pixels) {
     const color = pixel.color;
     batch.drawTile(pixel.x + x, pixel.y + y, 1, 1, color);
   };
-  batch.refreshTexture();
+  batch.refreshTexture(false);
   layer.addBatch(batch);
   this.enqueue(CommandKind.PASTE, batch);
   return;
@@ -123,7 +123,7 @@ export function clearRect(selection) {
   }
   // clear by rectangle
   batch.clearRect(x, y, w, h);
-  batch.refreshTexture();
+  batch.refreshTexture(false);
   // empty batch, got no tiles to delete
   if (batch.isEmpty()) return;
   layer.addBatch(batch);
@@ -159,10 +159,10 @@ export function clearByShape(selection) {
     };
   };
   for (let ii = 0; ii < batches.length; ++ii) {
-    batches[ii].refreshTexture();
+    batches[ii].refreshTexture(false);
   };
   if (batch.isEmpty()) return;
-  batch.refreshTexture();
+  batch.refreshTexture(false);
   layer.addBatch(batch);
   this.enqueue(CommandKind.CLEAR, batch);
 };

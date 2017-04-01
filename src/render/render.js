@@ -58,9 +58,8 @@ export function render() {
       ww, hh
     );
   // render live data
-  } else {
-    this.renderLayers();
   }
+  this.renderLayers();
   if (!this.states.select || !selection) {
     this.renderHoveredTile();
   }
@@ -123,9 +122,11 @@ export function renderLayer(layer) {
   const ly = layer.y * TILE_SIZE;
   const batches = layer.batches;
   const sindex = this.sindex;
+  const cached = this.canRenderCachedBuffer();
   for (let ii = 0; ii < batches.length; ++ii) {
     const batch = batches[ii];
     const bounds = batch.bounds;
+    if (cached && !batch.forceRendering) continue;
     // batch index is higher than stack index, so ignore this batch
     if (sindex - ii < 0) {
       if (!batch.forceRendering) continue;
