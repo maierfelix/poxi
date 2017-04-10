@@ -13,10 +13,11 @@ import {
 import { createCanvasBuffer } from "../utils";
 import { colorToRgbaString } from "../color";
 
-export function redraw() {
+export function updateGrid() {
   // only redraw texture if it's absolutely necessary
   if (this.last.cx !== this.cx || this.last.cy !== this.cy) {
     this.redrawGridBuffer();
+    this.redraw = true;
   }
 };
 
@@ -40,8 +41,8 @@ export function canRenderCachedBuffer() {
 /** Main render method */
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
-  //this.renderBackground();
-  //if (this.cr > HIDE_GRID) this.renderGrid();
+  this.renderBackground();
+  if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
   if (this.canRenderCachedBuffer()) {
     const bounds = this.bounds;
@@ -57,15 +58,16 @@ export function render() {
       xx, yy,
       ww, hh
     );
-  // render live data
   }
+  // render live data
   this.renderLayers();
-  if (!this.states.select || !selection) {
+  if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
-  //if (this.shape !== null) this.renderShapeSelection();
-  //else if (selection) this.renderSelection();
-  //if (MODES.DEV) this.renderStats();
+  if (this.shape !== null) this.renderShapeSelection();
+  else if (selection) this.renderSelection();
+  if (MODES.DEV) this.renderStats();
+  this.redraw = false;
 };
 
 export function renderBackground() {
@@ -160,6 +162,10 @@ export function renderLayer(layer) {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
   };
+};
+
+export function getActiveCursorSize() {
+
 };
 
 export function renderHoveredTile() {
@@ -258,7 +264,7 @@ export function renderStats() {
     this.drawSelectionShape();
   }
   // update texture, then draw it
-  this.updateTexture(texture, view);
+  this.updateTextureByCanvas(texture, view);
   this.drawImage(
     texture,
     0, 0, view.width, view.height

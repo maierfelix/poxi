@@ -10,7 +10,7 @@ class Layer {
   /**
    * @constructor
    */
-  constructor(instance) {
+  constructor() {
     this.id = uid();
     // position
     this.x = 0;
@@ -38,8 +38,9 @@ class Layer {
  * @param {Batch} batch
  */
 Layer.prototype.addBatch = function(batch) {
+  batch.layer = this;
   this.batches.push(batch);
-  if (!batch.isEmpty()) this.updateBoundings();
+  this.updateBoundings();
 };
 
 /**

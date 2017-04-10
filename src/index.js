@@ -82,7 +82,7 @@ class Poxi {
     this.my = 0;
     // stack related
     this.stack = [];
-    this.sindex = 0;
+    this.sindex = -1;
     // layer related
     this.layers = [];
     // general cache
@@ -156,6 +156,8 @@ class Poxi {
       stroke: false,
       pipette: false
     };
+    // indicates if we have to redraw our stage
+    this.redraw = false;
     // global fill style
     this.fillStyle = [255, 0, 0, 1];
     this.setup();

@@ -15,18 +15,17 @@ export function setup() {
   this.scale(0);
   const draw = () => {
     requestAnimationFrame(() => draw());
-    this.clear();
-    this.render();
+    if (this.redraw) {
+      this.clear();
+      this.render();
+    }
   };
   // add some things manually
   (() => {
-    this.main = this.createDynamicBatch();
-    this.main.prepareBuffer(1, 1);
-    // link main batch bounds to global bounds
-    this.main.bounds = this.bounds;
+    this.main = this.createDynamicBatch(0, 0);
     this.layers.push(new Layer());
   })();
-  draw();
+  requestAnimationFrame(() => draw());
   this.setupUi();
   document.body.appendChild(view);
 };

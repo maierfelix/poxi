@@ -126,7 +126,13 @@ export function setupUi() {
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
-        ctx.drawImage(img, 0, 0, img.width, img.height);
+        ctx.drawImage(
+          img,
+          0, 0,
+          img.width, img.height,
+          0, 0,
+          img.width, img.height
+        );
         this.insertImage(ctx, this.last.mx, this.last.my);
         file.value = ""; // reassign to allow second files
       };

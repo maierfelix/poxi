@@ -22,7 +22,7 @@ export function createGridBuffer() {
     this.destroyTexture(this.cache.gridTexture);
   }
   this.cache.grid = buffer;
-  this.cache.gridTexture = this.bufferTexture("grid", buffer.canvas);
+  this.cache.gridTexture = this.bufferTextureByCanvas("grid", buffer.canvas);
   this.redrawGridBuffer();
   return (buffer);
 };
@@ -33,7 +33,6 @@ export function createGridBuffer() {
  */
 export function redrawGridBuffer() {
   if (this.cr <= HIDE_GRID) return;
-  return;
   const buffer = this.cache.grid;
   const texture = this.cache.gridTexture;
   const cr = this.cr;
@@ -57,7 +56,7 @@ export function redrawGridBuffer() {
   buffer.stroke();
   buffer.stroke();
   buffer.closePath();
-  this.updateTexture(texture, buffer.getImageData(0, 0, cw, ch));
+  this.updateTextureByCanvas(texture, buffer.canvas);
   this.last.cx = this.cx;
   this.last.cy = this.cy;
   return;
@@ -94,7 +93,7 @@ export function createBackgroundBuffer() {
       buffer.fillRect(xx, yy, size, size);
     };
   };
-  const texture = this.bufferTexture("background", canvas);
+  const texture = this.bufferTextureByCanvas("background", canvas);
   return (texture);
 };
 
@@ -111,6 +110,6 @@ export function createForegroundBuffer() {
     this.destroyTexture(this.cache.fgTexture);
   }
   this.cache.fg = buffer;
-  this.cache.fgTexture = this.bufferTexture("foreground", buffer.canvas);
+  this.cache.fgTexture = this.bufferTextureByCanvas("foreground", buffer.canvas);
   return (buffer);
 };

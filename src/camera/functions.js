@@ -26,7 +26,7 @@ export function scale(dir) {
   this.cx -= (this.lx) * (zoomScale(this.cs) - zoomScale(oscale));
   this.cy -= (this.ly) * (zoomScale(this.cs) - zoomScale(oscale));
   this.cr = roundTo(this.cs, MAGIC_SCALE);
-  this.redraw();
+  this.updateGrid();
 };
 
 /**
@@ -65,7 +65,7 @@ export function drag(x, y) {
   this.cy += y - this.dy;
   this.dx = x;
   this.dy = y;
-  this.redraw();
+  this.updateGrid();
 };
 
 /**

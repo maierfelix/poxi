@@ -12,6 +12,19 @@ import Batch from "../batch/index";
 import CommandKind from "../stack/kind";
 
 /**
+ * @return {Boolean}
+ */
+export function isInActiveState() {
+  const states = this.states;
+  for (let key in states) {
+    // ignore dragging state
+    if (key === "dragging") continue;
+    if (states[key]) return (true);
+  };
+  return (false);
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  * @return {Layer}
@@ -70,10 +83,13 @@ export function getCurrentDrawingBatch() {
 };
 
 /**
+ * @param {Number} x
+ * @param {Number} y
  * @return {Batch}
  */
-export function createDynamicBatch() {
+export function createDynamicBatch(x, y) {
   const batch = new Batch(this);
+  batch.prepareMatrix(x, y);
   return (batch);
 };
 
@@ -84,14 +100,22 @@ export function createDynamicBatch() {
  * @return {Array}
  */
 export function getPixelAt(x, y) {
+  const main = this.main;
   // normalize coordinates
-  const xx = x - this.bounds.x;
-  const yy = y - this.bounds.y;
-  if (this.bounds.w <= 0 && this.bounds.h <= 0) return (null);
+  const bw = main.bounds.w;
+  const bh = main.bounds.h;
+  const xx = x - main.bounds.x;
+  const yy = y - main.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) return (null);
   // now extract the data
-  const data = this.main.data;
+  const data = main.data;
   // imagedata array is 1d
-  const idx = (yy * this.bounds.w + xx) * 4;
+  const idx = (yy * bw + xx) * 4;
   // pixel index out of bounds
   if (idx < 0 || idx >= data.length) return (null);
   // get each color value
@@ -106,30 +130,14 @@ export function getPixelAt(x, y) {
   return (color);
 };
 
-/**
- * @return {Boolean}
- */
-export function workingAreaHasResized() {
-  const ox = this.bounds.x; const oy = this.bounds.y;
-  const ow = this.bounds.w; const oh = this.bounds.h;
-  const nx = this.last.gx; const ny = this.last.gy;
-  const nw = this.last.gw; const nh = this.last.gh;
-  return (
-    ox !== nx || oy !== ny ||
-    ow !== nw || oh !== nh
-  );
-};
-
 export function updateGlobalBoundings() {
-  for (let ii = 0; ii < this.layers.length; ++ii) {
-    this.layers[ii].updateBoundings();
-  };
+  const layers = this.layers;
   const bounds = this.bounds;
   let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
-  const layers = this.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
     const layer = layers[ii];
+    layer.updateBoundings();
     const bounds = layer.bounds;
     const bx = bounds.x; const by = bounds.y;
     const bw = bx + bounds.w; const bh = by + bounds.h;
@@ -160,7 +168,7 @@ export function updateGlobalBoundings() {
  * @param {Number} x
  * @param {Number} y
  * @param {Array} base
- * @return {Object}
+ * @return {Uint8Array}
  */
 export function getBinaryShape(x, y, base) {
   const bounds = this.bounds;
@@ -170,7 +178,6 @@ export function getBinaryShape(x, y, base) {
   const gh = bounds.h;
   const isEmpty = base[3] === 0;
   const gridl = gw * gh;
-
   // allocate and do a basic fill onto the grid
   let grid = new Uint8Array(gw * gh);
   for (let ii = 0; ii < gridl; ++ii) {
@@ -187,7 +194,6 @@ export function getBinaryShape(x, y, base) {
     // fill tiles with 1's if we got a color match
     grid[yy * gw + xx] = 1;
   };
-
   // trace connected tiles by [x,y]=2
   let queue = [{x: x - bx, y: y - by}];
   while (queue.length > 0) {
@@ -201,19 +207,10 @@ export function getBinaryShape(x, y, base) {
     const ee = y * gw + (x+1);
     const ss = (y+1) * gw + x;
     const ww = y * gw + (x-1);
-    // abort if we possibly go infinite
-    if (
-      (y - 1 < -1 || y - 1 > gh) ||
-      (x + 1 < -1 || x + 1 > gw) ||
-      (y + 1 < -1 || y + 1 > gh) ||
-      (x - 1 < -1 || x - 1 > gw)
-    ) return ({ infinite: true, grid: null });
     if (grid[nn] === 1) queue.push({x, y:y-1});
     if (grid[ee] === 1) queue.push({x:x+1, y});
     if (grid[ss] === 1) queue.push({x, y:y+1});
     if (grid[ww] === 1) queue.push({x:x-1, y});
   };
-
-  return ({ infinite: false, grid });
-
+  return (grid);
 };

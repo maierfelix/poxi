@@ -46,6 +46,22 @@ export function bytesToRgba(bytes) {
 };
 
 /**
+ * @param {Uint8Array} aa
+ * @param {Uint8Array} bb
+ * @param {Boolean} state
+ * @return {Int16Array}
+ */
+export function rgbaDifference(aa, bb, state) {
+  const rgba = new Int16Array(4);
+  const way = state ? 1 : -1;
+  rgba[0] = aa[0] + bb[0] * way;
+  rgba[1] = aa[1] + bb[1] * way;
+  rgba[2] = aa[2] + bb[2] * way;
+  rgba[3] = aa[3] + bb[3] * way;
+  return (rgba);
+};
+
+/**
  * Additive color blending with alpha support
  * @param {Uint8Array} src
  * @param {Uint8Array} dst

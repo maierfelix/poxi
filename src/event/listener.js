@@ -52,7 +52,7 @@ export function onResize(e) {
  */
 export function onMouseOut(e) {
   e.preventDefault();
-  this.onMouseUp(e);
+  //this.onMouseUp(e);
 };
 
 /**
@@ -60,7 +60,7 @@ export function onMouseOut(e) {
  */
 export function onMouseLeave(e) {
   e.preventDefault();
-  this.onMouseUp(e);
+  //this.onMouseUp(e);
 };
 
 export function resetListElementsActiveState(el) {
@@ -123,42 +123,38 @@ export function onMouseDown(e) {
     }
     else if (this.modes.arc) {
       this.states.arc = true;
-      this.buffers.arc = this.createDynamicBatch();
+      this.buffers.arc = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.arc;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
       batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.rect) {
       this.states.rect = true;
-      this.buffers.rect = this.createDynamicBatch();
+      this.buffers.rect = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.rect;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
       batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.draw) {
       this.states.drawing = true;
-      this.buffers.drawing = this.createDynamicBatch();
+      this.buffers.drawing = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.drawing;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
-      batch.drawTile(relative.x, relative.y, SETTINGS.PENCIL_SIZE, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
       batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.erase) {
       this.states.erasing = true;
-      this.buffers.erasing = this.createDynamicBatch();
+      this.buffers.erasing = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.erasing;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
       batch.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
       batch.refreshTexture(false);
       batch.isEraser = true;
@@ -166,22 +162,20 @@ export function onMouseDown(e) {
     }
     else if (this.modes.light) {
       this.states.lighting = true;
-      this.buffers.lighting = this.createDynamicBatch();
+      this.buffers.lighting = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.lighting;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
       batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
       batch.refreshTexture(false);
       layer.addBatch(batch);
     }
     else if (this.modes.stroke) {
       this.states.stroke = true;
-      this.buffers.stroke = this.createDynamicBatch();
+      this.buffers.stroke = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.stroke;
       const layer = this.getCurrentLayer();
       batch.forceRendering = true;
-      batch.prepareBuffer(relative.x, relative.y);
       batch.refreshTexture(false);
       layer.addBatch(batch);
     }
@@ -239,6 +233,7 @@ export function onMouseMove(e) {
   }
   this.hover(x, y);
   if (last.mx === relative.x && last.my === relative.y) return;
+  this.redraw = true;
   if (this.states.arc) {
     const batch = this.buffers.arc;
     batch.clear();
@@ -309,31 +304,35 @@ export function onMouseUp(e) {
       const batch = this.buffers.arc;
       batch.forceRendering = false;
       this.states.arc = false;
-      //batch.resizeByMatrixData();
+      batch.resizeByMatrixData();
       batch.refreshTexture(false);
-      this.enqueue(CommandKind.ARC_FILL, batch);
+      if (batch.isEmpty()) batch.kill();
+      else this.enqueue(CommandKind.ARC_FILL, batch);
       this.buffers.arc = null;
     }
     else if (this.modes.rect) {
       const batch = this.buffers.rect;
       batch.forceRendering = false;
       this.states.rect = false;
-      //batch.resizeByMatrixData();
+      batch.resizeByMatrixData();
       batch.refreshTexture(false);
-      this.enqueue(CommandKind.RECT_FILL, batch);
+      if (batch.isEmpty()) batch.kill();
+      else this.enqueue(CommandKind.RECT_FILL, batch);
       this.buffers.rect = null;
     }
     else if (this.modes.stroke) {
       const batch = this.buffers.stroke;
       batch.forceRendering = false;
       this.states.stroke = false;
-      //batch.resizeByMatrixData();
+      batch.resizeByMatrixData();
       batch.refreshTexture(false);
-      this.enqueue(CommandKind.STROKE, batch);
+      if (batch.isEmpty()) batch.kill();
+      else this.enqueue(CommandKind.STROKE, batch);
       this.buffers.stroke = null;
     }
     else if (this.modes.select) {
       this.states.selecting = false;
+      this.redraw = true;
     }
     else if (this.states.drawing) {
       const batch = this.buffers.drawing;
@@ -421,6 +420,7 @@ export function onKeyDown(e) {
     // f2
     case 113:
       MODES.DEV = !MODES.DEV;
+      this.redraw = true;
     break;
     // f5
     case 116:

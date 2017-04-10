@@ -25,47 +25,44 @@ export function fillBucket(x, y, color) {
   const base = this.getPixelAt(x, y) || BASE_TILE_COLOR;
   // clicked tile color and fill colors matches, abort
   if (colorsMatch(base, color)) return;
-  // clear undone batches, since we dont need them anymore
-  this.refreshStack();
   // save the current stack index
   const sindex = this.sindex;
-  const batch = this.createDynamicBatch();
+  const batch = this.createDynamicBatch(x, y);
   const layer = this.getCurrentLayer();
   // flood fill
-  const result = this.getBinaryShape(x, y, base);
+  let shape = this.getBinaryShape(x, y, base);
   // ups, we filled infinite
-  if (result.infinite) return;
+  if (shape === null) return;
   // now fill a buffer by our grid data
   const bx = bounds.x;
   const by = bounds.y;
-  const gw = bounds.w;
-  const gh = bounds.h;
-  const grid = result.grid;
-  // convert cropped area into raw buffer
-  const data = new Uint8Array(4 * (gw * gh));
-  // convert alpha color to alpha byte
-  const alpha = rgbAlphaToAlphaByte(color[3]);
-  for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = ii / 4;
-    const xx = idx % gw;
-    const yy = (idx / gw) | 0;
-    const px = (yy * gw + xx) * 4;
-    if (grid[idx] !== 2) continue;
-    data[px + 0] = color[0];
-    data[px + 1] = color[1];
-    data[px + 2] = color[2];
-    data[px + 3] = alpha;
+  const bw = bounds.w;
+  const bh = bounds.h;
+  const bcolor = [color[0], color[1], color[2], color[3]];
+  batch.resizeByRect(
+    bx, by,
+    bw - 1, bh - 1
+  );
+  let count = 0;
+  // flood fill pixels
+  for (let ii = 0; ii < bw * bh; ++ii) {
+    const xx = (ii % bw) | 0;
+    const yy = (ii / bw) | 0;
+    const px = (yy * bw + xx) | 0;
+    // only fill active grid pixels
+    if (shape[px] !== 2) continue;
+    batch.drawPixelFast(bx + xx, by + yy, bcolor);
+    count++;
   };
-  // update batch with final result
-  batch.data = data;
-  batch.bounds.update(bx, by, gw, gh);
+  // nothing changed
+  if (count <= 0) return;
   // auto resize batch's size by the used pixel data
-  //batch.resizeByMatrixData();
-  batch.refreshTexture(true);
+  batch.resizeByMatrixData();
   layer.addBatch(batch);
-  this.enqueue(CommandKind.FILL, batch);
+  if (batch.isEmpty()) batch.kill();
+  else this.enqueue(CommandKind.FILL, batch);
   // free grid from memory
-  result.grid = null;
+  shape = null;
   return;
 };
 
@@ -84,27 +81,26 @@ export function floodPaint(x, y) {
   const ww = this.bounds.w;
   const hh = this.bounds.h;
   const layer = this.getCurrentLayer();
-  const batch = this.createDynamicBatch();
-  batch.prepareBuffer(xx, yy);
-  batch.resizeByOffset(xx, yy);
-  batch.resizeByOffset(xx + ww, yy + hh);
-  // flood paint
+  const batch = this.createDynamicBatch(xx, yy);
+  batch.resizeByRect(
+    xx, yy,
+    ww, hh
+  );
   let count = 0;
+  // flood paint
   for (let ii = 0; ii < ww * hh; ++ii) {
     const x = (ii % ww);
     const y = (ii / ww) | 0;
     const pixel = this.getPixelAt(xx + x, yy + y);
     if (pixel === null) continue;
     if (!colorsMatch(base, pixel)) continue;
-    batch.drawTile(xx + x, yy + y, 1, 1, color);
+    batch.drawPixel(xx + x, yy + y, color);
     count++;
   };
   // nothing changed
-  if (count <= 0) {
-    batch.kill();
-    return;
-  }
-  batch.refreshTexture(false);
+  if (count <= 0) return;
+  batch.refreshTexture(true);
+  batch.resizeByMatrixData();
   layer.addBatch(batch);
   this.enqueue(CommandKind.FLOOD_FILL, batch);
   return;

@@ -35,6 +35,7 @@ export function selectFrom(x, y) {
   this.sx = relative.x;
   this.sy = relative.y;
   this.sw = this.sh = 0;
+  this.redraw = true;
 };
 
 /**
@@ -51,6 +52,7 @@ export function selectTo(x, y) {
   h = h + (h >= 0 ? 1 : 0);
   this.sw = w;
   this.sh = h;
+  this.redraw = true;
 };
 
 export function resetSelection() {
@@ -60,4 +62,5 @@ export function resetSelection() {
     this.destroyTexture(this.shape.texture);
     this.shape = null;
   }
+  this.redraw = true;
 };

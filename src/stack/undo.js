@@ -1,13 +1,17 @@
+/**
+ * @return {Void}
+ */
 export function undo() {
+  // prevent undo/redo when in e.g. drawing state
+  if (this.isInActiveState()) return;
   if (this.sindex >= 0) {
     const cmd = this.currentStackOperation();
     this.fire(cmd, false);
     this.sindex--;
-  } else {
-    // prevent empty undo stack spamming
-    return;
   }
-  this.refreshMainTexture();
+  this.updateGlobalBoundings();
+  this.redraw = true;
+  return;
 };
 
 /**

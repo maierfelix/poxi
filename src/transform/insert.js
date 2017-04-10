@@ -1,6 +1,10 @@
 import { SETTINGS } from "../cfg";
 import { alignToGrid } from "../math";
-import { getRainbowColor } from "../color";
+
+import {
+  getRainbowColor,
+  alphaByteToRgbAlpha
+} from "../color";
 
 import CommandKind from "../stack/kind";
 
@@ -8,13 +12,40 @@ import CommandKind from "../stack/kind";
  * @param {CanvasRenderingContext2D} ctx
  * @param {Number} x
  * @param {Number} y
+ * @return {Void}
  */
 export function insertImage(ctx, x, y) {
   const layer = this.getCurrentLayer();
-  const batch = this.createDynamicBatch();
-  batch.drawImage(ctx, x, y);
+  const batch = this.createDynamicBatch(x, y);
+  const view = ctx.canvas;
+  const width = view.width; const height = view.height;
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const ww = width - 1; const hh = height - 1;
+  batch.resizeByRect(
+    x, y,
+    width - 1, height - 1
+  );
+  let count = 0;
+  for (let ii = 0; ii < data.length; ii += 4) {
+    const idx = (ii / 4) | 0;
+    const xx = (idx % width) | 0;
+    const yy = (idx / width) | 0;
+    const px = (yy * width + xx) * 4;
+    const r = data[px + 0];
+    const g = data[px + 1];
+    const b = data[px + 2];
+    const a = data[px + 3];
+    if (a <= 0) continue;
+    batch.drawPixelFast(x + xx, y + yy, [r, g, b, alphaByteToRgbAlpha(a)]);
+    count++;
+  };
+  // nothing changed
+  if (count <= 0) return;
+  batch.refreshTexture(true);
+  batch.resizeByMatrixData();
   layer.addBatch(batch);
   this.enqueue(CommandKind.INSERT_IMAGE, batch);
+  return;
 };
 
 /**
@@ -24,20 +55,14 @@ export function insertImage(ctx, x, y) {
  * @param {Number} y1
  */
 export function insertLine(x0, y0, x1, y1) {
-
   const base = 8 * this.cr;
-
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = (x0 < x1) ? 1 : -1;
-  const sy = (y0 < y1) ? 1 : -1;
-  let err = (dx - dy);
-
-  const last = this.last;
   const batch = this.getCurrentDrawingBatch();
+  const dx = Math.abs(x1 - x0); const dy = Math.abs(y1 - y0);
+  const sx = (x0 < x1) ? 1 : -1; const sy = (y0 < y1) ? 1 : -1;
+  let err = (dx - dy);
   while (true) {
     const relative = this.getRelativeTileOffset(x0, y0);
-    // TODO: limit repeation rate on brush size
+    // TODO: limit repeation rate on brush size (take modulo)
     if (this.states.drawing) {
       batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
     }
@@ -82,9 +107,9 @@ export function strokeArc(batch, x, y, radius, color) {
 export function insertArc(batch, x1, y1, radius, color) {
   let x2 = radius;
   let y2 = 0;
-  let err = 1 - x2;
+  let err = 0;
   const size = SETTINGS.PENCIL_SIZE;
-  for (; x2 >= y2;) {
+  for (;x2 >= y2;) {
     batch.drawAt(x2 + x1, y2 + y1, size, color);
     batch.drawAt(y2 + x1, x2 + y1, size, color);
     batch.drawAt(-x2 + x1, y2 + y1, size, color);
@@ -93,13 +118,13 @@ export function insertArc(batch, x1, y1, radius, color) {
     batch.drawAt(-y2 + x1, -x2 + y1, size, color);
     batch.drawAt(x2 + x1, -y2 + y1, size, color);
     batch.drawAt(y2 + x1, -x2 + y1, size, color);
-    y2++;
     if (err <= 0) {
+      y2 += 1;
       err += 2 * y2 + 1;
     }
     if (err > 0) {
-      x2--;
-      err += 2 * (y2 - x2) + 1;
+      x2 -= 1;
+      err -= 2 * x2 + 1;
     }
   };
 };

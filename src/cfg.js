@@ -24,14 +24,14 @@ export const MAX_SAFE_INTEGER = (2 ** 31) - 1;
 export const MAGIC_RGB_A_BYTE = 0.00392;
 
 // factor when to hide the grid
-export const HIDE_GRID = 0.5;
+export const HIDE_GRID = 1.0;
 export const GRID_LINE_WIDTH = 0.25;
 
 // how fast we can scale with our mouse wheel
 export const ZOOM_SPEED = 15;
 
 // base step size we jump when resizing batches
-export const BATCH_JUMP_RESIZE = 16;
+export const BATCH_JUMP_RESIZE = 1;
 
 /**
  * If a tile batch exceeds the min size,
@@ -62,7 +62,7 @@ export const WASM_SUPPORTED = (
 
 // dev mode state
 export let MODES = {
-  DEV: false
+  DEV: true
 };
 
 // different settings

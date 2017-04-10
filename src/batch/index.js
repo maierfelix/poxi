@@ -32,9 +32,13 @@ class Batch {
    */
   constructor(instance) {
     this.id = uid();
+    // save reference to layer
+    this.layer = null;
     this.instance = instance;
-    // buffer related
+    // data related
     this.data = null;
+    this.reverse = null;
+    // buffer related
     this.buffer = null;
     this.texture = null;
     // relative boundings
@@ -69,9 +73,11 @@ Batch.prototype.kill = function() {
     for (let jj = 0; jj < batches.length; ++jj) {
       const batch = batches[jj];
       if (batch.id === id) {
+        // free from memory
         batch.bounds = null;
         batch.buffer = null;
         batch.data = null;
+        batch.reverse = null;
         batch.instance.destroyTexture(batch.texture);
         batches.splice(jj, 1);
         layers[ii].updateBoundings();
@@ -85,17 +91,18 @@ Batch.prototype.kill = function() {
  * @param {Number} x
  * @param {Number} y
  */
-Batch.prototype.prepareBuffer = function(x, y) {
+Batch.prototype.prepareMatrix = function(x, y) {
+  const bounds = this.bounds;
   // we don't have a buffer to store data at yet
   if (this.data === null) {
-    const bounds = this.bounds;
     bounds.x = x;
     bounds.y = y;
     bounds.w = 1;
     bounds.h = 1;
-    this.data = new Uint8Array(4 * (bounds.w * bounds.h));
+    const size = 4 * (bounds.w * bounds.h);
+    this.data = new Uint8Array(size);
+    this.reverse = new Uint8Array(size);
     this.texture = this.instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
-    //this.buffer = createCanvasBuffer(bounds.w, bounds.h);
   }
 };
 
@@ -112,34 +119,15 @@ Batch.prototype.refreshTexture = function(resized) {
       instance.destroyTexture(this.texture);
     }
     this.texture = instance.bufferTexture(this.id, this.data, bw, bh);
-    //this.buffer = createCanvasBuffer(bw, bh);
   } else {
     instance.updateTexture(this.texture, this.data, bw, bh);
   }
-};
-
-Batch.prototype.refreshCanvasBuffer = function() {
-  const data = this.data;
-  const bounds = this.bounds;
-  const bw = bounds.w; const bh = bounds.h;
-  const color = this.getBatchColor();
-  // fill batch with active pixels
-  this.buffer.fillStyle = colorToRgbaString(color);
-  this.buffer.clearRect(0, 0, bw, bh);
-  for (let ii = 0; ii < bw * bh; ++ii) {
-    const xx = ii % bw;
-    const yy = (ii / bw) | 0;
-    const px = 4 * (yy * bw + xx);
-    if (data[px + 3] <= 0) continue;
-    this.buffer.fillRect(
-      xx, yy,
-      1, 1
-    );
-  };
+  // trigger our stage to get redrawn
+  this.instance.redraw = true;
 };
 
 /**
- * We expect that the batch is single colored
+ * *We expect that the batch is single colored*
  * @return {Uint8Array}
  */
 Batch.prototype.getBatchColor = function() {
