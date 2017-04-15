@@ -1,4 +1,7 @@
+import { MODES } from "../cfg";
 import { additiveAlphaColorBlending } from "../color";
+
+import CommandKind from "./kind";
 
 /**
  * Manually refresh the stack,
@@ -10,7 +13,7 @@ export function refreshStack() {
   } else {
     this.stack.splice(this.sindex + 1, this.stack.length);
   }
-  this.updateGlobalBoundings();
+  //this.updateGlobalBoundings();
 };
 
 /**
@@ -26,24 +29,18 @@ export function currentStackOperation() {
  * @param {Boolean} state
  */
 export function fire(cmd, state) {
-  const main = this.main;
-  const bounds = this.bounds;
-  if (this.workingAreaHasResized() && state) {
-    // sync main bounds with new bounds
-    main.bounds.update(
-      bounds.x, bounds.y,
-      bounds.w, bounds.h
-    );
-    const xx = this.last.gx; const yy = this.last.gy;
-    const ww = this.last.gw; const hh = this.last.gh;
-    main.resizeMatrix(
-      xx - main.bounds.x, yy - main.bounds.y,
-      main.bounds.w - ww, main.bounds.h - hh
-    );
-    console.log("Resized working area");
-  } else {
-    console.log("Updated working area");
-  }
-  main.mergeMatrix(cmd.batch, state);
+  const batch = cmd.batch;
+  const layer = batch.layer;
+  const main = layer.batch;
+  const kind = cmd.kind;
+  layer.updateBoundings();
+  switch (kind) {
+    case CommandKind.MOVE:
+      const dir = state ? 1 : -1;
+      layer.x += (batch.position.x * dir);
+      layer.y += (batch.position.y * dir);
+    break;
+  };
+  main.injectMatrix(batch, state);
   main.refreshTexture(true);
 };

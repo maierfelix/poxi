@@ -94,47 +94,66 @@ export function createDynamicBatch(x, y) {
 };
 
 /**
- * Access raw pixel
+ * Get absolute pixel
  * @param {Number} x
  * @param {Number} y
  * @return {Array}
  */
-export function getPixelAt(x, y) {
-  const main = this.main;
+export function getAbsolutePixelAt(x, y) {
   // normalize coordinates
-  const bw = main.bounds.w;
-  const bh = main.bounds.h;
-  const xx = x - main.bounds.x;
-  const yy = y - main.bounds.y;
+  const bw = this.bounds.w;
+  const bh = this.bounds.h;
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
   // check if point inside boundings
   if (
     (xx < 0 || yy < 0) ||
     (bw <= 0 || bh <= 0) ||
     (xx >= bw || yy >= bh)
   ) return (null);
-  // now extract the data
-  const data = main.data;
-  // imagedata array is 1d
-  const idx = (yy * bw + xx) * 4;
-  // pixel index out of bounds
-  if (idx < 0 || idx >= data.length) return (null);
-  // get each color value
-  const r = data[idx + 0];
-  const g = data[idx + 1];
-  const b = data[idx + 2];
-  const a = data[idx + 3];
-  const color = [r, g, b, alphaByteToRgbAlpha(a)];
-  // dont return anything if we got no valid color
-  if (a <= 0) return (null);
-  // finally return the color array
-  return (color);
+  // go through each layer reversed
+  // and search for the given pixel
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = (layers.length - 1) - ii;
+    const pixel = layers[idx].getPixelAt(x, y);
+    if (pixel !== null) return (pixel);
+  };
+  return (null);
+};
+
+/**
+ * Get layer relative pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getRelativePixelAt(x, y) {
+  // normalize coordinates
+  const bw = this.bounds.w;
+  const bh = this.bounds.h;
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) return (null);
+  // search for the pixel at given layer
+  const layer = this.getCurrentLayer();
+  if (layer !== null) {
+    return (layer.getPixelAt(x, y));
+  }
+  return (null);
 };
 
 export function updateGlobalBoundings() {
   const layers = this.layers;
   const bounds = this.bounds;
-  let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
+  let x = MAX_SAFE_INTEGER;  let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
+  let count = 0;
   for (let ii = 0; ii < layers.length; ++ii) {
     const layer = layers[ii];
     layer.updateBoundings();
@@ -153,11 +172,24 @@ export function updateGlobalBoundings() {
     if (bw > w) w = bw;
     // calculate height
     if (bh > h) h = bh;
+    count++;
   };
-  this.last.gx = bounds.x; this.last.gy = bounds.y;
-  this.last.gw = bounds.w; this.last.gh = bounds.h;
   // update our boundings
-  this.bounds.update(x, y, -x + w, -y + h);
+  if (count > 0) {
+    //this.updateSelectionMatrix();
+    this.bounds.update(x, y, -x + w, -y + h);
+  }
+};
+
+/**
+ * Merges two layers
+ * Resize la by lb<->la bounding diff
+ * Inject lb matrix into la matrix at lb bound pos
+ * @param {Layer} la
+ * @param {Layer} lb
+ */
+export function mergeLayers(la, lb) {
+
 };
 
 /**
@@ -172,10 +204,8 @@ export function updateGlobalBoundings() {
  */
 export function getBinaryShape(x, y, base) {
   const bounds = this.bounds;
-  const bx = bounds.x;
-  const by = bounds.y;
-  const gw = bounds.w;
-  const gh = bounds.h;
+  const bx = bounds.x; const by = bounds.y;
+  const gw = bounds.w; const gh = bounds.h;
   const isEmpty = base[3] === 0;
   const gridl = gw * gh;
   // allocate and do a basic fill onto the grid
@@ -183,7 +213,7 @@ export function getBinaryShape(x, y, base) {
   for (let ii = 0; ii < gridl; ++ii) {
     const xx = ii % gw;
     const yy = (ii / gw) | 0;
-    const color = this.getPixelAt(bx + xx, by + yy);
+    const color = this.getRelativePixelAt(bx + xx, by + yy);
     // empty tile based
     if (isEmpty) { if (color !== null) continue; }
     // color based
@@ -198,8 +228,7 @@ export function getBinaryShape(x, y, base) {
   let queue = [{x: x - bx, y: y - by}];
   while (queue.length > 0) {
     const point = queue.pop();
-    const x = point.x;
-    const y = point.y;
+    const x = point.x; const y = point.y;
     const idx = y * gw + x;
     // set this grid tile to 2, if it got traced earlier as a color match
     if (grid[idx] === 1) grid[idx] = 2;

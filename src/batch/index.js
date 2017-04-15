@@ -11,7 +11,6 @@ import extend from "../extend";
 
 import Boundings from "../bounds/index";
 
-import * as _raw from "./raw";
 import * as _tile from "./tile";
 import * as _matrix from "./matrix";
 
@@ -39,16 +38,36 @@ class Batch {
     this.data = null;
     this.reverse = null;
     // buffer related
+    // used for canvas batches
     this.buffer = null;
+    // wgl texture
     this.texture = null;
     // relative boundings
     this.bounds = new Boundings();
     // we use this batch for erasing
     this.isEraser = false;
+    // we use this batch for moving
+    this.isMover = false;
+    this.position = { x: 0, y: 0, mx: 0, my: 0 };
     // indicates if we should force to render this batch
     // even when it is not registered inside our stack yet
     this.forceRendering = false;
   }
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+Batch.prototype.move = function(x, y) {
+  const xx = x - this.position.mx;
+  const yy = y - this.position.my;
+  this.position.x += xx;
+  this.position.y += yy;
+  this.layer.x += xx;
+  this.layer.y += yy;
+  this.position.mx = x;
+  this.position.my = y;
 };
 
 /**
@@ -68,41 +87,27 @@ Batch.prototype.kill = function() {
   const id = this.id;
   const instance = this.instance;
   const layers = instance.layers;
+  // free batch from memory
+  this.bounds = null;
+  this.buffer = null;
+  this.data = null;
+  this.reverse = null;
+  this.instance.destroyTexture(this.texture);
+  // finally remove batch from layer
+  let count = 0;
   for (let ii = 0; ii < layers.length; ++ii) {
     const batches = layers[ii].batches;
     for (let jj = 0; jj < batches.length; ++jj) {
       const batch = batches[jj];
       if (batch.id === id) {
-        // free from memory
-        batch.bounds = null;
-        batch.buffer = null;
-        batch.data = null;
-        batch.reverse = null;
-        batch.instance.destroyTexture(batch.texture);
         batches.splice(jj, 1);
         layers[ii].updateBoundings();
-        break;
+        count++;
       }
     };
   };
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- */
-Batch.prototype.prepareMatrix = function(x, y) {
-  const bounds = this.bounds;
-  // we don't have a buffer to store data at yet
-  if (this.data === null) {
-    bounds.x = x;
-    bounds.y = y;
-    bounds.w = 1;
-    bounds.h = 1;
-    const size = 4 * (bounds.w * bounds.h);
-    this.data = new Uint8Array(size);
-    this.reverse = new Uint8Array(size);
-    this.texture = this.instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
+  if (count <= 0) {
+    throw new Error(`Failed to kill batch:${this.id}`);
   }
 };
 
@@ -126,58 +131,6 @@ Batch.prototype.refreshTexture = function(resized) {
   this.instance.redraw = true;
 };
 
-/**
- * *We expect that the batch is single colored*
- * @return {Uint8Array}
- */
-Batch.prototype.getBatchColor = function() {
-  const data = this.data;
-  const bounds = this.bounds;
-  const bw = bounds.w; const bh = bounds.h;
-  const color = new Uint8Array(4);
-  // calculate batch color
-  for (let ii = 0; ii < bw * bh; ++ii) {
-    const xx = ii % bw;
-    const yy = (ii / bw) | 0;
-    const px = 4 * (yy * bw + xx);
-    if (data[px + 3] <= 0) continue;
-    color[0] = data[px + 0];
-    color[1] = data[px + 1];
-    color[2] = data[px + 2];
-    color[3] = data[px + 3];
-    break;
-  };
-  return (color);
-};
-
-Batch.prototype.clear = function() {
-  const data = this.data;
-  for (let ii = 0; ii < data.length; ++ii) {
-    data[ii] = 0;
-  };
-};
-
-/**
- * @return {Boolean}
- */
-Batch.prototype.isEmpty = function() {
-  const data = this.data;
-  const bw = this.bounds.w;
-  let count = 0;
-  for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = ii / 4;
-    const xx = idx % bw;
-    const yy = (idx / bw) | 0;
-    const px = (yy * bw + xx) * 4;
-    const a = data[px + 3];
-    // ignore empty tiles
-    if (a <= 0) continue;
-    count++;
-  };
-  return (count <= 0);
-};
-
-extend(Batch, _raw);
 extend(Batch, _tile);
 extend(Batch, _matrix);
 

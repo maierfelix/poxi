@@ -33,6 +33,17 @@ export function scale(dir) {
  * @param {Number} x
  * @param {Number} y
  */
+export function hover(x, y) {
+  x = x | 0;
+  y = y | 0;
+  this.mx = x;
+  this.my = y;
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
 export function click(x, y) {
   x = x | 0;
   y = y | 0;
@@ -41,17 +52,6 @@ export function click(x, y) {
   this.dy = y;
   this.lx = position.x;
   this.ly = position.y;
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- */
-export function hover(x, y) {
-  x = x | 0;
-  y = y | 0;
-  this.mx = x;
-  this.my = y;
 };
 
 /**

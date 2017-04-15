@@ -27,10 +27,102 @@ export function resetActiveUiButtons() {
   paint_all.style.removeProperty("opacity");
 };
 
+/**
+ * @return {Void}
+ */
 export function setUiColor(value) {
+  // close fast color picker menu
+  if (this.states.fastColorMenu) {
+    this.closeFastColorPickerMenu();
+  }
   color_hex.innerHTML = String(value).toUpperCase();
   color_view.style.background = value;
-  this.fillStyle = hexToRgba(value);
+  const rgba = hexToRgba(value);
+  // prevent changing color if it didnt changed
+  if (
+    this.fillStyle[0] === rgba[0] &&
+    this.fillStyle[1] === rgba[1] &&
+    this.fillStyle[2] === rgba[2] &&
+    this.fillStyle[3] === rgba[3]
+  ) return;
+  this.fillStyle = rgba;
+  this.addCustomColor(rgba);
+  return;
+};
+
+/**
+ * @param {Array} rgba
+ */
+export function addCustomColor(rgba) {
+  const colors = this.favoriteColors;
+  let count = 0;
+  for (let ii = 0; ii < colors.length; ++ii) {
+    const color = colors[ii].color;
+    const index = colors[ii].index;
+    // color already saved, increase it's importance
+    if (
+      color[0] === rgba[0] &&
+      color[1] === rgba[1] &&
+      color[2] === rgba[2] &&
+      color[3] === rgba[3]
+    ) {
+      colors[ii].index += 1;
+      count++;
+      //console.log("Found!", color, rgba);
+    }
+  };
+  // color isn't saved yet
+  if (count <= 0) {
+    // color limit exceeded, replace less used color with this one
+    if (colors.length >= 16) {
+      colors[colors.length - 1].color = color;
+      colors[colors.length - 1].index += 1;
+    } else {
+      // we have to replace the less used color
+      colors.push({
+        color: rgba,
+        index: 0
+      });
+    }
+  }
+  // resort descending by most used color
+  colors.sort((a, b) => { return (b.index - a.index); });
+  // sync with storage
+  this.writeStorage("favorite_colors", JSON.stringify(colors));
+  // sync color menu with favorite colors
+  this.updateFastColorPickMenu();
+};
+
+export function closeFastColorPickerMenu() {
+  menu.style.visibility = "hidden";
+  this.states.fastColorMenu = false;
+};
+
+export function openFastColorPickerMenu() {
+  menu.style.visibility = "visible";
+  this.states.fastColorMenu = true;
+};
+
+export function updateFastColorPickMenu() {
+  // first remove all color nodes
+  for (let ii = 0; ii < 16; ++ii) {
+    const node = colors.children[0];
+    if (!node) continue;
+    node.parentNode.removeChild(node);
+  };
+  // now re-insert the updated ones
+  for (let ii = 0; ii < 16; ++ii) {
+    const color = this.favoriteColors[ii];
+    const node = document.createElement("div");
+    if (color) {
+      node.setAttribute("color", "[" + color.color + "]");
+      node.style.background = rgbaToHex(color.color);
+    } else {
+      node.setAttribute("color", "[0,0,0,1]");
+      node.style.background = "#000000";
+    }
+    colors.appendChild(node);
+  };
 };
 
 export function setupUi() {
@@ -91,10 +183,14 @@ export function setupUi() {
     this.modes.light = true;
     lighting.style.opacity = 1.0;
   };
+  move.onclick = (e) => {
+    this.resetModes();
+    this.modes.move = true;
+    move.style.opacity = 1.0;
+  };
   color.onchange = (e) => {
     this.setUiColor(color.value);
   };
-  this.setUiColor(rgbaToHex(this.fillStyle));
 
   undo.onclick = (e) => {
     this.undo();

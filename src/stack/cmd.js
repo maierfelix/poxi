@@ -8,7 +8,7 @@ class Command {
    * @constructor
    */
   constructor(kind, batch) {
-    this.kind = 0;
+    this.kind = kind;
     this.batch = batch;
   }
 };

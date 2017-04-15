@@ -14,7 +14,7 @@ import {
  * @param {Number} w
  * @param {Number} h
  */
-export function resizeByRect(x, y, w, h) {
+export function resizeRectangular(x, y, w, h) {
   this.resizeByOffset(x, y);
   this.resizeByOffset(x + w, y + h);
 };
@@ -24,29 +24,32 @@ export function resizeByRect(x, y, w, h) {
  * @param {Number} y
  */
 export function resizeByOffset(x, y) {
+  const layer = this.layer;
   const bounds = this.bounds;
-  const w = (Math.abs(bounds.x - x) | 0) + 1;
-  const h = (Math.abs(bounds.y - y) | 0) + 1;
-  const ox = bounds.x; const oy = bounds.y;
+  let bx = layer.x + bounds.x; let by = layer.y + bounds.y;
+  const w = (Math.abs(bx - x) | 0) + 1;
+  const h = (Math.abs(by - y) | 0) + 1;
+  const ox = bx; const oy = by;
   const ow = bounds.w; const oh = bounds.h;
-  const xx = -(bounds.x - x) | 0;
-  const yy = -(bounds.y - y) | 0;
+  const xx = -(bx - x) | 0;
+  const yy = -(by - y) | 0;
   // resize bound rect to left, top
   if (xx < 0) {
-    bounds.x += xx;
-    bounds.w += Math.abs(xx);
+    bx += xx - BATCH_JUMP_RESIZE;
+    bounds.w += Math.abs(xx) + BATCH_JUMP_RESIZE;
   }
   if (yy < 0) {
-    bounds.y += yy;
-    bounds.h += Math.abs(yy);
+    by += yy - BATCH_JUMP_RESIZE;
+    bounds.h += Math.abs(yy) + BATCH_JUMP_RESIZE;
   }
   // resize bound to right, bottom
-  if (w > bounds.w) bounds.w = w;
-  if (h > bounds.h) bounds.h = h;
+  if (w > bounds.w) bounds.w = w + BATCH_JUMP_RESIZE;
+  if (h > bounds.h) bounds.h = h + BATCH_JUMP_RESIZE;
+  bounds.x = bx; bounds.y = by;
   // make sure we only resize if necessary
   if (ow !== bounds.w || oh !== bounds.h) {
     this.resizeMatrix(
-      ox - bounds.x, oy - bounds.y,
+      ox - bx, oy - by,
       bounds.w - ow, bounds.h - oh
     );
   }
@@ -54,6 +57,7 @@ export function resizeByOffset(x, y) {
 
 /**
  * Resizes matrix by calculating min/max of x,y,w,h
+ * @return {Void}
  */
 export function resizeByMatrixData() {
   const data = this.data;
@@ -101,63 +105,6 @@ export function resizeByMatrixData() {
 };
 
 /**
- * Merges given matrix
- * @param {Batch} batch
- * @param {Boolean} state - Add or reverse
- */
-export function mergeMatrix(batch, state) {
-  const buffer = this.data;
-  const isEraser = batch.isEraser;
-  const data = state ? batch.data : batch.reverse;
-  const x = this.bounds.x | 0; const y = this.bounds.y | 0;
-  const w = this.bounds.w | 0; const h = this.bounds.h | 0;
-  const bw = batch.bounds.w | 0; const bh = batch.bounds.h | 0;
-  const bx = (batch.bounds.x - x) | 0; const by = (batch.bounds.y - y) | 0;
-  // loop given batch data and merge it with our main matrix
-  for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = (ii / 4) | 0;
-    const xx = (idx % bw) | 0;
-    const yy = (idx / bw) | 0;
-    const opx = ((yy * bw + xx) * 4) | 0;
-    const npx = (opx + (yy * (w - bw) * 4) + (bx * 4) + ((by * 4) * w)) | 0;
-    const alpha = data[opx + 3] | 0;
-    // erase pixel
-    if (isEraser === true) {
-      if (state === true && alpha > 0) {
-        buffer[npx + 0] = buffer[npx + 1] = buffer[npx + 2] = buffer[npx + 3] = 0;
-        continue;
-      }
-    }
-    // ignore empty data pixels
-    if (alpha <= 0 && state === true) continue;
-    // only overwrite the reverse batch's used pixels
-    if (state === false && alpha <= 0 && batch.data[opx + 3] <= 0) continue;
-    // manual color blending
-    if (buffer[npx + 3] > 0 && alpha < 255 && alpha > 0) {
-      // redo
-      if (state === true) {
-        const src = buffer.subarray(npx, npx + 4);
-        const dst = data.subarray(opx, opx + 4);
-        const color = additiveAlphaColorBlending(src, dst);
-        buffer[npx + 0] = color[0];
-        buffer[npx + 1] = color[1];
-        buffer[npx + 2] = color[2];
-        buffer[npx + 3] = color[3];
-        continue;
-      // undo
-      } else {
-        
-      }
-    }
-    // just fill colors with given batch data kind
-    buffer[npx + 0] = data[opx + 0];
-    buffer[npx + 1] = data[opx + 1];
-    buffer[npx + 2] = data[opx + 2];
-    buffer[npx + 3] = data[opx + 3];
-  };
-};
-
-/**
  * Resize internal array buffers
  * and join old matrix with new one
  * @param {Number} x - Resize left
@@ -198,4 +145,173 @@ export function resizeMatrix(x, y, w, h) {
   this.reverse = reverse;
   this.refreshTexture(true);
   return;
+};
+
+/**
+ * Merges given matrix
+ * @param {Batch} batch
+ * @param {Number} px - X-offset to merge at
+ * @param {Number} py - Y-offset to merge at
+ * @param {Boolean} state - Add or reverse
+ */
+export function injectMatrix(batch, state) {
+  const buffer = this.data;
+  const layer = batch.layer;
+  const isEraser = batch.isEraser;
+  const data = state ? batch.data : batch.reverse;
+  const bw = batch.bounds.w | 0;
+  const dx = (batch.bounds.x - this.bounds.x) | 0;
+  const dy = (batch.bounds.y - this.bounds.y) | 0;
+  const w = this.bounds.w | 0; const h = this.bounds.h | 0;
+  const x = this.bounds.x | 0; const y = this.bounds.y | 0;
+  // loop given batch data and merge it with our main matrix
+  for (let ii = 0; ii < data.length; ii += 4) {
+    const idx = (ii / 4) | 0;
+    const xx = (idx % bw) | 0;
+    const yy = (idx / bw) | 0;
+    const opx = ((yy * bw + xx) * 4) | 0;
+    const npx = (opx + (yy * (w - bw) * 4) + (dx * 4) + ((dy * 4) * w)) | 0;
+    const alpha = data[opx + 3] | 0;
+    // erase pixel
+    if (isEraser === true) {
+      if (state === true && alpha > 0) {
+        buffer[npx + 0] = buffer[npx + 1] = buffer[npx + 2] = buffer[npx + 3] = 0;
+        continue;
+      }
+    }
+    // ignore empty data pixels
+    if (alpha <= 0 && state === true) continue;
+    // only overwrite the reverse batch's used pixels
+    if (state === false && alpha <= 0 && batch.data[opx + 3] <= 0) continue;
+    // manual color blending
+    if (buffer[npx + 3] > 0 && alpha < 255 && alpha > 0) {
+      // redo, additive blending
+      if (state === true) {
+        const src = buffer.subarray(npx, npx + 4);
+        const dst = data.subarray(opx, opx + 4);
+        const color = additiveAlphaColorBlending(src, dst);
+        buffer[npx + 0] = color[0];
+        buffer[npx + 1] = color[1];
+        buffer[npx + 2] = color[2];
+        buffer[npx + 3] = color[3];
+        continue;
+      // undo, reverse blending
+    } else {
+        const src = buffer.subarray(npx, npx + 4);
+        const dst = data.subarray(opx, opx + 4);
+        const color = additiveAlphaColorBlending(src, dst);
+        buffer[npx + 0] = color[0];
+        buffer[npx + 1] = color[1];
+        buffer[npx + 2] = color[2];
+        buffer[npx + 3] = color[3];
+        continue;
+      }
+    }
+    // just fill colors with given batch data kind
+    buffer[npx + 0] = data[opx + 0];
+    buffer[npx + 1] = data[opx + 1];
+    buffer[npx + 2] = data[opx + 2];
+    buffer[npx + 3] = data[opx + 3];
+  };
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getRawPixelAt(x, y) {
+  // normalize coordinates
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  // now extract the data
+  const data = this.data;
+  // imagedata array is 1d
+  const idx = (yy * this.bounds.w + xx) * 4;
+  // pixel index out of bounds
+  if (idx < 0 || idx >= data.length) return (null);
+  // get each color value
+  const r = data[idx + 0];
+  const g = data[idx + 1];
+  const b = data[idx + 2];
+  const a = data[idx + 3];
+  // dont return anything if we got no valid color
+  if (a <= 0) return (null);
+  const color = [r, g, b, alphaByteToRgbAlpha(a)];
+  // finally return the color array
+  return (color);
+};
+
+/**
+ * Clears all pixels non-reversible
+ */
+export function clear() {
+  const data = this.data;
+  for (let ii = 0; ii < data.length; ++ii) {
+    data[ii] = 0;
+  };
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ */
+export function prepareMatrix(x, y) {
+  const bounds = this.bounds;
+  // we don't have a buffer to store data at yet
+  if (this.data === null) {
+    bounds.x = x;
+    bounds.y = y;
+    bounds.w = 1;
+    bounds.h = 1;
+    const size = 4 * (bounds.w * bounds.h);
+    this.data = new Uint8Array(size);
+    this.reverse = new Uint8Array(size);
+    this.texture = this.instance.bufferTexture(this.id, this.data, bounds.w, bounds.h);
+  }
+};
+
+/**
+ * Returns the very first found pixel color
+ * *We expect that the batch is single colored*
+ * @return {Uint8Array}
+ */
+export function getBatchColor() {
+  const data = this.data;
+  const bounds = this.bounds;
+  const bw = bounds.w; const bh = bounds.h;
+  const color = new Uint8Array(4);
+  // calculate batch color
+  for (let ii = 0; ii < bw * bh; ++ii) {
+    const xx = ii % bw;
+    const yy = (ii / bw) | 0;
+    const px = 4 * (yy * bw + xx);
+    if (data[px + 3] <= 0) continue;
+    color[0] = data[px + 0];
+    color[1] = data[px + 1];
+    color[2] = data[px + 2];
+    color[3] = data[px + 3];
+    break;
+  };
+  return (color);
+};
+
+/**
+ * @return {Boolean}
+ */
+export function isEmpty() {
+  const data = this.data;
+  const bw = this.bounds.w;
+  let count = 0;
+  for (let ii = 0; ii < data.length; ii += 4) {
+    const idx = ii / 4;
+    const xx = idx % bw;
+    const yy = (idx / bw) | 0;
+    const px = (yy * bw + xx) * 4;
+    const a = data[px + 3];
+    // ignore empty tiles
+    if (a <= 0) continue;
+    count++;
+  };
+  return (count <= 0);
 };

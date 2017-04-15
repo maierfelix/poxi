@@ -2,7 +2,7 @@
  * @return {Void}
  */
 export function undo() {
-  // prevent undo/redo when in e.g. drawing state
+  // prevent undo/redo when in e.g drawing state
   if (this.isInActiveState()) return;
   if (this.sindex >= 0) {
     const cmd = this.currentStackOperation();

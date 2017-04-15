@@ -22,13 +22,13 @@ export function fillBucket(x, y, color) {
   if (color[3] > 1) throw new Error("Invalid alpha color!");
   const bounds = this.bounds;
   // differentiate between empty and colored tiles
-  const base = this.getPixelAt(x, y) || BASE_TILE_COLOR;
+  const base = this.getRelativePixelAt(x, y) || BASE_TILE_COLOR;
   // clicked tile color and fill colors matches, abort
   if (colorsMatch(base, color)) return;
   // save the current stack index
-  const sindex = this.sindex;
   const batch = this.createDynamicBatch(x, y);
   const layer = this.getCurrentLayer();
+  layer.addBatch(batch);
   // flood fill
   let shape = this.getBinaryShape(x, y, base);
   // ups, we filled infinite
@@ -39,9 +39,9 @@ export function fillBucket(x, y, color) {
   const bw = bounds.w;
   const bh = bounds.h;
   const bcolor = [color[0], color[1], color[2], color[3]];
-  batch.resizeByRect(
+  batch.resizeRectangular(
     bx, by,
-    bw - 1, bh - 1
+    bw, bh
   );
   let count = 0;
   // flood fill pixels
@@ -55,12 +55,13 @@ export function fillBucket(x, y, color) {
     count++;
   };
   // nothing changed
-  if (count <= 0) return;
+  if (count <= 0) {
+    batch.kill();
+    return;
+  }
   // auto resize batch's size by the used pixel data
   batch.resizeByMatrixData();
-  layer.addBatch(batch);
-  if (batch.isEmpty()) batch.kill();
-  else this.enqueue(CommandKind.FILL, batch);
+  this.enqueue(CommandKind.FILL, batch);
   // free grid from memory
   shape = null;
   return;
@@ -73,7 +74,7 @@ export function fillBucket(x, y, color) {
  */
 export function floodPaint(x, y) {
   const color = this.fillStyle;
-  const base = this.getPixelAt(x, y);
+  const base = this.getRelativePixelAt(x, y);
   // empty base tile or colors to fill are the same
   if (base === null || colorsMatch(base, color)) return;
   const xx = this.bounds.x;
@@ -82,7 +83,8 @@ export function floodPaint(x, y) {
   const hh = this.bounds.h;
   const layer = this.getCurrentLayer();
   const batch = this.createDynamicBatch(xx, yy);
-  batch.resizeByRect(
+  layer.addBatch(batch);
+  batch.resizeRectangular(
     xx, yy,
     ww, hh
   );
@@ -91,17 +93,18 @@ export function floodPaint(x, y) {
   for (let ii = 0; ii < ww * hh; ++ii) {
     const x = (ii % ww);
     const y = (ii / ww) | 0;
-    const pixel = this.getPixelAt(xx + x, yy + y);
+    const pixel = this.getRelativePixelAt(xx + x, yy + y);
     if (pixel === null) continue;
     if (!colorsMatch(base, pixel)) continue;
     batch.drawPixel(xx + x, yy + y, color);
     count++;
   };
   // nothing changed
-  if (count <= 0) return;
-  batch.refreshTexture(true);
+  if (count <= 0) {
+    batch.kill();
+    return;
+  }
   batch.resizeByMatrixData();
-  layer.addBatch(batch);
   this.enqueue(CommandKind.FLOOD_FILL, batch);
   return;
 };

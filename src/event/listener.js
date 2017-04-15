@@ -1,4 +1,5 @@
 import {
+  hexToRgba,
   rgbaToHex,
   rgbaToBytes,
   getRainbowColor
@@ -36,6 +37,8 @@ export function initListeners() {
   this.view.addEventListener("mouseout", (e) => this.onMouseOut(e));
   this.view.addEventListener("mouseleave", (e) => this.onMouseLeave(e));
 
+  menu.addEventListener("click", (e) => this.onColorMenuClick(e));
+
 };
 
 /**
@@ -67,6 +70,19 @@ export function resetListElementsActiveState(el) {
   for (let ii = 0; ii < el.children.length; ii++) {
     el.children[ii].classList.remove("active");
   };
+};
+
+/**
+ * @param {HTMLElement} el
+ * @return {Void}
+ */
+export function onColorMenuClick(el) {
+  const element = el.target;
+  if (element.id) return;
+  const value = element.getAttribute("color");
+  const rgba = JSON.parse(value);
+  this.setUiColor(rgbaToHex(rgba));
+  return;
 };
 
 /**
@@ -107,6 +123,7 @@ export function processUIClick(el) {
  */
 export function onMouseDown(e) {
   e.preventDefault();
+  // only allow clicking on canvas
   if (!(e.target instanceof HTMLCanvasElement)) {
     this.processUIClick(e.target);
     return;
@@ -116,7 +133,19 @@ export function onMouseDown(e) {
   const relative = this.getRelativeTileOffset(x, y);
   if (e.which === 1) {
     this.resetSelection();
-    if (this.modes.select) {
+    if (this.modes.move) {
+      const layer = this.getLayerByPoint(relative.x, relative.y);
+      if (layer !== null) {
+        this.states.moving = true;
+        const batch = this.createDynamicBatch(relative.x, relative.y);
+        batch.position.mx = relative.x;
+        batch.position.my = relative.y;
+        batch.layer = layer;
+        batch.isMover = true;
+        this.buffers.move = batch;
+      }
+    }
+    else if (this.modes.select) {
       this.states.selecting = true;
       this.selectFrom(x, y);
       this.selectTo(x, y);
@@ -126,58 +155,58 @@ export function onMouseDown(e) {
       this.buffers.arc = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.arc;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
-      layer.addBatch(batch);
     }
     else if (this.modes.rect) {
       this.states.rect = true;
       this.buffers.rect = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.rect;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
-      layer.addBatch(batch);
     }
     else if (this.modes.draw) {
       this.states.drawing = true;
       this.buffers.drawing = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.drawing;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
       batch.refreshTexture(false);
-      layer.addBatch(batch);
     }
     else if (this.modes.erase) {
       this.states.erasing = true;
       this.buffers.erasing = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.erasing;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
       batch.refreshTexture(false);
       batch.isEraser = true;
-      layer.addBatch(batch);
     }
     else if (this.modes.light) {
       this.states.lighting = true;
       this.buffers.lighting = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.lighting;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
       batch.refreshTexture(false);
-      layer.addBatch(batch);
     }
     else if (this.modes.stroke) {
       this.states.stroke = true;
       this.buffers.stroke = this.createDynamicBatch(relative.x, relative.y);
       const batch = this.buffers.stroke;
       const layer = this.getCurrentLayer();
+      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
-      layer.addBatch(batch);
     }
     else if (this.modes.flood) {
       this.floodPaint(relative.x, relative.y);
@@ -191,7 +220,7 @@ export function onMouseDown(e) {
     }
     else if (this.modes.pipette) {
       this.states.pipette = true;
-      const color = this.getPixelAt(relative.x, relative.y);
+      const color = this.getAbsolutePixelAt(relative.x, relative.y);
       if (color !== null) {
         this.fillStyle = color;
         color_view.style.background = color.value = rgbaToHex(color);
@@ -216,14 +245,16 @@ let lasty = -0;
  */
 export function onMouseMove(e) {
   e.preventDefault();
+  const x = e.clientX; const y = e.clientY;
   if (!(e.target instanceof HTMLCanvasElement)) return;
-  const x = e.clientX;
-  const y = e.clientY;
   const last = this.last;
   const layer = this.getCurrentLayer();
   const relative = this.getRelativeTileOffset(x, y);
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
+  if (this.modes.move) {
+    this.redraw = true;
+  }
   if (this.states.dragging) {
     this.drag(x, y);
     this.hover(x, y);
@@ -234,7 +265,12 @@ export function onMouseMove(e) {
   this.hover(x, y);
   if (last.mx === relative.x && last.my === relative.y) return;
   this.redraw = true;
-  if (this.states.arc) {
+  if (this.states.moving) {
+    const batch = this.buffers.move;
+    batch.move(relative.x, relative.y);
+    batch.refreshTexture(false);
+  }
+  else if (this.states.arc) {
     const batch = this.buffers.arc;
     batch.clear();
     const sx = this.last.mdrx;
@@ -283,7 +319,7 @@ export function onMouseMove(e) {
     this.selectTo(x, y);
   }
   else if (this.states.pipette) {
-    const color = this.getPixelAt(relative.x, relative.y);
+    const color = this.getAbsolutePixelAt(relative.x, relative.y);
     if (color !== null) {
       this.fillStyle = color;
       color_view.style.background = color.value = rgbaToHex(color);
@@ -300,7 +336,22 @@ export function onMouseUp(e) {
   e.preventDefault();
   if (!(e.target instanceof HTMLCanvasElement)) return;
   if (e.which === 1) {
-    if (this.modes.arc) {
+    if (this.modes.move && this.buffers.move) {
+      const batch = this.buffers.move;
+      const layer = batch.layer;
+      this.states.move = false;
+      this.states.moving = false;
+      // only enqueue if batch not empty
+      if (batch.position.x !== 0 || batch.position.y !== 0) {
+        layer.x -= batch.position.x;
+        layer.y -= batch.position.y;
+        this.enqueue(CommandKind.MOVE, batch);
+      } else {
+        batch.kill();
+      }
+      this.buffers.move = null;
+    }
+    else if (this.modes.arc) {
       const batch = this.buffers.arc;
       batch.forceRendering = false;
       this.states.arc = false;
@@ -382,7 +433,7 @@ export function onKeyDown(e) {
     break;
     // del
     case 46:
-      this.clearRect(this.getSelection());
+      this.clearSelection(this.getSelection());
       this.resetSelection();
     break;
     // c | ctrl+c
@@ -401,7 +452,7 @@ export function onKeyDown(e) {
     // v + ctrl+v
     case 86:
       if (this.keys[17]) {
-        this.paste(this.last.mx, this.last.my, this.clipboard.copy);
+        this.pasteAt(this.last.mx, this.last.my, this.getSelection());
         this.resetSelection();
       }
     break;
@@ -425,6 +476,26 @@ export function onKeyDown(e) {
     // f5
     case 116:
       location.reload();
+    break;
+    // space
+    case 32:
+      // already open, close so
+      if (this.states.fastColorMenu) {
+        this.closeFastColorPickerMenu();
+        return;
+      }
+      const width = menu.clientWidth;
+      const height = menu.clientHeight;
+      const btmWidth = document.querySelector(".bottom-menu").clientHeight;
+      let yy = lasty;
+      let xx = (lastx - (width / 2) | 0);
+      // invert menu position since we are out of window view
+      if (yy + height > stage.ch - btmWidth) {
+        yy = yy - height;
+      }
+      menu.style.top = yy + "px";
+      menu.style.left = xx + "px";
+      this.openFastColorPickerMenu();
     break;
     default:
       return;

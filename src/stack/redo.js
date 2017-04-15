@@ -4,7 +4,7 @@ import Command from "./cmd";
  * @return {Void}
  */
 export function redo() {
-  // prevent undo/redo when in e.g. drawing state
+  // prevent undo/redo when in e.g drawing state
   if (this.isInActiveState()) return;
   if (this.sindex < this.stack.length - 1) {
     this.sindex++;

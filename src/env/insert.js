@@ -17,11 +17,12 @@ import CommandKind from "../stack/kind";
 export function insertImage(ctx, x, y) {
   const layer = this.getCurrentLayer();
   const batch = this.createDynamicBatch(x, y);
+  layer.addBatch(batch);
   const view = ctx.canvas;
   const width = view.width; const height = view.height;
   const data = ctx.getImageData(0, 0, width, height).data;
   const ww = width - 1; const hh = height - 1;
-  batch.resizeByRect(
+  batch.resizeRectangular(
     x, y,
     width - 1, height - 1
   );
@@ -40,10 +41,12 @@ export function insertImage(ctx, x, y) {
     count++;
   };
   // nothing changed
-  if (count <= 0) return;
+  if (count <= 0) {
+    batch.kill();
+    return;
+  }
   batch.refreshTexture(true);
   batch.resizeByMatrixData();
-  layer.addBatch(batch);
   this.enqueue(CommandKind.INSERT_IMAGE, batch);
   return;
 };
@@ -83,6 +86,21 @@ export function insertLine(x0, y0, x1, y1) {
 };
 
 /**
+ * Inserts filled arc at given position
+ * @param {Batch} batch
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} radius
+ * @param {Array} color
+ */
+export function fillArc(batch, x, y, radius, color) {
+  radius = (radius || 1.0) | 0;
+  if (!color) color = [255, 255, 255, 1];
+  this.insertStrokedArc(batch, x, y, radius, color);
+  // TODO: now fill the stroked circle (with fill?)
+};
+
+/**
  * Inserts stroked arc at given position
  * @param {Batch} batch
  * @param {Number} x
@@ -93,7 +111,7 @@ export function insertLine(x0, y0, x1, y1) {
 export function strokeArc(batch, x, y, radius, color) {
   radius = (radius || 1.0) | 0;
   if (!color) color = [255, 255, 255, 1];
-  this.insertArc(batch, x, y, radius, color);
+  this.insertStrokedArc(batch, x, y, radius, color);
 };
 
 /**
@@ -104,7 +122,7 @@ export function strokeArc(batch, x, y, radius, color) {
  * @param {Number} radius
  * @param {Array} color
  */
-export function insertArc(batch, x1, y1, radius, color) {
+export function insertStrokedArc(batch, x1, y1, radius, color) {
   let x2 = radius;
   let y2 = 0;
   let err = 0;
@@ -183,16 +201,23 @@ export function insertRectangleAt(batch, x1, y1, x2, y2, color, filled) {
   const dx = (x2 < 0 ? -1 : 1);
   const dy = (y2 < 0 ? -1 : 1);
   const size = SETTINGS.PENCIL_SIZE;
-  for (let ii = 0; ii < width * height; ++ii) {
-    const xx = (ii % width);
-    const yy = (ii / width) | 0;
-    // ignore inner tiles if rectangle not filled
-    if (!filled) {
+  // stroke rectangle
+  if (!filled) {
+    for (let ii = 0; ii < width * height; ++ii) {
+      const xx = (ii % width) | 0;
+      const yy = (ii / width) | 0;
       if (!(
         (xx === 0 || xx >= width-1) ||
         (yy === 0 || yy >= height-1))
       ) continue;
-    }
-    batch.drawAt(x1 + xx * dx, y1 + yy * dy, size, color);
+      batch.drawAt(x1 + xx * dx, y1 + yy * dy, size, color);
+    };
+  // filled rectangle
+  } else {
+    for (let ii = 0; ii < width * height; ++ii) {
+      const xx = (ii % width) | 0;
+      const yy = (ii / width) | 0;
+      batch.drawAt(x1 + xx * dx, y1 + yy * dy, size, color);
+    };
   }
 };

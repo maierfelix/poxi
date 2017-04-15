@@ -31,7 +31,7 @@ export const GRID_LINE_WIDTH = 0.25;
 export const ZOOM_SPEED = 15;
 
 // base step size we jump when resizing batches
-export const BATCH_JUMP_RESIZE = 1;
+export const BATCH_JUMP_RESIZE = 0;
 
 /**
  * If a tile batch exceeds the min size,
@@ -72,6 +72,9 @@ export let SETTINGS = {
   ERASER_SIZE: 1,
   LIGHTING_MODE: 0.05
 };
+
+export const STORAGE_KEY = "poxi";
+export const STORAGE_OBJECT = window.localStorage;
 
 // asset path
 export const ASSET_PATH = "./assets/";

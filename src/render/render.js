@@ -28,36 +28,41 @@ export function updateGrid() {
  */
 export function canRenderCachedBuffer() {
   return (
-    (this.bounds.w > 0 && this.bounds.h > 0) &&
     !this.states.drawing &&
     !this.states.erasing &&
     !this.states.arc &&
     !this.states.rect &&
     !this.states.stroke &&
-    !this.states.lighting
+    !this.states.lighting &&
+    !this.states.moving
   );
 };
 
 /** Main render method */
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
+  const cr = this.cr;
   this.renderBackground();
   if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
   if (this.canRenderCachedBuffer()) {
-    const bounds = this.bounds;
     const cx = this.cx | 0;
     const cy = this.cy | 0;
-    const cr = this.cr;
-    const ww = (this.bounds.w * TILE_SIZE) * cr;
-    const hh = (this.bounds.h * TILE_SIZE) * cr;
-    const xx = cx + (bounds.x * TILE_SIZE) * cr;
-    const yy = cy + (bounds.y * TILE_SIZE) * cr;
-    this.drawImage(
-      this.main.texture,
-      xx, yy,
-      ww, hh
-    );
+    const layers = this.layers;
+    for (let ii = 0; ii < layers.length; ++ii) {
+      const layer = layers[ii];
+      if (layer.hidden) continue;
+      const bounds = layer.bounds;
+      const ww = (bounds.w * TILE_SIZE) * cr;
+      const hh = (bounds.h * TILE_SIZE) * cr;
+      const xx = cx + ((layer.x + bounds.x) * TILE_SIZE) * cr;
+      const yy = cy + ((layer.y + bounds.y) * TILE_SIZE) * cr;
+      this.drawImage(
+        layer.batch.texture,
+        xx, yy,
+        ww, hh
+      );
+    };
   }
   // render live data
   this.renderLayers();
@@ -91,23 +96,36 @@ export function renderLayers() {
   const cx = this.cx | 0;
   const cy = this.cy | 0;
   const cr = this.cr;
+  const bounds = this.bounds;
   const layers = this.layers;
   // draw global boundings
+  if (MODES.DEV) {
+    const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+    const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+    const w = (bounds.w * TILE_SIZE) * cr;
+    const h = (bounds.h * TILE_SIZE) * cr;
+    this.drawRectangle(
+      x, y,
+      w, h,
+      [0, 1, 0, 0.1]
+    );
+  }
   for (let ii = 0; ii < this.layers.length; ++ii) {
     const layer = layers[ii];
     const bounds = layer.bounds;
-    if (layer.states.hidden) continue;
+    if (layer.hidden) continue;
     //if (!this.boundsInsideView(bounds)) continue;
+    // draw layer boundings
     if (MODES.DEV) {
       const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
       const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
-      const w = (bounds.w * TILE_SIZE) * cr;
-      const h = (bounds.h * TILE_SIZE) * cr;
-      this.drawRectangle(
+      const w = ((bounds.w) * TILE_SIZE) * cr;
+      const h = ((bounds.h) * TILE_SIZE) * cr;
+      /*this.drawRectangle(
         x, y,
         w, h,
-        this.buffers.boundingColor
-      );
+        [1, 0, 0, 0.1]
+      );*/
     }
     this.renderLayer(layer);
   };
@@ -120,8 +138,6 @@ export function renderLayer(layer) {
   const cx = this.cx | 0;
   const cy = this.cy | 0;
   const cr = this.cr;
-  const lx = layer.x * TILE_SIZE;
-  const ly = layer.y * TILE_SIZE;
   const batches = layer.batches;
   const sindex = this.sindex;
   const cached = this.canRenderCachedBuffer();
@@ -130,12 +146,12 @@ export function renderLayer(layer) {
     const bounds = batch.bounds;
     if (cached && !batch.forceRendering) continue;
     // batch index is higher than stack index, so ignore this batch
-    if (sindex - ii < 0) {
+    if (sindex - batch.getStackIndex() < 0) {
       if (!batch.forceRendering) continue;
     }
-    //if (!this.boundsInsideView(bounds)) continue;
-    const x = (cx + (lx + (bounds.x * TILE_SIZE) * cr)) | 0;
-    const y = (cy + (ly + (bounds.y * TILE_SIZE) * cr)) | 0;
+    if (!this.boundsInsideView(bounds)) continue;
+    const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+    const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
     const w = (bounds.w * TILE_SIZE) * cr;
     const h = (bounds.h * TILE_SIZE) * cr;
     // draw batch boundings
@@ -143,7 +159,7 @@ export function renderLayer(layer) {
       this.drawRectangle(
         x, y,
         w, h,
-        this.buffers.boundingColor
+        [1, 0, 0, 0.1]
       );
     }
     // erase by alpha blending
@@ -244,7 +260,7 @@ export function renderStats() {
   buffer.fillText(`Camera scale: ${this.cr}`, 8, 52);
   buffer.fillText(`Stack: ${this.sindex + 1}:${this.stack.length}`, 8, 64);
   // mouse color
-  let color = this.getPixelAt(mx, my);
+  let color = this.getAbsolutePixelAt(mx, my);
   if (color !== null) {
     buffer.fillStyle = colorToRgbaString(color);
     buffer.fillRect(8, 70, 8, 8);

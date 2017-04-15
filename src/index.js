@@ -9,6 +9,9 @@ import * as _emitter from "./event/emitter";
 import * as _listener from "./event/listener";
 
 import * as _env from "./env/functions";
+import * as _fill from "./env/fill";
+import * as _insert from "./env/insert";
+import * as _transform from "./env/transform";
 
 import * as _buffer from "./render/buffer";
 import * as _build from "./render/build";
@@ -25,10 +28,6 @@ import * as _undo from "./stack/undo";
 
 import * as _read from "./storage/read";
 import * as _write from "./storage/write";
-
-import * as _fill from "./transform/fill";
-import * as _rotate from "./transform/rotate";
-import * as _insert from "./transform/insert";
 
 import * as _ui from "./ui/index";
 
@@ -51,8 +50,6 @@ class Poxi {
     this.gl = null;
     // canvas reference
     this.view = null;
-    // empty texture
-    this.empty = null;
     // webgl program
     this.program = null;
     // global boundings
@@ -106,7 +103,6 @@ class Poxi {
     };
     // last things
     this.last = {
-      gx: 0, gy: 0, gw: 0, gh: 0,
       cx: 1, cy: 1,
       // mouse move coordinates
       mx: 0, my: 0,
@@ -119,10 +115,10 @@ class Poxi {
     this.buffers = {
       arc: null,
       rect: null,
-      stroke: false,
+      move: null,
+      stroke: null,
       erasing: null,
-      drawing: null,
-      boundingColor: [1, 0, 0, 0.1]
+      drawing: null
     };
     // keyboard related
     this.keys = {};
@@ -135,16 +131,19 @@ class Poxi {
       arc: false,
       rect: false,
       stroke: false,
+      moving: false,
       drawing: false,
       pipette: false,
       lighting: false,
       dragging: false,
       select: false,
-      selecting: false
+      selecting: false,
+      fastColorMenu: false
     };
     // mode related
     this.modes = {
       arc: false,
+      move: false,
       fill: false,
       rect: false,
       draw: false,
@@ -159,7 +158,9 @@ class Poxi {
     // indicates if we have to redraw our stage
     this.redraw = false;
     // global fill style
-    this.fillStyle = [255, 0, 0, 1];
+    this.fillStyle = [0, 0, 0, 0];
+    // favorite used colors
+    this.favoriteColors = [];
     this.setup();
   }
 };
@@ -173,6 +174,9 @@ extend(Poxi, _emitter);
 extend(Poxi, _listener);
 
 extend(Poxi, _env);
+extend(Poxi, _fill);
+extend(Poxi, _insert);
+extend(Poxi, _transform);
 
 extend(Poxi, _buffer);
 extend(Poxi, _build);
@@ -189,10 +193,6 @@ extend(Poxi, _undo);
 
 extend(Poxi, _read);
 extend(Poxi, _write);
-
-extend(Poxi, _fill);
-extend(Poxi, _rotate);
-extend(Poxi, _insert);
 
 extend(Poxi, _ui);
 

@@ -1,35 +1,65 @@
+import extend from "../extend";
 import { uid } from "../utils";
-import { MAX_SAFE_INTEGER } from "../cfg";
 
 import Boundings from "../bounds/index";
+
+import * as _matrix from "./matrix";
 
 /**
  * @class {Layer}
  */
 class Layer {
   /**
+   * @param {Poxi} instance
    * @constructor
    */
-  constructor() {
+  constructor(instance) {
     this.id = uid();
+    this.instance = instance;
     // position
     this.x = 0;
     this.y = 0;
+    // last boundings
+    this.last = { x: 0, y: 0, w: 0, h: 0 };
     // we can name layers
     this.name = null;
     // opacity applied over local batches
     this.opacity = 255.0;
-    // buffered texture of all our local batches
-    this.buffer = null;
+    // layer batch matrix
+    this.batch = instance.createDynamicBatch(0, 0);
     // batches we hold here
     this.batches = [];
     // relative boundings
     this.bounds = new Boundings();
-    // different layer states
-    this.states = {
-      hidden: false,
-      locked: false
-    };
+    // layer states get/set base
+    this._hidden = false;
+    this._locked = false;
+  }
+  /**
+   * @return {Boolean}
+   */
+  get hidden() {
+    return (this._hidden);
+  }
+  /**
+   * @param {Boolean} state
+   */
+  set hidden(state) {
+    this._hidden = state;
+    this.instance.redraw = true;
+  }
+  /**
+   * @return {Boolean}
+   */
+  get locked() {
+    return (this._locked);
+  }
+  /**
+   * @param {Boolean} state
+   */
+  set locked(state) {
+    this._locked = state;
+    this.instance.redraw = true;
   }
 };
 
@@ -40,7 +70,6 @@ class Layer {
 Layer.prototype.addBatch = function(batch) {
   batch.layer = this;
   this.batches.push(batch);
-  this.updateBoundings();
 };
 
 /**
@@ -60,30 +89,6 @@ Layer.prototype.getBatchById = function(id) {
   return (result);
 };
 
-Layer.prototype.updateBoundings = function() {
-  let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
-  let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
-  const batches = this.batches;
-  for (let ii = 0; ii < batches.length; ++ii) {
-    const batch = batches[ii];
-    const bounds = batch.bounds;
-    const bx = bounds.x; const by = bounds.y;
-    const bw = bx + bounds.w; const bh = by + bounds.h;
-    // ignore empty batches
-    if (bounds.w === 0 && bounds.h === 0) continue;
-    // calculate x
-    if (x < 0 && bx < x) x = bx;
-    else if (x >= 0 && (bx < 0 || bx < x)) x = bx;
-    // calculate y
-    if (y < 0 && by < y) y = by;
-    else if (y >= 0 && (by < 0 || by < y)) y = by;
-    // calculate width
-    if (bw > w) w = bw;
-    // calculate height
-    if (bh > h) h = bh;
-  };
-  // update our boundings
-  this.bounds.update(x, y, -x + w, -y + h);
-};
+extend(Layer, _matrix);
 
 export default Layer;
