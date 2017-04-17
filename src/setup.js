@@ -32,6 +32,7 @@ export function setup() {
   };
   // add some things manually
   (() => {
+    this.cache.layer = new Layer(this);
     this.layers.push(new Layer(this));
     this.layers.push(new Layer(this));
   })();

@@ -20,24 +20,21 @@ import CommandKind from "../stack/kind";
 export function fillBucket(x, y, color) {
   color = color || [255, 255, 255, 1];
   if (color[3] > 1) throw new Error("Invalid alpha color!");
-  const bounds = this.bounds;
   // differentiate between empty and colored tiles
-  const base = this.getRelativePixelAt(x, y) || BASE_TILE_COLOR;
+  const layer = this.getCurrentLayer();
+  const bounds = layer.bounds;
+  const base = layer.getPixelAt(x, y) || BASE_TILE_COLOR;
   // clicked tile color and fill colors matches, abort
   if (colorsMatch(base, color)) return;
   // save the current stack index
-  const batch = this.createDynamicBatch(x, y);
-  const layer = this.getCurrentLayer();
-  layer.addBatch(batch);
+  const batch = layer.createBatchAt(x, y);
   // flood fill
   let shape = this.getBinaryShape(x, y, base);
   // ups, we filled infinite
   if (shape === null) return;
   // now fill a buffer by our grid data
-  const bx = bounds.x;
-  const by = bounds.y;
-  const bw = bounds.w;
-  const bh = bounds.h;
+  const bx = bounds.x + layer.x; const by = bounds.y + layer.y;
+  const bw = bounds.w; const bh = bounds.h;
   const bcolor = [color[0], color[1], color[2], color[3]];
   batch.resizeRectangular(
     bx, by,
@@ -74,29 +71,27 @@ export function fillBucket(x, y, color) {
  */
 export function floodPaint(x, y) {
   const color = this.fillStyle;
-  const base = this.getRelativePixelAt(x, y);
+  const layer = this.getCurrentLayer();
+  const bounds = layer.bounds;
+  const base = layer.getPixelAt(x, y);
   // empty base tile or colors to fill are the same
   if (base === null || colorsMatch(base, color)) return;
-  const xx = this.bounds.x;
-  const yy = this.bounds.y;
-  const ww = this.bounds.w;
-  const hh = this.bounds.h;
-  const layer = this.getCurrentLayer();
-  const batch = this.createDynamicBatch(xx, yy);
-  layer.addBatch(batch);
+  const bx = bounds.x + layer.x; const by = bounds.y + layer.y;
+  const bw = bounds.w; const bh = bounds.h;
+  const batch = layer.createBatchAt(bx, by);
   batch.resizeRectangular(
-    xx, yy,
-    ww, hh
+    bx, by,
+    bw, bh
   );
   let count = 0;
   // flood paint
-  for (let ii = 0; ii < ww * hh; ++ii) {
-    const x = (ii % ww);
-    const y = (ii / ww) | 0;
-    const pixel = this.getRelativePixelAt(xx + x, yy + y);
+  for (let ii = 0; ii < bw * bh; ++ii) {
+    const xx = (ii % bw);
+    const yy = (ii / bw) | 0;
+    const pixel = layer.getPixelAt(bx + xx, by + yy);
     if (pixel === null) continue;
     if (!colorsMatch(base, pixel)) continue;
-    batch.drawPixel(xx + x, yy + y, color);
+    batch.drawPixelFast(bx + xx, by + yy, color);
     count++;
   };
   // nothing changed

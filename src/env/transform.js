@@ -18,9 +18,7 @@ export function flip(base, vertical) {
   const y = base.bounds.y;
   const ww = base.bounds.w;
   const hh = base.bounds.h;
-  const batch = this.createDynamicBatch(x, y);
-  const layer = this.getCurrentLayer();
-  layer.addBatch(batch);
+  const batch = layer.createBatchAt(x, y);
   batch.resizeRectangular(
     x, y,
     ww - 1, hh - 1

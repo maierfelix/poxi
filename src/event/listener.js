@@ -130,16 +130,18 @@ export function onMouseDown(e) {
   }
   const x = e.clientX;
   const y = e.clientY;
+  const layer = this.getCurrentLayer();
   const relative = this.getRelativeTileOffset(x, y);
+  const rx = relative.x; const ry = relative.y;
   if (e.which === 1) {
     this.resetSelection();
     if (this.modes.move) {
-      const layer = this.getLayerByPoint(relative.x, relative.y);
+      const layer = this.getLayerByPoint(rx, ry);
       if (layer !== null) {
         this.states.moving = true;
-        const batch = this.createDynamicBatch(relative.x, relative.y);
-        batch.position.mx = relative.x;
-        batch.position.my = relative.y;
+        const batch = this.createDynamicBatch(rx, ry);
+        batch.position.mx = rx;
+        batch.position.my = ry;
         batch.layer = layer;
         batch.isMover = true;
         this.buffers.move = batch;
@@ -152,75 +154,63 @@ export function onMouseDown(e) {
     }
     else if (this.modes.arc) {
       this.states.arc = true;
-      this.buffers.arc = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.arc = layer.createBatchAt(rx, ry);
       const batch = this.buffers.arc;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
     }
     else if (this.modes.rect) {
       this.states.rect = true;
-      this.buffers.rect = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.rect = layer.createBatchAt(rx, ry);
       const batch = this.buffers.rect;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
     }
     else if (this.modes.draw) {
       this.states.drawing = true;
-      this.buffers.drawing = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.drawing = layer.createBatchAt(rx, ry);
       const batch = this.buffers.drawing;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
-      batch.drawAt(relative.x, relative.y, SETTINGS.PENCIL_SIZE, this.fillStyle);
+      batch.drawAt(rx, ry, SETTINGS.PENCIL_SIZE, this.fillStyle);
       batch.refreshTexture(false);
     }
     else if (this.modes.erase) {
       this.states.erasing = true;
-      this.buffers.erasing = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.erasing = layer.createBatchAt(rx, ry);
       const batch = this.buffers.erasing;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
-      batch.clearRect(relative.x, relative.y, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
+      batch.clearRect(rx, ry, SETTINGS.ERASER_SIZE, SETTINGS.ERASER_SIZE);
       batch.refreshTexture(false);
       batch.isEraser = true;
     }
     else if (this.modes.light) {
       this.states.lighting = true;
-      this.buffers.lighting = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.lighting = layer.createBatchAt(rx, ry);
       const batch = this.buffers.lighting;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
-      batch.applyColorLightness(relative.x, relative.y, SETTINGS.LIGHTING_MODE);
+      batch.applyColorLightness(rx, ry, SETTINGS.LIGHTING_MODE);
       batch.refreshTexture(false);
     }
     else if (this.modes.stroke) {
       this.states.stroke = true;
-      this.buffers.stroke = this.createDynamicBatch(relative.x, relative.y);
+      this.buffers.stroke = layer.createBatchAt(rx, ry);
       const batch = this.buffers.stroke;
-      const layer = this.getCurrentLayer();
-      layer.addBatch(batch);
       batch.forceRendering = true;
       batch.refreshTexture(false);
     }
     else if (this.modes.flood) {
-      this.floodPaint(relative.x, relative.y);
+      this.floodPaint(rx, ry);
     }
     else if (this.modes.fill) {
-      this.fillBucket(relative.x, relative.y, this.fillStyle);
+      this.fillBucket(rx, ry, this.fillStyle);
     }
     else if (this.modes.shape) {
-      const batch = this.getShapeByOffset(relative.x, relative.y);
+      const batch = this.getShapeByOffset(rx, ry);
       this.shape = batch;
     }
     else if (this.modes.pipette) {
       this.states.pipette = true;
-      const color = this.getAbsolutePixelAt(relative.x, relative.y);
+      const color = this.getAbsolutePixelAt(rx, ry);
       if (color !== null) {
         this.fillStyle = color;
         color_view.style.background = color.value = rgbaToHex(color);
@@ -250,6 +240,7 @@ export function onMouseMove(e) {
   const last = this.last;
   const layer = this.getCurrentLayer();
   const relative = this.getRelativeTileOffset(x, y);
+  const rx = relative.x; const ry = relative.y;
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
   if (this.modes.move) {
@@ -259,15 +250,15 @@ export function onMouseMove(e) {
     this.drag(x, y);
     this.hover(x, y);
     lastx = x; lasty = y;
-    last.mx = relative.x; last.my = relative.y;
+    last.mx = rx; last.my = ry;
     return;
   }
+  if (last.mx === rx && last.my === ry) return;
   this.hover(x, y);
-  if (last.mx === relative.x && last.my === relative.y) return;
   this.redraw = true;
   if (this.states.moving) {
     const batch = this.buffers.move;
-    batch.move(relative.x, relative.y);
+    batch.move(rx, ry);
     batch.refreshTexture(false);
   }
   else if (this.states.arc) {
@@ -275,7 +266,7 @@ export function onMouseMove(e) {
     batch.clear();
     const sx = this.last.mdrx;
     const sy = this.last.mdry;
-    const radius = pointDistance(sx, sy, relative.x, relative.y);
+    const radius = pointDistance(sx, sy, rx, ry);
     this.strokeArc(batch, sx, sy, radius, this.fillStyle);
     batch.refreshTexture(false);
   }
@@ -284,15 +275,15 @@ export function onMouseMove(e) {
     batch.clear();
     const sx = this.last.mdrx;
     const sy = this.last.mdry;
-    const ww = relative.x - sx;
-    const hh = relative.y - sy;
+    const ww = rx - sx;
+    const hh = ry - sy;
     this.strokeRect(batch, sx, sy, ww, hh, this.fillStyle);
     batch.refreshTexture(false);
   }
   else if (this.states.stroke) {
     const batch = this.buffers.stroke;
     batch.clear();
-    this.insertLine(this.last.mdrx, this.last.mdry, relative.x, relative.y);
+    this.insertLine(this.last.mdrx, this.last.mdry, rx, ry);
     batch.refreshTexture(false);
   }
   else if (this.states.drawing) {
@@ -319,14 +310,14 @@ export function onMouseMove(e) {
     this.selectTo(x, y);
   }
   else if (this.states.pipette) {
-    const color = this.getAbsolutePixelAt(relative.x, relative.y);
+    const color = this.getAbsolutePixelAt(rx, ry);
     if (color !== null) {
       this.fillStyle = color;
       color_view.style.background = color.value = rgbaToHex(color);
     }
   }
   lastx = x; lasty = y;
-  last.mx = relative.x; last.my = relative.y;
+  last.mx = rx; last.my = ry;
 };
 
 /**
@@ -388,6 +379,7 @@ export function onMouseUp(e) {
     else if (this.states.drawing) {
       const batch = this.buffers.drawing;
       batch.forceRendering = false;
+      batch.resizeByMatrixData();
       this.states.drawing = false;
       this.enqueue(CommandKind.DRAW, batch);
       this.buffers.drawing = null;
@@ -395,6 +387,7 @@ export function onMouseUp(e) {
     else if (this.states.erasing) {
       const batch = this.buffers.erasing;
       batch.forceRendering = false;
+      batch.resizeByMatrixData();
       this.states.erasing = false;
       if (batch.isEmpty()) batch.kill();
       else this.enqueue(CommandKind.ERASE, batch);
@@ -534,10 +527,12 @@ export function onContextmenu(e) {
  * @param {Event} e
  */
 export function onMouseWheel(e) {
+  if (!(e.target instanceof HTMLCanvasElement)) return;
   e.preventDefault();
   const x = e.clientX;
   const y = e.clientY;
   const value = e.deltaY > 0 ? -1 : 1;
   this.click(x, y);
   this.scale(value);
+  this.hover(x, y);
 };

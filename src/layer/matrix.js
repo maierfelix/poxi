@@ -71,34 +71,19 @@ export function updateBoundings() {
  * @return {Array}
  */
 export function getPixelAt(x, y) {
-  const batch = this.batch;
-  const bw = batch.bounds.w;
-  const bh = batch.bounds.h;
-  const lx = this.x;
-  const ly = this.y;
+  const bw = this.bounds.w;
+  const bh = this.bounds.h;
   // normalize coordinates
-  const xx = x - (lx + batch.bounds.x);
-  const yy = y - (ly + batch.bounds.y);
+  const dx = (x - this.x) | 0;
+  const dy = (y - this.y) | 0;
+  const xx = dx - this.bounds.x;
+  const yy = dy - this.bounds.y;
   // check if point inside boundings
   if (
     (xx < 0 || yy < 0) ||
     (bw <= 0 || bh <= 0) ||
     (xx >= bw || yy >= bh)
   ) return (null);
-  // now extract the data
-  const data = batch.data;
-  // imagedata array is 1d
-  const idx = (yy * bw + xx) * 4;
-  // pixel index out of bounds
-  if (idx < 0 || idx >= data.length) return (null);
-  // get each color value
-  const r = data[idx + 0];
-  const g = data[idx + 1];
-  const b = data[idx + 2];
-  const a = data[idx + 3];
-  const color = [r, g, b, alphaByteToRgbAlpha(a)];
-  // dont return anything if we got no valid color
-  if (a <= 0) return (null);
-  // finally return the color array
-  return (color);
+  // now get the pixel from the layer matrix
+  return (this.batch.getRawPixelAt(dx, dy));
 };

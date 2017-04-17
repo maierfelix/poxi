@@ -35,6 +35,7 @@ import * as _setup from "./setup";
 
 import { BASE_SCALE } from "./cfg";
 
+import Layer from "./Layer/index";
 import Boundings from "./bounds/index";
 
 /**
@@ -86,6 +87,8 @@ class Poxi {
     this.cache = {
       bg: null,
       fg: null,
+      // unused base layer
+      layer: null,
       fgTexture: null,
       grid: null,
       gridTexture: null,

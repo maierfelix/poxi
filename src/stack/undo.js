@@ -1,3 +1,5 @@
+import CommandKind from "./kind";
+
 /**
  * @return {Void}
  */
@@ -25,7 +27,9 @@ export function dequeue(from, to) {
   for (let ii = count; ii > 0; --ii) {
     const idx = from + ii - 1;
     const cmd = this.stack[idx];
-    cmd.batch.kill();
+    if (cmd.kind !== CommandKind.MOVE) {
+      cmd.batch.kill();
+    }
     this.stack.splice(idx, 1);
   };
 };

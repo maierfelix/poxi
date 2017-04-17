@@ -54,11 +54,12 @@ export function drawPixel(x, y, color) {
 export function drawPixelFast(x, y, color) {
   const data = this.data;
   const rdata = this.reverse;
-  const bounds = this.bounds;
-  const xx = (x - bounds.x);
-  const yy = (y - bounds.y);
-  const idx = 4 * (yy * bounds.w + xx);
-  const pixel = this.instance.getRelativePixelAt(x, y);
+  const dx = x - this.layer.x;
+  const dy = y - this.layer.y;
+  const xx = dx - this.bounds.x;
+  const yy = dy - this.bounds.y;
+  const idx = 4 * (yy * this.bounds.w + xx);
+  const pixel = this.layer.getPixelAt(x, y);
   // save earlier pixel state into reverse matrix
   if (rdata[idx + 3] <= 0 && pixel !== null) {
     rdata[idx + 0] = pixel[0];
@@ -108,7 +109,7 @@ export function clearRect(x, y, w, h) {
  * @return {Void}
  */
 export function erasePixel(x, y) {
-  const pixel = this.instance.getRelativePixelAt(x, y);
+  const pixel = this.layer.getPixelAt(x, y);
   // nothing to erase
   if (pixel === null) return;
   this.resizeByOffset(x, y);
@@ -124,11 +125,11 @@ export function erasePixel(x, y) {
 export function erasePixelFast(x, y, pixel) {
   const data = this.data;
   const rdata = this.reverse;
-  const bounds = this.bounds;
-  // coordinates at this batch
-  const xx = x - this.bounds.x;
-  const yy = y - this.bounds.y;
-  const idx = 4 * (yy * bounds.w + xx);
+  const dx = x - this.layer.x;
+  const dy = y - this.layer.y;
+  const xx = dx - this.bounds.x;
+  const yy = dy - this.bounds.y;
+  const idx = 4 * (yy * this.bounds.w + xx);
   // save old pixel into reverse matrix if not set yet
   if (rdata[idx + 3] <= 0) {
     rdata[idx + 0] = pixel[0];

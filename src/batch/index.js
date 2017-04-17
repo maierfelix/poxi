@@ -106,7 +106,7 @@ Batch.prototype.kill = function() {
       }
     };
   };
-  if (count <= 0) {
+  if (count <= 0 && !this.isMover) {
     throw new Error(`Failed to kill batch:${this.id}`);
   }
 };

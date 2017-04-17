@@ -86,9 +86,8 @@ export function copyBySelection(selection) {
 export function pasteAt(x, y, sel) {
   const pixels = sel.pixels;
   if (pixels === null || !pixels.length) return;
-  const batch = this.createDynamicBatch(x, y);
   const layer = this.getCurrentLayer();
-  layer.addBatch(batch);
+  const batch = layer.createBatchAt(x, y);
   batch.resizeRectangular(
     x, y,
     sel.w - 1, sel.h - 1
@@ -126,9 +125,8 @@ export function clearSelection(selection) {
   const data = shape.data;
   const x = selection.x; const y = selection.y;
   const w = selection.w; const h = selection.h;
-  const batch = this.createDynamicBatch(x, y);
   const layer = this.getCurrentLayer();
-  layer.addBatch(batch);
+  layer.createBatchAt(x, y);
   batch.isEraser = true;
   const bw = bounds.w; const bh = bounds.h;
   batch.resizeRectangular(

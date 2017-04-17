@@ -34,7 +34,7 @@ export function getLayerByPoint(x, y) {
   for (let ii = 0; ii < layers.length; ++ii) {
     const idx = layers.length - 1 - ii;
     const layer = layers[idx];
-    if (layer.bounds.isPointInside(x, y)) return (layer);
+    if (layer.bounds.isPointInside(x - layer.x, y - layer.y)) return (layer);
   };
   return (null);
 };
@@ -158,7 +158,7 @@ export function updateGlobalBoundings() {
     const layer = layers[ii];
     layer.updateBoundings();
     const bounds = layer.bounds;
-    const bx = bounds.x; const by = bounds.y;
+    const bx = layer.x + bounds.x; const by = layer.y + bounds.y;
     const bw = bx + bounds.w; const bh = by + bounds.h;
     // ignore empty layers
     if (bounds.w === 0 && bounds.h === 0) continue;
@@ -203,17 +203,18 @@ export function mergeLayers(la, lb) {
  * @return {Uint8Array}
  */
 export function getBinaryShape(x, y, base) {
-  const bounds = this.bounds;
-  const bx = bounds.x; const by = bounds.y;
-  const gw = bounds.w; const gh = bounds.h;
+  const layer = this.getCurrentLayer();
+  const bounds = layer.bounds;
+  const bx = layer.x + bounds.x; const by = layer.y + bounds.y;
+  const bw = bounds.w; const bh = bounds.h;
   const isEmpty = base[3] === 0;
-  const gridl = gw * gh;
+  const gridl = bw * bh;
   // allocate and do a basic fill onto the grid
-  let grid = new Uint8Array(gw * gh);
+  let grid = new Uint8Array(bw * bh);
   for (let ii = 0; ii < gridl; ++ii) {
-    const xx = ii % gw;
-    const yy = (ii / gw) | 0;
-    const color = this.getRelativePixelAt(bx + xx, by + yy);
+    const xx = ii % bw;
+    const yy = (ii / bw) | 0;
+    const color = layer.getPixelAt(bx + xx, by + yy);
     // empty tile based
     if (isEmpty) { if (color !== null) continue; }
     // color based
@@ -222,20 +223,20 @@ export function getBinaryShape(x, y, base) {
       if (!(base[0] === color[0] && base[1] === color[1] && base[2] === color[2])) continue;
     }
     // fill tiles with 1's if we got a color match
-    grid[yy * gw + xx] = 1;
+    grid[yy * bw + xx] = 1;
   };
   // trace connected tiles by [x,y]=2
   let queue = [{x: x - bx, y: y - by}];
   while (queue.length > 0) {
     const point = queue.pop();
     const x = point.x; const y = point.y;
-    const idx = y * gw + x;
+    const idx = y * bw + x;
     // set this grid tile to 2, if it got traced earlier as a color match
     if (grid[idx] === 1) grid[idx] = 2;
-    const nn = (y-1) * gw + x;
-    const ee = y * gw + (x+1);
-    const ss = (y+1) * gw + x;
-    const ww = y * gw + (x-1);
+    const nn = (y-1) * bw + x;
+    const ee = y * bw + (x+1);
+    const ss = (y+1) * bw + x;
+    const ww = y * bw + (x-1);
     if (grid[nn] === 1) queue.push({x, y:y-1});
     if (grid[ee] === 1) queue.push({x:x+1, y});
     if (grid[ss] === 1) queue.push({x, y:y+1});

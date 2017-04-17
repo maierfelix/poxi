@@ -16,8 +16,7 @@ import CommandKind from "../stack/kind";
  */
 export function insertImage(ctx, x, y) {
   const layer = this.getCurrentLayer();
-  const batch = this.createDynamicBatch(x, y);
-  layer.addBatch(batch);
+  const batch = layer.createBatchAt(x, y);
   const view = ctx.canvas;
   const width = view.width; const height = view.height;
   const data = ctx.getImageData(0, 0, width, height).data;

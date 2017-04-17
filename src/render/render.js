@@ -149,9 +149,9 @@ export function renderLayer(layer) {
     if (sindex - batch.getStackIndex() < 0) {
       if (!batch.forceRendering) continue;
     }
-    if (!this.boundsInsideView(bounds)) continue;
-    const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
-    const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+    //if (!this.boundsInsideView(bounds)) continue;
+    const x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr)) | 0;
+    const y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr)) | 0;
     const w = (bounds.w * TILE_SIZE) * cr;
     const h = (bounds.h * TILE_SIZE) * cr;
     // draw batch boundings

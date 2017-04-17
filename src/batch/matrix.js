@@ -24,15 +24,16 @@ export function resizeRectangular(x, y, w, h) {
  * @param {Number} y
  */
 export function resizeByOffset(x, y) {
-  const layer = this.layer;
   const bounds = this.bounds;
-  let bx = layer.x + bounds.x; let by = layer.y + bounds.y;
-  const w = (Math.abs(bx - x) | 0) + 1;
-  const h = (Math.abs(by - y) | 0) + 1;
+  let bx = bounds.x; let by = bounds.y;
+  const dx = x - this.layer.x;
+  const dy = y - this.layer.y;
+  const w = (Math.abs(bx - dx) | 0) + 1;
+  const h = (Math.abs(by - dy) | 0) + 1;
   const ox = bx; const oy = by;
   const ow = bounds.w; const oh = bounds.h;
-  const xx = -(bx - x) | 0;
-  const yy = -(by - y) | 0;
+  const xx = -(bx - dx) | 0;
+  const yy = -(by - dy) | 0;
   // resize bound rect to left, top
   if (xx < 0) {
     bx += xx - BATCH_JUMP_RESIZE;
@@ -156,14 +157,15 @@ export function resizeMatrix(x, y, w, h) {
  */
 export function injectMatrix(batch, state) {
   const buffer = this.data;
-  const layer = batch.layer;
   const isEraser = batch.isEraser;
   const data = state ? batch.data : batch.reverse;
   const bw = batch.bounds.w | 0;
-  const dx = (batch.bounds.x - this.bounds.x) | 0;
-  const dy = (batch.bounds.y - this.bounds.y) | 0;
+  const bx = (this.bounds.x) | 0;
+  const by = (this.bounds.y) | 0;
+  const dx = (batch.bounds.x - bx) | 0;
+  const dy = (batch.bounds.y - by) | 0;
   const w = this.bounds.w | 0; const h = this.bounds.h | 0;
-  const x = this.bounds.x | 0; const y = this.bounds.y | 0;
+  const x = bx | 0; const y = by | 0;
   // loop given batch data and merge it with our main matrix
   for (let ii = 0; ii < data.length; ii += 4) {
     const idx = (ii / 4) | 0;
@@ -222,8 +224,8 @@ export function injectMatrix(batch, state) {
  */
 export function getRawPixelAt(x, y) {
   // normalize coordinates
-  const xx = x - this.bounds.x;
-  const yy = y - this.bounds.y;
+  const xx = x - (this.bounds.x);
+  const yy = y - (this.bounds.y);
   // now extract the data
   const data = this.data;
   // imagedata array is 1d

@@ -1,6 +1,7 @@
 import extend from "../extend";
 import { uid } from "../utils";
 
+import Batch from "../batch/index";
 import Boundings from "../bounds/index";
 
 import * as _matrix from "./matrix";
@@ -26,7 +27,7 @@ class Layer {
     // opacity applied over local batches
     this.opacity = 255.0;
     // layer batch matrix
-    this.batch = instance.createDynamicBatch(0, 0);
+    this.batch = null;
     // batches we hold here
     this.batches = [];
     // relative boundings
@@ -34,6 +35,15 @@ class Layer {
     // layer states get/set base
     this._hidden = false;
     this._locked = false;
+    this.allocateLayerMatrix();
+  }
+  allocateLayerMatrix() {
+    const instance = this.instance;
+    this.batch = instance.createDynamicBatch(0, 0);
+    // add reference to unused layer so we can use
+    // the batch matrix logic for our layers too
+    // but without including layer x,y in calculations
+    this.batch.layer = instance.cache.layer;
   }
   /**
    * @return {Boolean}
@@ -61,6 +71,20 @@ class Layer {
     this._locked = state;
     this.instance.redraw = true;
   }
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Batch}
+ */
+Layer.prototype.createBatchAt = function(x, y) {
+  const dx = (x - this.x) | 0;
+  const dy = (y - this.y) | 0;
+  const batch = new Batch(this.instance);
+  batch.prepareMatrix(dx, dy);
+  this.addBatch(batch);
+  return (batch);
 };
 
 /**
