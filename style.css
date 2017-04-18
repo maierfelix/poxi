@@ -315,7 +315,15 @@ input[type="color"] {
   margin-left: 1px;
 }
 
-.layer-item:hover {
+.layer-item img:hover {
+  opacity: 0.65;
+}
+
+.layer-item input {
+  outline: none;
+}
+
+.layer-item input:hover {
   color: #939393;
 }
 
@@ -409,6 +417,10 @@ input[type="color"] {
   height: 20px;
   opacity: 0.295;
   cursor: pointer;
+}
+
+.layer-menu img:hover {
+  opacity: 0.65;
 }
 
 .selected {

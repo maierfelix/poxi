@@ -148,7 +148,7 @@ var WGL_SUPPORTED = (
 
 // dev mode state
 var MODES = {
-  DEV: false
+  DEV: true
 };
 
 // different settings
