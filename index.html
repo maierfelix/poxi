@@ -2,106 +2,138 @@
 <html>
   <head>
     <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Poxi - Unleash the pixels!</title>
     <link href="./style.css" rel="stylesheet" />
   </head>
   <body>
-    <div class="bottom-menu">
-      <div class="bottom-menu-items">
-        <a class="tooltip" style="float: left;">
-          <img id="select" src="assets/img/select.png" class="item" />
-          <span class="tooltiptext">Selection</span>
-        </a>
-        <a class="tooltip" style="float: left;">
-          <img id="move" src="assets/img/move.png" class="item unavailable" />
-          <span class="tooltiptext">Unavailable</span>
-        </a>
-        <img class="item" style="opacity: 0; float: left;" />
-        <a class="tooltip" style="float: left;">
-          <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
-          <span class="tooltiptext">Stroked Rectangle</span>
-        </a>
-        <a class="tooltip" style="float: left;">
-          <img id="arc" src="assets/img/circle_stroke.png" class="item" />
-          <span class="tooltiptext">Stroked Circle</span>
-        </a>
-        <a class="tooltip">
-          <img id="stroke" src="assets/img/stroke.png" class="item" />
-          <span class="tooltiptext">Stroked Line</span>
-        </a>
-        <div class="dropdown">
-          <img id="tiled" src="assets/img/pencil.png" class="item" />
-          <div id="pencil-size" class="dropdown-content">
-            <a href="#">1</a>
-            <a href="#">2</a>
-            <a href="#">4</a>
-            <a href="#">8</a>
-            <a href="#">16</a>
-          </div>
+    <div id="ui">
+      <div class="right-menu">
+        <!--<div class="layer-title">
+          <img class="layer-title-img" src="assets/img/layers.png">
+          <span class="layer-span-title">Layers</span>
+        </div>-->
+        <div class="layer-menu">
+            <img id="add_layer" src="assets/img/plus.png">
+            <img id="move_layer_up" src="assets/img/up.png">
+            <img id="move_layer_down" src="assets/img/down.png">
+            <img id="remove_layer" src="assets/img/minus.png">
         </div>
-        <div class="dropdown">
-          <img id="erase" src="assets/img/eraser.png" class="item" />
-          <div id="eraser-size" class="dropdown-content">
-            <a href="#">1</a>
-            <a href="#">2</a>
-            <a href="#">4</a>
-            <a href="#">8</a>
-            <a href="#">16</a>
+        <div id="layers" class="layer-wrapper"></div>
+      </div>
+      <div class="bottom-menu">
+        <div class="bottom-menu-items">
+          <a class="tooltip" style="float: left;">
+            <img id="select" src="assets/img/select.png" class="item" />
+            <span class="tooltiptext">Selection</span>
+          </a>
+          <a class="tooltip" style="float: left;">
+            <img id="shape" src="assets/img/shape.png" class="item" />
+            <span class="tooltiptext">Shape Selection</span>
+          </a>
+          <a class="tooltip" style="float: left;">
+            <img id="move" src="assets/img/move.png" class="item" />
+            <span class="tooltiptext">Move</span>
+          </a>
+          <img class="item" style="opacity: 0; float: left;" />
+          <a class="tooltip" style="float: left;">
+            <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
+            <span class="tooltiptext">Insert Rectangle</span>
+          </a>
+          <a class="tooltip" style="float: left;">
+            <img id="arc" src="assets/img/circle_stroke.png" class="item" />
+            <span class="tooltiptext">Insert Circle</span>
+          </a>
+          <a class="tooltip" style="float: left;">
+            <img id="stroke" src="assets/img/stroke.png" class="item" />
+            <span class="tooltiptext">Insert Line</span>
+          </a>
+          <div class="dropdown">
+            <img id="lighting" src="assets/img/light_on.png" class="item" />
+            <div id="light-size" class="dropdown-content">
+              <a href="#">1</a>
+              <a href="#">2</a>
+              <a href="#">4</a>
+              <a href="#">8</a>
+              <a href="#">16</a>
+            </div>
           </div>
+          <div class="dropdown">
+            <img id="tiled" src="assets/img/pencil.png" class="item" />
+            <div id="pencil-size" class="dropdown-content">
+              <a href="#">1</a>
+              <a href="#">2</a>
+              <a href="#">4</a>
+              <a href="#">8</a>
+              <a href="#">16</a>
+            </div>
+          </div>
+          <div class="dropdown">
+            <img id="erase" src="assets/img/eraser.png" class="item" />
+            <div id="eraser-size" class="dropdown-content">
+              <a href="#">1</a>
+              <a href="#">2</a>
+              <a href="#">4</a>
+              <a href="#">8</a>
+              <a href="#">16</a>
+            </div>
+          </div>
+          <a class="tooltip">
+            <span id="color_view" class="color-wrapper">
+              <input id="color" type="color" class="item" value="#ff0000"/>
+            </span>
+            <span id="color_hex" class="tooltiptext" style="margin-bottom: 3.5px;"></span>
+          </a>
+          <a class="tooltip">
+            <img id="pipette" src="assets/img/pipette.png" class="item" />
+            <span class="tooltiptext">Pipette</span>
+          </a>
+          <a class="tooltip">
+            <img id="bucket" src="assets/img/bucket.png" class="item" />
+            <span class="tooltiptext">Bucket</span>
+          </a>
+          <a class="tooltip">
+            <img id="paint_all" src="assets/img/palette.png" class="item" />
+            <span class="tooltiptext">Flood Paint</span>
+          </a>
+          <a href="https://github.com/maierfelix/poxi" style="float: right;">
+            <img src="assets/img/github.png" class="item" style="float:right;" />
+          </a>
+          <a class="tooltip" style="float: right;">
+            <img id="download" src="assets/img/download.png" class="item" />
+            <span class="tooltiptext">Download</span>
+          </a>
+          <img class="item" style="opacity: 0; float: right;" />
+          <img class="item" style="opacity: 0; float: right;" />
+          <a class="tooltip" style="float: right;">
+            <img id="redo" src="assets/img/undo.png" class="item" />
+            <span class="tooltiptext">Undo</span>
+          </a>
+          <a class="tooltip" style="float: right;">
+            <img id="undo" src="assets/img/redo.png" class="item" />
+            <span class="tooltiptext">Redo</span>
+          </a>
+          <!--<img src="assets/img/select.png" class="item" />-->
         </div>
-        <a class="tooltip">
-          <span id="color_view" class="color-wrapper">
-            <input id="color" type="color" class="item" value="#ff0000"/>
-          </span>
-          <span id="color_hex" class="tooltiptext" style="margin-bottom: 3.5px;"></span>
-        </a>
-        <a class="tooltip">
-          <img id="pipette" src="assets/img/pipette.png" class="item" />
-          <span class="tooltiptext">Pipette</span>
-        </a>
-        <a class="tooltip">
-          <img id="bucket" src="assets/img/bucket.png" class="item" />
-          <span class="tooltiptext">Bucket</span>
-        </a>
-        <a class="tooltip">
-          <img id="paint_all" src="assets/img/palette.png" class="item" />
-          <span class="tooltiptext">Flood Paint</span>
-        </a>
-        <a href="https://github.com/maierfelix/poxi" style="float: right;">
-          <img src="assets/img/github.png" class="item" style="float:right;" />
-        </a>
-        <a class="tooltip" style="float: right;">
-          <img id="download" src="assets/img/download.png" class="item" />
-          <span class="tooltiptext">Download</span>
-        </a>
-        <img class="item" style="opacity: 0; float: right;" />
-        <a class="tooltip" style="float: right;">
-          <img id="redo" src="assets/img/undo.png" class="item" />
-          <span class="tooltiptext">Undo</span>
-        </a>
-        <a class="tooltip" style="float: right;">
-          <img id="undo" src="assets/img/redo.png" class="item" />
-          <span class="tooltiptext">Redo</span>
-        </a>
-        <!--<img src="assets/img/select.png" class="item" />-->
+      </div>
+      <!-- hd cursors -->
+      <!--<div id="cursors">
+        <img id="ctiled" src="assets/img/pencil.png" class="cursor" />
+        <img id="cerase" src="assets/img/eraser.png" class="cursor" />
+        <img id="cpipette" src="assets/img/pipette.png" class="cursor" />
+        <img id="cbucket" src="assets/img/bucket.png" class="cursor" />
+      </div>-->
+      <div id="menu">
+        <div id="colors" class="dropdown-wrapper">
+          <div color="[255, 0, 0, 1]" style="background: #ff0000"></div>
+        </div>
       </div>
     </div>
-    <!-- hd cursors -->
-    <!--<div id="cursors">
-      <img id="ctiled" src="assets/img/pencil.png" class="cursor" />
-      <img id="cerase" src="assets/img/eraser.png" class="cursor" />
-      <img id="cpipette" src="assets/img/pipette.png" class="cursor" />
-      <img id="cbucket" src="assets/img/bucket.png" class="cursor" />
-    </div>-->
-    <!--<div id="menu" class="dropdown-content">
-      <div id="colors" class="dropdown-wrapper">
-        <div style="background: #ff0000"></div>
-        <div style="background: #ff0000"></div>
-      </div>
-    </div>-->
     <input id="file" type="file" title=" " />
     <script type="text/javascript" src="./bundle.js"></script>
-    <!--<script type="text/javascript" src="./stats.js"></script>
-    <script>
+    <script type="text/javascript" src="./stats.js"></script>
+    <!--<script>
       var stats = new Stats();
       document.body.appendChild(stats.dom);
       stats.dom.style.left = "";

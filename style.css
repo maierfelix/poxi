@@ -4,10 +4,15 @@ canvas {
   image-rendering: pixelated;
 }
 
+@font-face {
+  font-family: Hasklig;
+  src: url("./assets/font/Hasklig.otf") format("opentype");
+}
+
 body {
   margin: 0;
   overflow: hidden;
-  font-family: Verdana,sans-serif;
+  font-family: Hasklig, monospace;
   font-size: 15px;
   line-height: 1.5;
 }
@@ -27,7 +32,6 @@ body {
   position: absolute;
   z-index: 9999;
   background: rgba(255,255,255,0.05);
-  font-family: "Andale Mono", AndaleMono, monospace;
   border: 1px solid rgba(255, 255, 255, .35);
   color: rgba(255, 255, 255, .75);
   text-decoration: none;
@@ -59,9 +63,9 @@ input[type="color"] {
   width: 28px;
   height: 28px;
   opacity: 0.65;
-  transition: opacity 0.1s ease-in-out;
+  /*transition: opacity 0.1s ease-in-out;
   -moz-transition: opacity 0.1s ease-in-out;
-  -webkit-transition: opacity 0.1s ease-in-out;
+  -webkit-transition: opacity 0.1s ease-in-out;*/
   top: 2px;
   vertical-align: bottom;
   position: relative;
@@ -103,10 +107,9 @@ input[type="color"] {
   opacity: 0.295;
   padding-right: 8px;
   padding-left: 8px;
-  cursor: pointer;
-  transition: opacity 0.1s ease-in-out;
+  /*transition: opacity 0.1s ease-in-out;
   -moz-transition: opacity 0.1s ease-in-out;
-  -webkit-transition: opacity 0.1s ease-in-out;
+  -webkit-transition: opacity 0.1s ease-in-out;*/
 }
 
 .bottom-menu-items .item:hover {
@@ -167,15 +170,8 @@ input[type="color"] {
   padding-bottom: 2px;
 }
 
-.dropdown-wrapper {
-  height: inherit;
-  background: rgba(0,0,0,0);
-  padding-top: 2px;
-  max-width: 164px;
-}
-
 .dropdown-wrapper div {
-  margin: 5px;
+  margin: 5px 5px 6px 5px;
   float: left;
   width: 18px;
   height: 18px;
@@ -188,13 +184,14 @@ input[type="color"] {
 .tooltip {
   position: relative;
   display: inline-block;
+  cursor: pointer;
 }
 
 .tooltip .tooltiptext {
   opacity: 0;
   visibility: hidden;
   min-width: 110px;
-  font-size: 10px;
+  font-size: 9px;
   background-color: rgba(31, 31, 31, 0.95);
   color: #838383;
   text-align: center;
@@ -202,9 +199,9 @@ input[type="color"] {
   border-radius: 0px;
   position: absolute;
   z-index: 1;
-  transition: opacity 0.25s ease-in-out;
+  /*transition: opacity 0.25s ease-in-out;
   -moz-transition: opacity 0.25s ease-in-out;
-  -webkit-transition: opacity 0.25s ease-in-out;
+  -webkit-transition: opacity 0.25s ease-in-out;*/
   bottom: 102%;
   left: 50%;
   margin-left: -60px;
@@ -224,6 +221,7 @@ input[type="color"] {
 .dropdown {
   position: relative;
   display: inline-block;
+  cursor: pointer;
 }
 
 .dropdown-content {
@@ -240,9 +238,14 @@ input[type="color"] {
   margin-top: -167px;
   margin-left: -17px;
   min-width: 77px;
-  transition: opacity 0.25s ease-in-out;
+  /*transition: opacity 0.25s ease-in-out;
   -moz-transition: opacity 0.25s ease-in-out;
-  -webkit-transition: opacity 0.25s ease-in-out;
+  -webkit-transition: opacity 0.25s ease-in-out;*/
+}
+
+.dropdown-content .active {
+  background-color: rgba(38, 38, 38, 0.55);
+  color: #a1a1a1;
 }
 
 .dropdown-content a {
@@ -254,11 +257,183 @@ input[type="color"] {
 }
 
 .dropdown-content a:hover {
-  background-color: rgba(38, 38, 38, 0.95);
-  color: #717171;
+  background-color: rgba(38, 38, 38, 0.95) !important;
+  color: #c3c3c3;
 }
 
 .dropdown:hover .dropdown-content {
   visibility: visible;
   opacity: 1;
+}
+
+#menu {
+  position: absolute;
+  z-index: 9999;
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 0px;
+  background-color: rgba(31, 31, 31, 0.95);
+  opacity: 0.9;
+  visibility: hidden;
+}
+
+.dropdown-wrapper {
+  height: inherit;
+  background: rgba(0,0,0,0);
+  max-width: 235px;
+}
+
+#colors div {
+  opacity: 0.65;
+  border: 1px solid black;
+}
+
+#colors div:hover {
+  opacity: 0.9;
+}
+
+.right-menu {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 128px;
+  height: calc(100% - 38px);
+  background: rgba(31, 31, 31, 0.95);
+  text-shadow: 0 0 black;
+}
+
+.layer-item {
+  height: 20px;
+  text-align: center;
+  font-size: 10px;
+  background-color: rgba(31, 31, 31, 0);
+  color: #838383;
+  padding: 4px 0;
+  border-radius: 0px;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  cursor: pointer;
+  width: 124px;
+  margin-left: 1px;
+}
+
+.layer-item:hover {
+  color: #939393;
+}
+
+.layer-wrapper {
+  top: 30px;
+  max-height: 142px;
+  position: absolute;
+  width: 100%;
+  border-top: 1px solid rgba(255,255,255,0.02);
+  overflow-y: scroll;
+  overflow-x: hidden;
+  background: rgba(0,0,0,0);
+}
+
+.layer-title {
+  padding: 4px;
+  text-align: center;
+  font-size: 10px;
+  color: #838383;
+  border-radius: 0px;
+  cursor: pointer;
+  margin-left: 1px;
+  background: rgba(0,0,0,0);
+}
+
+.layer-span-title {
+  float: left;
+  padding: 5px;
+  padding-left: 8px;
+}
+
+.layer-title-img {
+  width: 26px;
+  height: 26px;
+  opacity: 0.295;
+  float: left;
+  padding-left: 22px;
+}
+
+.layer-item-visible {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.295;
+  padding-left: 10px;
+  padding-right: 10px;
+  float: left;
+}
+
+.layer-item-locked {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.295;
+  padding-right: 10px;
+  margin-left: -5px;
+  float: left;
+}
+
+.layer-text {
+  border: 0;
+  background-color: rgba(0,0,0,0);
+  width: calc(100% - 64px);
+  height: 20px;
+  color: #838383;
+  font-size: 10px;
+  margin-top: -1px;
+  margin-left: -12px;
+}
+
+.layer-text[readonly] {
+  cursor: pointer;
+  outline: none;
+  border: none;
+  color: transparent;
+  text-shadow: 0 0 0 gray;
+}
+
+.layer-menu {
+  top: 5px;
+  position: absolute;
+  width: 100%;
+  background: rgba(0,0,0,0);
+  padding-bottom: 0px;
+  text-align: center;
+  cursor: default;
+}
+
+.layer-menu img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.295;
+  cursor: pointer;
+}
+
+.selected {
+  background-color: rgba(42, 42, 42, 0.75);
+}
+
+::-webkit-scrollbar-track {
+	border-radius: 4px;
+	background-color: rgba(255,255,255,0.1);
+}
+
+::-webkit-scrollbar {
+	width: 6px;
+	background-color: rgba(0,0,0,0);
+}
+
+::-webkit-scrollbar-thumb {
+	border-radius: 4px;
+	background-color: rgba(42,42,42,1.0);
+}
+
+::selection {
+  background: rgba(0,0,0,0);
+}
+
+::-moz-selection {
+  background: rgba(0,0,0,0);
 }
