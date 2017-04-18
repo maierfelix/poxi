@@ -51,7 +51,7 @@ export function render() {
     const layers = this.layers;
     for (let ii = 0; ii < layers.length; ++ii) {
       const layer = layers[ii];
-      if (layer.hidden) continue;
+      if (!layer.visible) continue;
       const bounds = layer.bounds;
       const ww = (bounds.w * TILE_SIZE) * cr;
       const hh = (bounds.h * TILE_SIZE) * cr;
@@ -113,7 +113,7 @@ export function renderLayers() {
   for (let ii = 0; ii < this.layers.length; ++ii) {
     const layer = layers[ii];
     const bounds = layer.bounds;
-    if (layer.hidden) continue;
+    if (!layer.visible) continue;
     //if (!this.boundsInsideView(bounds)) continue;
     // draw layer boundings
     if (MODES.DEV) {

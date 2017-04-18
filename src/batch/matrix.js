@@ -71,8 +71,8 @@ export function resizeByMatrixData() {
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
   let count = 0;
   for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = ii / 4;
-    const xx = idx % bw;
+    const idx = (ii / 4) | 0;
+    const xx = (idx % bw) | 0;
     const yy = (idx / bw) | 0;
     const px = (yy * bw + xx) * 4;
     const r = data[px + 0];
@@ -123,8 +123,8 @@ export function resizeMatrix(x, y, w, h) {
   const buffer = new Uint8Array(size);
   const reverse = new Uint8Array(size);
   for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = ii / 4;
-    const xx = idx % ow;
+    const idx = (ii / 4) | 0;
+    const xx = (idx % ow) | 0;
     const yy = (idx / ow) | 0;
     const opx = (yy * ow + xx) * 4;
     // black magic 🦄
@@ -285,7 +285,7 @@ export function getBatchColor() {
   const color = new Uint8Array(4);
   // calculate batch color
   for (let ii = 0; ii < bw * bh; ++ii) {
-    const xx = ii % bw;
+    const xx = (ii % bw) | 0;
     const yy = (ii / bw) | 0;
     const px = 4 * (yy * bw + xx);
     if (data[px + 3] <= 0) continue;
@@ -306,8 +306,8 @@ export function isEmpty() {
   const bw = this.bounds.w;
   let count = 0;
   for (let ii = 0; ii < data.length; ii += 4) {
-    const idx = ii / 4;
-    const xx = idx % bw;
+    const idx = (ii / 4) | 0;
+    const xx = (idx % bw) | 0;
     const yy = (idx / bw) | 0;
     const px = (yy * bw + xx) * 4;
     const a = data[px + 3];

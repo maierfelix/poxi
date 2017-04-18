@@ -39,6 +39,6 @@ export function flip(base, vertical) {
     batch.kill();
     return;
   }
-  this.enqueue(CommandKind.FLIP, batch);
+  this.enqueue(CommandKind.LAYER_FLIP, batch);
   return;
 };

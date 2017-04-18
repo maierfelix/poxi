@@ -161,7 +161,7 @@ export function clearSelection(selection) {
  * @param {Number} y
  * @return {Batch}
  */
-export function getShapeByOffset(x, y) {
+export function getShapeAt(x, y) {
   const color = this.getAbsolutePixelAt(x, y);
   if (color === null) return (null);
   const shape = this.getBinaryShape(x, y, color);

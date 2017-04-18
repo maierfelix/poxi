@@ -48,16 +48,15 @@ export function bytesToRgba(bytes) {
 /**
  * @param {Uint8Array} aa
  * @param {Uint8Array} bb
- * @param {Boolean} state
- * @return {Int16Array}
+ * @param {Number} dir
+ * @return {Uint8Array}
  */
-export function rgbaDifference(aa, bb, state) {
-  const rgba = new Int16Array(4);
-  const way = state ? 1 : -1;
-  rgba[0] = aa[0] + bb[0] * way;
-  rgba[1] = aa[1] + bb[1] * way;
-  rgba[2] = aa[2] + bb[2] * way;
-  rgba[3] = aa[3] + bb[3] * way;
+export function rgbaDifference(aa, bb, dir) {
+  const rgba = new Uint8Array(4);
+  rgba[0] = aa[0] + bb[0] * dir;
+  rgba[1] = aa[1] + bb[1] * dir;
+  rgba[2] = aa[2] + bb[2] * dir;
+  rgba[3] = aa[3] + bb[3] * dir;
   return (rgba);
 };
 
@@ -82,6 +81,40 @@ export function additiveAlphaColorBlending(src, dst) {
 };
 
 /**
+ * @param {Uint8Array} rgba
+ * @return {Uint8Array}
+ */
+export function invertColors(rgba) {
+  const data = new Uint8Array(rgba.length);
+  for (let ii = 0; ii < rgba.length; ii += 4) {
+    const alpha = rgba[ii + 3];
+    data[ii + 0] = alpha - rgba[ii + 0];
+    data[ii + 1] = alpha - rgba[ii + 1];
+    data[ii + 2] = alpha - rgba[ii + 2];
+    data[ii + 3] = alpha;
+  };
+  return (data);
+};
+
+/**
+ * @param {Uint8Array} rgba
+ * @return {Uint8Array}
+ */
+export function grayscaleColors(rgba) {
+  const data = new Uint8Array(rgba.length);
+  for (let ii = 0; ii < rgba.length; ii += 4) {
+    const gr = (
+      (rgba[ii + 0] * .3) + (rgba[ii + 1] * .59) + (rgba[ii + 2] * .11)
+    ) | 0;
+    data[ii + 0] = gr;
+    data[ii + 1] = gr;
+    data[ii + 2] = gr;
+    data[ii + 3] = rgba[ii + 3];
+  };
+  return (data);
+};
+
+/**
  * @return {Array}
  */
 export function randomRgbaColor() {
@@ -95,6 +128,9 @@ let velo = 12;
 let rr = 127; let rrr = 1;
 let rg = 12; let rrg = 1;
 let rb = 108; let rrb = 1;
+/**
+ * @return {Array}
+ */
 export function getRainbowColor() {
   rr += rrr;
   if (rr >= 255) rrr = -velo;

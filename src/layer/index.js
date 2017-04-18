@@ -23,7 +23,9 @@ class Layer {
     // last boundings
     this.last = { x: 0, y: 0, w: 0, h: 0 };
     // we can name layers
-    this.name = null;
+    this._name = "Layer " + this.instance.layers.length;
+    // reference to ui node
+    this.node = null;
     // opacity applied over local batches
     this.opacity = 255.0;
     // layer batch matrix
@@ -33,7 +35,7 @@ class Layer {
     // relative boundings
     this.bounds = new Boundings();
     // layer states get/set base
-    this._hidden = false;
+    this._visible = true;
     this._locked = false;
     this.allocateLayerMatrix();
   }
@@ -45,18 +47,51 @@ class Layer {
     // but without including layer x,y in calculations
     this.batch.layer = instance.cache.layer;
   }
+  addUiReference() {
+    const tmpl = `
+      <div class="layer-item">
+        <img class="layer-item-visible" src="assets/img/visible.png">
+        <img class="layer-item-locked" src="assets/img/unlocked.png">
+        <input class="layer-text" value="${this.name}" readonly />
+      </div>
+    `;
+    // 'afterbegin' equals array.unshift
+    layers.insertAdjacentHTML("afterbegin", tmpl);
+    // save reference to inserted layer node
+    this.node = layers.children[0];
+  }
+  removeUiReference() {
+    this.node.parentNode.removeChild(this.node);
+    this.node = null;
+  }
+  /**
+   * @return {String}
+   */
+  get name() {
+    return (this._name);
+  }
+  /**
+   * @param {String}
+   */
+  set name(value) {
+    this._name = value;
+    const node = this.node.querySelector(".layer-text");
+    node.value = value;
+  }
   /**
    * @return {Boolean}
    */
-  get hidden() {
-    return (this._hidden);
+  get visible() {
+    return (this._visible);
   }
   /**
    * @param {Boolean} state
    */
-  set hidden(state) {
-    this._hidden = state;
+  set visible(state) {
+    this._visible = state;
     this.instance.redraw = true;
+    const node = this.node.querySelector(".layer-item-visible");
+    node.src = state ? "assets/img/visible.png" : "assets/img/invisible.png";
   }
   /**
    * @return {Boolean}
@@ -70,7 +105,29 @@ class Layer {
   set locked(state) {
     this._locked = state;
     this.instance.redraw = true;
+    const node = this.node.querySelector(".layer-item-locked");
+    node.src = state ? "assets/img/locked.png" : "assets/img/unlocked.png";
   }
+};
+
+/**
+ * @return {Number}
+ */
+Layer.prototype.getIndex = function() {
+  const layers = this.instance.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const layer = layers[ii];
+    if (this.id === layer.id) return (ii);
+  };
+  return (-1);
+};
+
+Layer.prototype.removeFromLayers = function() {
+  const layers = this.instance.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const layer = layers[ii];
+    if (this.id === layer.id) layers.splice(ii, 1);
+  };
 };
 
 /**

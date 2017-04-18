@@ -164,6 +164,8 @@ class Poxi {
     this.fillStyle = [0, 0, 0, 0];
     // favorite used colors
     this.favoriteColors = [];
+    // selected active layer
+    this.activeLayer = null;
     this.setup();
   }
 };

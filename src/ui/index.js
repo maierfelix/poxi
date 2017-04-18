@@ -4,6 +4,9 @@ import {
   rgbaToBytes
 } from "../color";
 
+import Layer from "../layer/index";
+import CommandKind from "../stack/kind";
+
 export function resetModes() {
   for (let key in this.modes) {
     this.resetSelection();
@@ -125,6 +128,59 @@ export function updateFastColorPickMenu() {
   };
 };
 
+/**
+ * @param {HTMLElement} e
+ * @param {Boolean} dbl
+ */
+export function clickedLayer(e, dbl) {
+  const el = e.target;
+  const kind = el.classList.value;
+  const parent = (
+    kind !== "layer-item" ? el.parentNode : el
+  );
+  const layer = this.getLayerByNode(parent);
+  if (layer === null) return;
+  switch (kind) {
+    // clicked on layer, set it active
+    case "layer-text":
+      if (!dbl) {
+        this.setActiveLayer(layer);
+      }
+      else {
+        el.removeAttribute("readonly");
+        el.focus();
+        el.onkeypress = (e) => {
+          const code = (e.keyCode ? e.keyCode : e.which);
+          if (code === 13) el.blur();
+        };
+        el.onblur = () => {
+          const oname = layer.name;
+          if (!el.value) {
+            layer.name = oname;
+          } else {
+            this.enqueue(CommandKind.LAYER_RENAME, {
+              oname, name: el.value, layer: layer
+            });
+          }
+          el.setAttribute("readonly", "readonly");
+        };
+      }
+    break;
+    // clicked a layer icon
+    case "layer-item-visible":
+      this.enqueue(CommandKind.LAYER_VISIBILITY, {
+        layer: layer
+      });
+    break;
+    // clicked lock icon
+    case "layer-item-locked":
+      this.enqueue(CommandKind.LAYER_LOCK, {
+        layer: layer
+      });
+    break;
+  };
+};
+
 export function setupUi() {
 
   // ui
@@ -243,6 +299,32 @@ export function setupUi() {
   file.addEventListener("dragleave", (e) => {
     file.style.display = "none";
   });
+
+  layers.addEventListener("click", (e) => this.clickedLayer(e, false));
+  layers.addEventListener("dblclick", (e) => this.clickedLayer(e, true));
+
+  add_layer.onclick = (e) => {
+    this.enqueue(CommandKind.LAYER_ADD, {
+      layer: new Layer(this)
+    });
+    layers.scrollTop = 0;
+  };
+
+  move_layer_up.onclick = (e) => {
+    console.log("Move up", this.getCurrentLayer());
+  };
+  move_layer_down.onclick = (e) => {
+    console.log("Move down", this.getCurrentLayer());
+  };
+
+  remove_layer.onclick = (e) => {
+    if (this.layers.length > 1) {
+      this.enqueue(CommandKind.LAYER_REMOVE, {
+        layer: this.getCurrentLayer()
+      });
+      this.redraw = true;
+    }
+  };
 
   this.modes.draw = true;
   tiled.style.opacity = 1.0;

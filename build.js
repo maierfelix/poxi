@@ -7,7 +7,6 @@ const electron = require("electron");
 
 const bundleSource = () => {
   return new Promise((resolve, reject) => {
-    // rollup import statements and open electron afterwards
     rollup.rollup({
       entry: __dirname + "/src/index.js",
       plugins: [ buble() ],
@@ -15,7 +14,8 @@ const bundleSource = () => {
       const result = bundle.generate({
         format: "cjs"
       });
-      fs.writeFileSync("static/bundle.js", result.code);
+      const code = "(function() { " + result.code + "})();";
+      fs.writeFileSync("static/bundle.js", code);
       resolve();
     }).catch((e) => {
       reject(e);
@@ -30,11 +30,13 @@ const initElectron = () => {
     const app = electron.app;
     const BrowserWindow = electron.BrowserWindow;
 
+    let win = null;
     const createWindow = () => {
       win = new BrowserWindow({
         width: 980,
         height: 680,
-        titleBarStyle: "hidden"
+        titleBarStyle: "hidden",
+        icon: path.join(__dirname, "/static/assets/img/tree.png")
       });
 
       win.loadURL(url.format({
@@ -44,6 +46,7 @@ const initElectron = () => {
       }));
       win.setMenu(null);
 
+      //win.setFullScreen(true);
       win.webContents.openDevTools();
       win.on("closed", () => {
         win = null;

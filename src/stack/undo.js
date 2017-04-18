@@ -27,9 +27,12 @@ export function dequeue(from, to) {
   for (let ii = count; ii > 0; --ii) {
     const idx = from + ii - 1;
     const cmd = this.stack[idx];
-    if (cmd.kind !== CommandKind.MOVE) {
-      cmd.batch.kill();
-    }
+    const kind = this.getCommandKind(cmd);
+    switch (kind) {
+      case CommandKind.BATCH_OPERATION:
+        cmd.batch.kill();
+      break;
+    };
     this.stack.splice(idx, 1);
   };
 };

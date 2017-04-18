@@ -8,6 +8,7 @@ import {
   alphaByteToRgbAlpha
 } from "../color";
 
+import Layer from "../layer/index";
 import Batch from "../batch/index";
 import CommandKind from "../stack/kind";
 
@@ -22,21 +23,6 @@ export function isInActiveState() {
     if (states[key]) return (true);
   };
   return (false);
-};
-
-/**
- * @param {Number} x
- * @param {Number} y
- * @return {Layer}
- */
-export function getLayerByPoint(x, y) {
-  const layers = this.layers;
-  for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = layers.length - 1 - ii;
-    const layer = layers[idx];
-    if (layer.bounds.isPointInside(x - layer.x, y - layer.y)) return (layer);
-  };
-  return (null);
 };
 
 /**
@@ -61,11 +47,75 @@ export function getBatchById(id) {
 /**
  * @return {Layer}
  */
+export function addLayer() {
+  const layer = new Layer(this);
+  layer.addUiReference();
+  this.layers.push(layer);
+  return (layer);
+};
+
+/**
+ * @return {Layer}
+ */
 export function getCurrentLayer() {
-  if (this.layers.length) {
-    return (this.layers[this.layers.length - 1]);
-  }
+  return (this.activeLayer || null);
+};
+
+/**
+ * @param {HTMLElement} node
+ * @return {Layer}
+ */
+export function getLayerByNode(node) {
+  for (let ii = 0; ii < this.layers.length; ++ii) {
+    const layer = this.layers[ii];
+    if (layer.node === node) return (layer);
+  };
   return (null);
+};
+
+/**
+ * @param {Number} index
+ * @return {Layer}
+ */
+export function getLayerByIndex(index) {
+  return (this.layers[index] || null);
+};
+
+/**
+ * @param {Layer} layer
+ */
+export function setActiveLayer(layer) {
+  const old = this.getCurrentLayer();
+  if (old && old.node) {
+    old.node.classList.remove("selected");
+  }
+  layer.node.classList.add("selected");
+  this.activeLayer = layer;
+  this.redraw = true;
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Layer}
+ */
+export function getLayerByPoint(x, y) {
+  const layers = this.layers;
+  let last = null;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii;
+    const layer = layers[idx];
+    const xx = x - layer.x;
+    const yy = y - layer.y;
+    if (layer.locked) continue;
+    if (layer.bounds.isPointInside(xx, yy)) {
+      last = layer;
+      if (layer.getPixelAt(x, y)) {
+        return (layer);
+      }
+    }
+  };
+  return (last);
 };
 
 /**

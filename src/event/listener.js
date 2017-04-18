@@ -122,7 +122,6 @@ export function processUIClick(el) {
  * @param {Event} e
  */
 export function onMouseDown(e) {
-  e.preventDefault();
   // only allow clicking on canvas
   if (!(e.target instanceof HTMLCanvasElement)) {
     this.processUIClick(e.target);
@@ -138,6 +137,8 @@ export function onMouseDown(e) {
     if (this.modes.move) {
       const layer = this.getLayerByPoint(rx, ry);
       if (layer !== null) {
+        this.buffers.mLayer = this.getCurrentLayer();
+        this.setActiveLayer(layer);
         this.states.moving = true;
         const batch = this.createDynamicBatch(rx, ry);
         batch.position.mx = rx;
@@ -205,7 +206,7 @@ export function onMouseDown(e) {
       this.fillBucket(rx, ry, this.fillStyle);
     }
     else if (this.modes.shape) {
-      const batch = this.getShapeByOffset(rx, ry);
+      const batch = this.getShapeAt(rx, ry);
       this.shape = batch;
     }
     else if (this.modes.pipette) {
@@ -336,10 +337,11 @@ export function onMouseUp(e) {
       if (batch.position.x !== 0 || batch.position.y !== 0) {
         layer.x -= batch.position.x;
         layer.y -= batch.position.y;
-        this.enqueue(CommandKind.MOVE, batch);
+        this.enqueue(CommandKind.LAYER_MOVE, batch);
       } else {
         batch.kill();
       }
+      this.setActiveLayer(this.buffers.mLayer);
       this.buffers.move = null;
     }
     else if (this.modes.arc) {
@@ -414,6 +416,11 @@ export function onMouseUp(e) {
  */
 export function onKeyDown(e) {
   const code = e.keyCode;
+  const target = e.target;
+  if (target !== document.body) {
+    return;
+  }
+  e.preventDefault();
   this.keys[code] = 1;
   switch (code) {
     // ctrl
@@ -493,7 +500,6 @@ export function onKeyDown(e) {
     default:
       return;
     break;
-    e.preventDefault();
   };
 };
 
