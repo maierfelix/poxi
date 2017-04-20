@@ -23,7 +23,8 @@ class Layer {
     // last boundings
     this.last = { x: 0, y: 0, w: 0, h: 0 };
     // we can name layers
-    this._name = "Layer " + this.instance.layers.length;
+    this.index = this.generateLayerNameIndex();
+    this._name = "Layer " + this.index;
     // reference to ui node
     this.node = null;
     // opacity applied over local batches
@@ -38,31 +39,6 @@ class Layer {
     this._visible = true;
     this._locked = false;
     this.allocateLayerMatrix();
-  }
-  allocateLayerMatrix() {
-    const instance = this.instance;
-    this.batch = instance.createDynamicBatch(0, 0);
-    // add reference to unused layer so we can use
-    // the batch matrix logic for our layers too
-    // but without including layer x,y in calculations
-    this.batch.layer = instance.cache.layer;
-  }
-  addUiReference() {
-    const tmpl = `
-      <div class="layer-item">
-        <img class="layer-item-visible" src="assets/img/visible.png">
-        <img class="layer-item-locked" src="assets/img/unlocked.png">
-        <input class="layer-text" value="${this.name}" readonly />
-      </div>
-    `;
-    // 'afterbegin' equals array.unshift
-    layers.insertAdjacentHTML("afterbegin", tmpl);
-    // save reference to inserted layer node
-    this.node = layers.children[0];
-  }
-  removeUiReference() {
-    this.node.parentNode.removeChild(this.node);
-    this.node = null;
   }
   /**
    * @return {String}
@@ -108,6 +84,32 @@ class Layer {
     const node = this.node.querySelector(".layer-item-locked");
     node.src = state ? "assets/img/locked.png" : "assets/img/unlocked.png";
   }
+};
+
+Layer.prototype.allocateLayerMatrix = function() {
+  const instance = this.instance;
+  this.batch = instance.createDynamicBatch(0, 0);
+  // add reference to unused layer so we can use
+  // the batch matrix logic for our layers too
+  // but without including layer x,y in calculations
+  this.batch.layer = instance.cache.layer;
+};
+
+/**
+ * @return {Layer}
+ */
+Layer.prototype.clone = function() {
+  const layer = new Layer(this.instance);
+  const batch = this.batch.clone();
+  layer.last = Object.assign(layer.last);
+  layer.opacity = this.opacity;
+  layer.bounds = this.bounds.clone();
+  layer.x = this.x; layer.y = this.y;
+  layer.batch = batch;
+  layer.batches.push(batch);
+  //layer.visible = this.visible;
+  //layer.locked = this.locked;
+  return (layer);
 };
 
 /**
@@ -168,6 +170,51 @@ Layer.prototype.getBatchById = function(id) {
     }
   };
   return (result);
+};
+
+/**
+ * Auto generates a layer index name
+ * and filles missing layer indices
+ * @return {Number}
+ */
+Layer.prototype.generateLayerNameIndex = function() {
+  const layers = this.instance.layers;
+  // clone, take numeric index, sort ascending, es6 left its muck here
+  const sorted = layers.concat().map((item) => item.index).sort((a, b) => a - b);
+  for (let ii = 0; ii < sorted.length; ++ii) {
+    if (sorted.indexOf(ii) < 0) return (ii);
+  };
+  return (layers.length);
+};
+
+/**
+ * yuck in here, yuck in here
+ */
+Layer.prototype.addUiReference = function() {
+  const tmpl = `
+    <div class="layer-item">
+      <img class="layer-item-visible" src="assets/img/visible.png">
+      <img class="layer-item-locked" src="assets/img/unlocked.png">
+      <input class="layer-text" value="${this.name}" readonly />
+    </div>
+  `;
+  const parser = new DOMParser();
+  const html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
+  const index = this.getIndex();
+  const layers = this.instance.layers;
+  const ctx = window.layers;
+  if (index >= ctx.children.length) {
+    window.layers.appendChild(html);
+  } else {
+    window.layers.insertBefore(html, ctx.children[index]);
+  }
+  // save reference to inserted layer node
+  this.node = html;
+};
+
+Layer.prototype.removeUiReference = function() {
+  this.node.parentNode.removeChild(this.node);
+  this.node = null;
 };
 
 extend(Layer, _matrix);

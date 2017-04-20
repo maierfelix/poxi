@@ -87,3 +87,45 @@ export function getPixelAt(x, y) {
   // now get the pixel from the layer matrix
   return (this.batch.getRawPixelAt(dx, dy));
 };
+
+/**
+ * Access live pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getLivePixelAt(x, y) {
+  const bw = this.bounds.w;
+  const bh = this.bounds.h;
+  // normalize coordinates
+  const dx = (x - this.x) | 0;
+  const dy = (y - this.y) | 0;
+  const xx = dx - this.bounds.x;
+  const yy = dy - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) return (null);
+  for (let ii = 0; ii < this.batches.length; ++ii) {
+    const idx = (this.batches.length - 1) - ii;
+    const batch = this.batches[idx];
+    const pixel = batch.getRawPixelAt(dx, dy);
+    if (pixel !== null) return (pixel);
+  };
+  return (null);
+};
+
+/**
+ * Merges two layers
+ * Resize this by layer<->this bounding diff
+ * Inject this matrix into layer matrix at layer bound pos
+ * @param {Layer} layer
+ */
+export function mergeWithLayer(layer, state) {
+  this.batches.push(layer.batch);
+  this.updateBoundings();
+  this.batch.injectMatrix(layer.batch, state);
+  this.batch.refreshTexture(true);
+};

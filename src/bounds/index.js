@@ -20,6 +20,16 @@ class Boundings {
 };
 
 /**
+ * @return {Boundings}
+ */
+Boundings.prototype.clone = function() {
+  const bounds = new Boundings(
+    this.x, this.y, this.w, this.h
+  );
+  return (bounds);
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  * @param {Number} w

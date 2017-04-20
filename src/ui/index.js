@@ -158,9 +158,11 @@ export function clickedLayer(e, dbl) {
           if (!el.value) {
             layer.name = oname;
           } else {
-            this.enqueue(CommandKind.LAYER_RENAME, {
-              oname, name: el.value, layer: layer
-            });
+            if (String(oname) !== el.value) {
+              this.enqueue(CommandKind.LAYER_RENAME, {
+                oname, name: el.value, layer: layer
+              });
+            }
           }
           el.setAttribute("readonly", "readonly");
         };
@@ -304,25 +306,75 @@ export function setupUi() {
   layers.addEventListener("dblclick", (e) => this.clickedLayer(e, true));
 
   add_layer.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    let index = layer ? layer.getIndex() : 0;
+    index = index < 0 ? 0 : index;
     this.enqueue(CommandKind.LAYER_ADD, {
-      layer: new Layer(this)
+      layer: new Layer(this), index
     });
-    layers.scrollTop = 0;
+  };
+  remove_layer.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    let index = layer ? layer.getIndex() : 0;
+    index = index < 0 ? 0 : index;
+    if (layer !== null) this.enqueue(CommandKind.LAYER_REMOVE, {
+      layer, index
+    });
+    this.redraw = true;
   };
 
   move_layer_up.onclick = (e) => {
-    console.log("Move up", this.getCurrentLayer());
+    const layer = this.getCurrentLayer();
+    if (layer !== null && layer.getIndex() > 0) {
+      this.enqueue(CommandKind.LAYER_ORDER, {
+        layer, index: layer.getIndex() - 1, oindex: layer.getIndex()
+      });
+    }
+    this.redraw = true;
   };
   move_layer_down.onclick = (e) => {
-    console.log("Move down", this.getCurrentLayer());
+    const layer = this.getCurrentLayer();
+    if (layer !== null && layer.getIndex() < this.layers.length - 1) {
+      this.enqueue(CommandKind.LAYER_ORDER, {
+        layer, index: layer.getIndex() + 1, oindex: layer.getIndex()
+      });
+    }
+    this.redraw = true;
   };
 
-  remove_layer.onclick = (e) => {
-    if (this.layers.length > 1) {
-      this.enqueue(CommandKind.LAYER_REMOVE, {
-        layer: this.getCurrentLayer()
+  clone.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      let index = layer ? layer.getIndex() : 0;
+      index = index < 0 ? 0 : index;
+      this.enqueue(CommandKind.LAYER_CLONE, {
+        layer: layer.clone(), index
       });
-      this.redraw = true;
+    }
+  };
+
+  flip_horizontal.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      const data = new Uint8Array(layer.batch.data);
+      this.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer, data });
+    }
+  };
+  flip_vertical.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      const data = new Uint8Array(layer.batch.data);
+      this.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer, data });
+    }
+  };
+
+  merge.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null && this.layers.length > 1) {
+      if (layer.getIndex() < this.layers.length - 1) {
+        const merge = this.getLayerByIndex(layer.getIndex() + 1);
+        this.enqueue(CommandKind.LAYER_MERGE, { layer, merge });
+      }
     }
   };
 

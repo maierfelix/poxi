@@ -11,7 +11,6 @@ import * as _listener from "./event/listener";
 import * as _env from "./env/functions";
 import * as _fill from "./env/fill";
 import * as _insert from "./env/insert";
-import * as _transform from "./env/transform";
 
 import * as _buffer from "./render/buffer";
 import * as _build from "./render/build";
@@ -28,6 +27,9 @@ import * as _undo from "./stack/undo";
 
 import * as _read from "./storage/read";
 import * as _write from "./storage/write";
+
+import * as _transflip from "./transform/flip";
+import * as _transrotate from "./transform/rotate";
 
 import * as _ui from "./ui/index";
 
@@ -181,7 +183,6 @@ extend(Poxi, _listener);
 extend(Poxi, _env);
 extend(Poxi, _fill);
 extend(Poxi, _insert);
-extend(Poxi, _transform);
 
 extend(Poxi, _buffer);
 extend(Poxi, _build);
@@ -198,6 +199,9 @@ extend(Poxi, _undo);
 
 extend(Poxi, _read);
 extend(Poxi, _write);
+
+extend(Poxi, _transflip);
+extend(Poxi, _transrotate);
 
 extend(Poxi, _ui);
 

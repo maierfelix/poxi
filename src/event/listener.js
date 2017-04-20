@@ -129,10 +129,11 @@ export function onMouseDown(e) {
   }
   const x = e.clientX;
   const y = e.clientY;
-  const layer = this.getCurrentLayer();
   const relative = this.getRelativeTileOffset(x, y);
   const rx = relative.x; const ry = relative.y;
   if (e.which === 1) {
+    const layer = this.getCurrentLayer();
+    if (layer === null) return;
     this.resetSelection();
     if (this.modes.move) {
       const layer = this.getLayerByPoint(rx, ry);
@@ -294,13 +295,11 @@ export function onMouseMove(e) {
   }
   else if (this.states.erasing) {
     const batch = this.buffers.erasing;
-    const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
     batch.refreshTexture(false);
   }
   else if (this.states.lighting) {
     const batch = this.buffers.lighting;
-    const layer = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
     batch.refreshTexture(false);
   }
@@ -328,6 +327,7 @@ export function onMouseUp(e) {
   e.preventDefault();
   if (!(e.target instanceof HTMLCanvasElement)) return;
   if (e.which === 1) {
+    if (this.getCurrentLayer() === null) return;
     if (this.modes.move && this.buffers.move) {
       const batch = this.buffers.move;
       const layer = batch.layer;
@@ -398,8 +398,10 @@ export function onMouseUp(e) {
     else if (this.states.lighting) {
       const batch = this.buffers.lighting;
       batch.forceRendering = false;
+      batch.resizeByMatrixData();
       this.states.lighting = false;
-      this.enqueue(CommandKind.LIGHTING, batch);
+      if (batch.isEmpty()) batch.kill();
+      else this.enqueue(CommandKind.LIGHTING, batch);
       this.buffers.lighting = null;
     }
     else if (this.states.pipette) {

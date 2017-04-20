@@ -89,7 +89,7 @@ export function setActiveLayer(layer) {
   if (old && old.node) {
     old.node.classList.remove("selected");
   }
-  layer.node.classList.add("selected");
+  if (layer) layer.node.classList.add("selected");
   this.activeLayer = layer;
   this.redraw = true;
 };
@@ -103,8 +103,7 @@ export function getLayerByPoint(x, y) {
   const layers = this.layers;
   let last = null;
   for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = layers.length - 1 - ii;
-    const layer = layers[idx];
+    const layer = layers[ii];
     const xx = x - layer.x;
     const yy = y - layer.y;
     if (layer.locked) continue;
@@ -165,8 +164,7 @@ export function getAbsolutePixelAt(x, y) {
   // and search for the given pixel
   const layers = this.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
-    const idx = (layers.length - 1) - ii;
-    const pixel = layers[idx].getPixelAt(x, y);
+    const pixel = layers[ii].getPixelAt(x, y);
     if (pixel !== null) return (pixel);
   };
   return (null);
@@ -232,17 +230,6 @@ export function updateGlobalBoundings() {
 };
 
 /**
- * Merges two layers
- * Resize la by lb<->la bounding diff
- * Inject lb matrix into la matrix at lb bound pos
- * @param {Layer} la
- * @param {Layer} lb
- */
-export function mergeLayers(la, lb) {
-
-};
-
-/**
  * Uses preallocated binary grid with the size of the absolute boundings
  * of our working area. In the next step we trace "alive cells" in the grid,
  * then we take the boundings of the used area of our grid and crop out
@@ -293,4 +280,38 @@ export function getBinaryShape(x, y, base) {
     if (grid[ww] === 1) queue.push({x:x-1, y});
   };
   return (grid);
+};
+
+/**
+ * @return {Number}
+ */
+export function getCursorSize() {
+  for (let key in this.modes) {
+    if (!this.modes[key]) continue;
+    switch (key) {
+      case "arc":
+      case "draw":
+      case "rect":
+      case "stroke":
+        return (SETTINGS.PENCIL_SIZE);
+      break;
+      case "erase":
+        return (SETTINGS.ERASER_SIZE);
+      break;
+      case "light":
+        return (SETTINGS.LIGHT_SIZE);
+      break;
+      case "move":
+      case "fill":
+      case "shape":
+      case "flood":
+      case "select":
+        return (1);
+      break;
+      case "pipette":
+        return (1);
+      break;
+    };
+  };
+  return (1);
 };

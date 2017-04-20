@@ -33,17 +33,6 @@ export const ZOOM_SPEED = 15;
 // base step size we jump when resizing batches
 export const BATCH_JUMP_RESIZE = 64;
 
-/**
- * If a tile batch exceeds the min size,
- * we buffer it inside a shadow canvas,
- * exceeding limit throws an out of bounds error
- */
-export const BATCH_BUFFER_SIZE = {
-  MIN_W: 1,
-  MIN_H: 1,
-  MIN_L: 1
-};
-
 // Maximum allowed items inside stack
 export const STACK_LIMIT = 128;
 

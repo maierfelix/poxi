@@ -33,6 +33,7 @@ class Batch {
     this.id = uid();
     // save reference to layer
     this.layer = null;
+    // reference to stage
     this.instance = instance;
     // data related
     this.data = null;
@@ -41,6 +42,7 @@ class Batch {
     // used for canvas batches
     this.buffer = null;
     // wgl texture
+    // TODO: textures can possibly get from gpu as soon as mouseUp event passed
     this.texture = null;
     // relative boundings
     this.bounds = new Boundings();
@@ -53,6 +55,27 @@ class Batch {
     // even when it is not registered inside our stack yet
     this.forceRendering = false;
   }
+};
+
+/**
+ * @return {Batch}
+ */
+Batch.prototype.clone = function() {
+  const batch = new Batch(this.instance);
+  batch.prepareMatrix(this.bounds.x, this.bounds.y);
+  // clone props
+  batch.layer = this.layer;
+  batch.buffer = this.buffer;
+  batch.bounds = this.bounds.clone();
+  batch.isEraser = this.isEraser;
+  batch.isMover = this.isMover;
+  batch.position = Object.assign(this.position);
+  batch.forceRendering = this.forceRendering;
+  // clone matrices
+  batch.data = new Uint8Array(this.data);
+  batch.reverse = new Uint8Array(this.reverse);
+  batch.refreshTexture(true);
+  return (batch);
 };
 
 /**

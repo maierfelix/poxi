@@ -21,23 +21,6 @@ export function updateGrid() {
   }
 };
 
-/**
- * Returns state if we can render
- * a cached version of our view buffer
- * @return {Boolean}
- */
-export function canRenderCachedBuffer() {
-  return (
-    !this.states.drawing &&
-    !this.states.erasing &&
-    !this.states.arc &&
-    !this.states.rect &&
-    !this.states.stroke &&
-    !this.states.lighting &&
-    !this.states.moving
-  );
-};
-
 /** Main render method */
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
@@ -45,27 +28,41 @@ export function render() {
   this.renderBackground();
   if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
-  if (this.canRenderCachedBuffer()) {
-    const cx = this.cx | 0;
-    const cy = this.cy | 0;
-    const layers = this.layers;
-    for (let ii = 0; ii < layers.length; ++ii) {
-      const layer = layers[ii];
-      if (!layer.visible) continue;
-      const bounds = layer.bounds;
-      const ww = (bounds.w * TILE_SIZE) * cr;
-      const hh = (bounds.h * TILE_SIZE) * cr;
-      const xx = cx + ((layer.x + bounds.x) * TILE_SIZE) * cr;
-      const yy = cy + ((layer.y + bounds.y) * TILE_SIZE) * cr;
-      this.drawImage(
-        layer.batch.texture,
-        xx, yy,
-        ww, hh
-      );
-    };
+  const cx = this.cx | 0;
+  const cy = this.cy | 0;
+  // draw global boundings
+  if (MODES.DEV) {
+    const bounds = this.bounds;
+    const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+    const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+    const w = (bounds.w * TILE_SIZE) * cr;
+    const h = (bounds.h * TILE_SIZE) * cr;
+    this.drawRectangle(
+      x, y,
+      w, h,
+      [0, 1, 0, 0.1]
+    );
   }
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii;
+    const layer = layers[idx];
+    if (!layer.visible) continue;
+    const bounds = layer.bounds;
+    const ww = (bounds.w * TILE_SIZE) * cr;
+    const hh = (bounds.h * TILE_SIZE) * cr;
+    const xx = cx + ((layer.x + bounds.x) * TILE_SIZE) * cr;
+    const yy = cy + ((layer.y + bounds.y) * TILE_SIZE) * cr;
+    this.drawImage(
+      layer.batch.texture,
+      xx, yy,
+      ww, hh
+    );
+    // don't forget to render live batches
+    this.renderLayer(layer);
+  };
   // render live data
-  this.renderLayers();
+  //this.renderLayers();
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
@@ -91,46 +88,6 @@ export function renderGrid() {
   );
 };
 
-/** Render all layers */
-export function renderLayers() {
-  const cx = this.cx | 0;
-  const cy = this.cy | 0;
-  const cr = this.cr;
-  const bounds = this.bounds;
-  const layers = this.layers;
-  // draw global boundings
-  if (MODES.DEV) {
-    const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
-    const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
-    const w = (bounds.w * TILE_SIZE) * cr;
-    const h = (bounds.h * TILE_SIZE) * cr;
-    this.drawRectangle(
-      x, y,
-      w, h,
-      [0, 1, 0, 0.1]
-    );
-  }
-  for (let ii = 0; ii < this.layers.length; ++ii) {
-    const layer = layers[ii];
-    const bounds = layer.bounds;
-    if (!layer.visible) continue;
-    //if (!this.boundsInsideView(bounds)) continue;
-    // draw layer boundings
-    if (MODES.DEV) {
-      const x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
-      const y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
-      const w = ((bounds.w) * TILE_SIZE) * cr;
-      const h = ((bounds.h) * TILE_SIZE) * cr;
-      /*this.drawRectangle(
-        x, y,
-        w, h,
-        [1, 0, 0, 0.1]
-      );*/
-    }
-    this.renderLayer(layer);
-  };
-};
-
 /**
  * @param {Layer} layer
  */
@@ -140,11 +97,10 @@ export function renderLayer(layer) {
   const cr = this.cr;
   const batches = layer.batches;
   const sindex = this.sindex;
-  const cached = this.canRenderCachedBuffer();
   for (let ii = 0; ii < batches.length; ++ii) {
     const batch = batches[ii];
     const bounds = batch.bounds;
-    if (cached && !batch.forceRendering) continue;
+    if (!batch.forceRendering) continue;
     // batch index is higher than stack index, so ignore this batch
     if (sindex - batch.getStackIndex() < 0) {
       if (!batch.forceRendering) continue;
@@ -178,10 +134,6 @@ export function renderLayer(layer) {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
   };
-};
-
-export function getActiveCursorSize() {
-
 };
 
 export function renderHoveredTile() {
