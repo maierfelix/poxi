@@ -125,13 +125,6 @@ var ZOOM_SPEED = 15;
 // base step size we jump when resizing batches
 var BATCH_JUMP_RESIZE = 64;
 
-/**
- * If a tile batch exceeds the min size,
- * we buffer it inside a shadow canvas,
- * exceeding limit throws an out of bounds error
- */
-
-
 // Maximum allowed items inside stack
 var STACK_LIMIT = 128;
 
@@ -397,12 +390,15 @@ var CommandKind = {
   LAYER_ADD: 18,
   LAYER_REMOVE: 19,
   LAYER_LOCK: 20,
-  LAYER_FLIP: 21,
-  LAYER_MOVE: 22,
-  LAYER_ORDER: 23,
-  LAYER_RENAME: 24,
-  LAYER_ROTATE: 25,
-  LAYER_VISIBILITY: 26
+  LAYER_FLIP_VERTICAL: 21,
+  LAYER_FLIP_HORIZONTAL: 22,
+  LAYER_MOVE: 23,
+  LAYER_ORDER: 24,
+  LAYER_RENAME: 25,
+  LAYER_ROTATE: 26,
+  LAYER_VISIBILITY: 27,
+  LAYER_CLONE: 28,
+  LAYER_MERGE: 29
 };
 
 /**
@@ -927,10 +923,11 @@ function onMouseDown(e) {
   }
   var x = e.clientX;
   var y = e.clientY;
-  var layer = this.getCurrentLayer();
   var relative = this.getRelativeTileOffset(x, y);
   var rx = relative.x; var ry = relative.y;
   if (e.which === 1) {
+    var layer = this.getCurrentLayer();
+    if (layer === null) { return; }
     this.resetSelection();
     if (this.modes.move) {
       var layer$1 = this.getLayerByPoint(rx, ry);
@@ -1092,13 +1089,11 @@ function onMouseMove(e) {
   }
   else if (this.states.erasing) {
     var batch$5 = this.buffers.erasing;
-    var layer$1 = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
     batch$5.refreshTexture(false);
   }
   else if (this.states.lighting) {
     var batch$6 = this.buffers.lighting;
-    var layer$2 = this.getCurrentLayer();
     this.insertLine(x, y, lastx, lasty);
     batch$6.refreshTexture(false);
   }
@@ -1126,6 +1121,7 @@ function onMouseUp(e) {
   e.preventDefault();
   if (!(e.target instanceof HTMLCanvasElement)) { return; }
   if (e.which === 1) {
+    if (this.getCurrentLayer() === null) { return; }
     if (this.modes.move && this.buffers.move) {
       var batch = this.buffers.move;
       var layer = batch.layer;
@@ -1196,8 +1192,10 @@ function onMouseUp(e) {
     else if (this.states.lighting) {
       var batch$6 = this.buffers.lighting;
       batch$6.forceRendering = false;
+      batch$6.resizeByMatrixData();
       this.states.lighting = false;
-      this.enqueue(CommandKind.LIGHTING, batch$6);
+      if (batch$6.isEmpty()) { batch$6.kill(); }
+      else { this.enqueue(CommandKind.LIGHTING, batch$6); }
       this.buffers.lighting = null;
     }
     else if (this.states.pipette) {
@@ -1373,6 +1371,16 @@ var Boundings = function Boundings(x, y, w, h) {
   this.w = 0;
   this.h = 0;
   this.update(x, y, w, h);
+};
+
+/**
+ * @return {Boundings}
+ */
+Boundings.prototype.clone = function() {
+  var bounds = new Boundings(
+    this.x, this.y, this.w, this.h
+  );
+  return (bounds);
 };
 
 /**
@@ -1897,15 +1905,13 @@ function applyColorLightness(x, y, factor) {
 
   var instance = this.instance;
   var bounds = this.bounds;
+  var layer = this.layer;
   var w = SETTINGS.LIGHT_SIZE;
   var h = SETTINGS.LIGHT_SIZE;
-  var pixels = [];
   for (var ii = 0; ii < w * h; ++ii) {
-    var xx = x + (ii % w);
+    var xx = x + (ii % w) | 0;
     var yy = y + (ii / w) | 0;
-    this$1.resizeByOffset(xx, yy);
-    this$1.data = this$1.buffer.getImageData(0, 0, bounds.w, bounds.h).data;
-    var pixel = instance.getRelativePixelAt(xx, yy);
+    var pixel = layer.getLivePixelAt(xx, yy);
     if (pixel === null) { continue; }
     var t = factor < 0 ? 0 : 255;
     var p = factor < 0 ? -factor : factor;
@@ -1913,7 +1919,7 @@ function applyColorLightness(x, y, factor) {
     var g = (Math.round((t - pixel[1]) * p) + pixel[1]);
     var b = (Math.round((t - pixel[2]) * p) + pixel[2]);
     var a = pixel[3];
-    //this.drawSilentTile(xx, yy, 1, 1, [r, g, b, a]);
+    this$1.drawPixel(xx, yy, [r, g, b, a]);
   }
 }
 
@@ -1985,6 +1991,7 @@ var Batch = function Batch(instance) {
   this.id = uid();
   // save reference to layer
   this.layer = null;
+  // reference to stage
   this.instance = instance;
   // data related
   this.data = null;
@@ -1993,6 +2000,7 @@ var Batch = function Batch(instance) {
   // used for canvas batches
   this.buffer = null;
   // wgl texture
+  // TODO: textures can possibly get from gpu as soon as mouseUp event passed
   this.texture = null;
   // relative boundings
   this.bounds = new Boundings();
@@ -2004,6 +2012,27 @@ var Batch = function Batch(instance) {
   // indicates if we should force to render this batch
   // even when it is not registered inside our stack yet
   this.forceRendering = false;
+};
+
+/**
+ * @return {Batch}
+ */
+Batch.prototype.clone = function() {
+  var batch = new Batch(this.instance);
+  batch.prepareMatrix(this.bounds.x, this.bounds.y);
+  // clone props
+  batch.layer = this.layer;
+  batch.buffer = this.buffer;
+  batch.bounds = this.bounds.clone();
+  batch.isEraser = this.isEraser;
+  batch.isMover = this.isMover;
+  batch.position = Object.assign(this.position);
+  batch.forceRendering = this.forceRendering;
+  // clone matrices
+  batch.data = new Uint8Array(this.data);
+  batch.reverse = new Uint8Array(this.reverse);
+  batch.refreshTexture(true);
+  return (batch);
 };
 
 /**
@@ -2179,11 +2208,57 @@ function getPixelAt(x, y) {
   return (this.batch.getRawPixelAt(dx, dy));
 }
 
+/**
+ * Access live pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getLivePixelAt(x, y) {
+  var this$1 = this;
+
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  // normalize coordinates
+  var dx = (x - this.x) | 0;
+  var dy = (y - this.y) | 0;
+  var xx = dx - this.bounds.x;
+  var yy = dy - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) { return (null); }
+  for (var ii = 0; ii < this.batches.length; ++ii) {
+    var idx = (this$1.batches.length - 1) - ii;
+    var batch = this$1.batches[idx];
+    var pixel = batch.getRawPixelAt(dx, dy);
+    if (pixel !== null) { return (pixel); }
+  }
+  return (null);
+}
+
+/**
+ * Merges two layers
+ * Resize this by layer<->this bounding diff
+ * Inject this matrix into layer matrix at layer bound pos
+ * @param {Layer} layer
+ */
+function mergeWithLayer(layer, state) {
+  this.batches.push(layer.batch);
+  this.updateBoundings();
+  this.batch.injectMatrix(layer.batch, state);
+  this.batch.refreshTexture(true);
+}
+
 
 var _matrix$1 = Object.freeze({
 	hasResized: hasResized,
 	updateBoundings: updateBoundings,
-	getPixelAt: getPixelAt
+	getPixelAt: getPixelAt,
+	getLivePixelAt: getLivePixelAt,
+	mergeWithLayer: mergeWithLayer
 });
 
 /**
@@ -2198,7 +2273,8 @@ var Layer = function Layer(instance) {
   // last boundings
   this.last = { x: 0, y: 0, w: 0, h: 0 };
   // we can name layers
-  this._name = "Layer " + this.instance.layers.length;
+  this.index = this.generateLayerNameIndex();
+  this._name = "Layer " + this.index;
   // reference to ui node
   this.node = null;
   // opacity applied over local batches
@@ -2216,25 +2292,6 @@ var Layer = function Layer(instance) {
 };
 
 var prototypeAccessors = { name: {},visible: {},locked: {} };
-Layer.prototype.allocateLayerMatrix = function allocateLayerMatrix () {
-  var instance = this.instance;
-  this.batch = instance.createDynamicBatch(0, 0);
-  // add reference to unused layer so we can use
-  // the batch matrix logic for our layers too
-  // but without including layer x,y in calculations
-  this.batch.layer = instance.cache.layer;
-};
-Layer.prototype.addUiReference = function addUiReference () {
-  var tmpl = "\n      <div class=\"layer-item\">\n        <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n        <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n        <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n      </div>\n    ";
-  // 'afterbegin' equals array.unshift
-  layers.insertAdjacentHTML("afterbegin", tmpl);
-  // save reference to inserted layer node
-  this.node = layers.children[0];
-};
-Layer.prototype.removeUiReference = function removeUiReference () {
-  this.node.parentNode.removeChild(this.node);
-  this.node = null;
-};
 /**
  * @return {String}
  */
@@ -2281,6 +2338,32 @@ prototypeAccessors.locked.set = function (state) {
 };
 
 Object.defineProperties( Layer.prototype, prototypeAccessors );
+
+Layer.prototype.allocateLayerMatrix = function() {
+  var instance = this.instance;
+  this.batch = instance.createDynamicBatch(0, 0);
+  // add reference to unused layer so we can use
+  // the batch matrix logic for our layers too
+  // but without including layer x,y in calculations
+  this.batch.layer = instance.cache.layer;
+};
+
+/**
+ * @return {Layer}
+ */
+Layer.prototype.clone = function() {
+  var layer = new Layer(this.instance);
+  var batch = this.batch.clone();
+  layer.last = Object.assign(layer.last);
+  layer.opacity = this.opacity;
+  layer.bounds = this.bounds.clone();
+  layer.x = this.x; layer.y = this.y;
+  layer.batch = batch;
+  layer.batches.push(batch);
+  //layer.visible = this.visible;
+  //layer.locked = this.locked;
+  return (layer);
+};
 
 /**
  * @return {Number}
@@ -2344,6 +2427,45 @@ Layer.prototype.getBatchById = function(id) {
     }
   }
   return (result);
+};
+
+/**
+ * Auto generates a layer index name
+ * and filles missing layer indices
+ * @return {Number}
+ */
+Layer.prototype.generateLayerNameIndex = function() {
+  var layers = this.instance.layers;
+  // clone, take numeric index, sort ascending, es6 left its muck here
+  var sorted = layers.concat().map(function (item) { return item.index; }).sort(function (a, b) { return a - b; });
+  for (var ii = 0; ii < sorted.length; ++ii) {
+    if (sorted.indexOf(ii) < 0) { return (ii); }
+  }
+  return (layers.length);
+};
+
+/**
+ * yuck in here, yuck in here
+ */
+Layer.prototype.addUiReference = function() {
+  var tmpl = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  var parser = new DOMParser();
+  var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
+  var index = this.getIndex();
+  var layers = this.instance.layers;
+  var ctx = window.layers;
+  if (index >= ctx.children.length) {
+    window.layers.appendChild(html);
+  } else {
+    window.layers.insertBefore(html, ctx.children[index]);
+  }
+  // save reference to inserted layer node
+  this.node = html;
+};
+
+Layer.prototype.removeUiReference = function() {
+  this.node.parentNode.removeChild(this.node);
+  this.node = null;
 };
 
 extend(Layer, _matrix$1);
@@ -2427,7 +2549,7 @@ function setActiveLayer(layer) {
   if (old && old.node) {
     old.node.classList.remove("selected");
   }
-  layer.node.classList.add("selected");
+  if (layer) { layer.node.classList.add("selected"); }
   this.activeLayer = layer;
   this.redraw = true;
 }
@@ -2441,8 +2563,7 @@ function getLayerByPoint(x, y) {
   var layers = this.layers;
   var last = null;
   for (var ii = 0; ii < layers.length; ++ii) {
-    var idx = layers.length - 1 - ii;
-    var layer = layers[idx];
+    var layer = layers[ii];
     var xx = x - layer.x;
     var yy = y - layer.y;
     if (layer.locked) { continue; }
@@ -2505,8 +2626,7 @@ function getAbsolutePixelAt(x, y) {
   // and search for the given pixel
   var layers = this.layers;
   for (var ii = 0; ii < layers.length; ++ii) {
-    var idx = (layers.length - 1) - ii;
-    var pixel = layers[idx].getPixelAt(x, y);
+    var pixel = layers[ii].getPixelAt(x, y);
     if (pixel !== null) { return (pixel); }
   }
   return (null);
@@ -2572,17 +2692,6 @@ function updateGlobalBoundings() {
 }
 
 /**
- * Merges two layers
- * Resize la by lb<->la bounding diff
- * Inject lb matrix into la matrix at lb bound pos
- * @param {Layer} la
- * @param {Layer} lb
- */
-function mergeLayers(la, lb) {
-
-}
-
-/**
  * Uses preallocated binary grid with the size of the absolute boundings
  * of our working area. In the next step we trace "alive cells" in the grid,
  * then we take the boundings of the used area of our grid and crop out
@@ -2635,6 +2744,42 @@ function getBinaryShape(x, y, base) {
   return (grid);
 }
 
+/**
+ * @return {Number}
+ */
+function getCursorSize() {
+  var this$1 = this;
+
+  for (var key in this.modes) {
+    if (!this$1.modes[key]) { continue; }
+    switch (key) {
+      case "arc":
+      case "draw":
+      case "rect":
+      case "stroke":
+        return (SETTINGS.PENCIL_SIZE);
+      break;
+      case "erase":
+        return (SETTINGS.ERASER_SIZE);
+      break;
+      case "light":
+        return (SETTINGS.LIGHT_SIZE);
+      break;
+      case "move":
+      case "fill":
+      case "shape":
+      case "flood":
+      case "select":
+        return (1);
+      break;
+      case "pipette":
+        return (1);
+      break;
+    }
+  }
+  return (1);
+}
+
 
 var _env = Object.freeze({
 	isInActiveState: isInActiveState,
@@ -2650,8 +2795,8 @@ var _env = Object.freeze({
 	getAbsolutePixelAt: getAbsolutePixelAt,
 	getRelativePixelAt: getRelativePixelAt,
 	updateGlobalBoundings: updateGlobalBoundings,
-	mergeLayers: mergeLayers,
-	getBinaryShape: getBinaryShape
+	getBinaryShape: getBinaryShape,
+	getCursorSize: getCursorSize
 });
 
 /**
@@ -2761,6 +2906,7 @@ var _fill = Object.freeze({
  */
 function insertImage(ctx, x, y) {
   var layer = this.getCurrentLayer();
+  if (layer === null) { return; }
   var batch = layer.createBatchAt(x, y);
   var view = ctx.canvas;
   var width = view.width; var height = view.height;
@@ -2978,55 +3124,6 @@ var _insert = Object.freeze({
 	fillRect: fillRect$1,
 	strokeRect: strokeRect,
 	insertRectangleAt: insertRectangleAt
-});
-
-/**
- * Rotate in 90° steps
- * @param {Number} value
- */
-function rotate(value) {
-  value = value ? 90 : -90;
-}
-
-/**
- * @param {Batch} base
- * @param {Boolean} vertical
- * @return {Void}
- */
-function flip(base, vertical) {
-  var x = base.bounds.x;
-  var y = base.bounds.y;
-  var ww = base.bounds.w;
-  var hh = base.bounds.h;
-  var batch = layer.createBatchAt(x, y);
-  batch.resizeRectangular(
-    x, y,
-    ww - 1, hh - 1
-  );
-  var count = 0;
-  for (var ii = 0; ii < ww * hh; ++ii) {
-    var xx = (ii % ww) | 0;
-    var yy = (ii / ww) | 0;
-    var pixel = base.getRawPixelAt(x + xx, y + yy);
-    if (pixel === null) { continue; }
-    var rx = (!vertical ? x + (ww - xx) - 1 : (x + xx)) | 0;
-    var ry = ( vertical ? y + (hh - yy) - 1 : (y + yy)) | 0;
-    batch.erasePixelFast(x + xx, y + yy, pixel);
-    batch.drawPixelFast(rx, ry, pixel);
-    count++;
-  }
-  if (count <= 0) {
-    batch.kill();
-    return;
-  }
-  this.enqueue(CommandKind.LAYER_FLIP, batch);
-  return;
-}
-
-
-var _transform = Object.freeze({
-	rotate: rotate,
-	flip: flip
 });
 
 /**
@@ -3452,23 +3549,6 @@ function updateGrid() {
   }
 }
 
-/**
- * Returns state if we can render
- * a cached version of our view buffer
- * @return {Boolean}
- */
-function canRenderCachedBuffer() {
-  return (
-    !this.states.drawing &&
-    !this.states.erasing &&
-    !this.states.arc &&
-    !this.states.rect &&
-    !this.states.stroke &&
-    !this.states.lighting &&
-    !this.states.moving
-  );
-}
-
 /** Main render method */
 function render() {
   var this$1 = this;
@@ -3478,27 +3558,41 @@ function render() {
   this.renderBackground();
   if (this.cr > HIDE_GRID) { this.renderGrid(); }
   // render cached version of our working area
-  if (this.canRenderCachedBuffer()) {
-    var cx = this.cx | 0;
-    var cy = this.cy | 0;
-    var layers = this.layers;
-    for (var ii = 0; ii < layers.length; ++ii) {
-      var layer = layers[ii];
-      if (!layer.visible) { continue; }
-      var bounds = layer.bounds;
-      var ww = (bounds.w * TILE_SIZE) * cr;
-      var hh = (bounds.h * TILE_SIZE) * cr;
-      var xx = cx + ((layer.x + bounds.x) * TILE_SIZE) * cr;
-      var yy = cy + ((layer.y + bounds.y) * TILE_SIZE) * cr;
-      this$1.drawImage(
-        layer.batch.texture,
-        xx, yy,
-        ww, hh
-      );
-    }
+  var cx = this.cx | 0;
+  var cy = this.cy | 0;
+  // draw global boundings
+  if (MODES.DEV) {
+    var bounds = this.bounds;
+    var x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
+    var y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
+    var w = (bounds.w * TILE_SIZE) * cr;
+    var h = (bounds.h * TILE_SIZE) * cr;
+    this.drawRectangle(
+      x, y,
+      w, h,
+      [0, 1, 0, 0.1]
+    );
+  }
+  var layers = this.layers;
+  for (var ii = 0; ii < layers.length; ++ii) {
+    var idx = layers.length - 1 - ii;
+    var layer = layers[idx];
+    if (!layer.visible) { continue; }
+    var bounds$1 = layer.bounds;
+    var ww = (bounds$1.w * TILE_SIZE) * cr;
+    var hh = (bounds$1.h * TILE_SIZE) * cr;
+    var xx = cx + ((layer.x + bounds$1.x) * TILE_SIZE) * cr;
+    var yy = cy + ((layer.y + bounds$1.y) * TILE_SIZE) * cr;
+    this$1.drawImage(
+      layer.batch.texture,
+      xx, yy,
+      ww, hh
+    );
+    // don't forget to render live batches
+    this$1.renderLayer(layer);
   }
   // render live data
-  this.renderLayers();
+  //this.renderLayers();
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
@@ -3524,48 +3618,6 @@ function renderGrid() {
   );
 }
 
-/** Render all layers */
-function renderLayers() {
-  var this$1 = this;
-
-  var cx = this.cx | 0;
-  var cy = this.cy | 0;
-  var cr = this.cr;
-  var bounds = this.bounds;
-  var layers = this.layers;
-  // draw global boundings
-  if (MODES.DEV) {
-    var x = (cx + ((bounds.x * TILE_SIZE) * cr)) | 0;
-    var y = (cy + ((bounds.y * TILE_SIZE) * cr)) | 0;
-    var w = (bounds.w * TILE_SIZE) * cr;
-    var h = (bounds.h * TILE_SIZE) * cr;
-    this.drawRectangle(
-      x, y,
-      w, h,
-      [0, 1, 0, 0.1]
-    );
-  }
-  for (var ii = 0; ii < this.layers.length; ++ii) {
-    var layer = layers[ii];
-    var bounds$1 = layer.bounds;
-    if (!layer.visible) { continue; }
-    //if (!this.boundsInsideView(bounds)) continue;
-    // draw layer boundings
-    if (MODES.DEV) {
-      var x$1 = (cx + ((bounds$1.x * TILE_SIZE) * cr)) | 0;
-      var y$1 = (cy + ((bounds$1.y * TILE_SIZE) * cr)) | 0;
-      var w$1 = ((bounds$1.w) * TILE_SIZE) * cr;
-      var h$1 = ((bounds$1.h) * TILE_SIZE) * cr;
-      /*this.drawRectangle(
-        x, y,
-        w, h,
-        [1, 0, 0, 0.1]
-      );*/
-    }
-    this$1.renderLayer(layer);
-  }
-}
-
 /**
  * @param {Layer} layer
  */
@@ -3577,11 +3629,10 @@ function renderLayer(layer) {
   var cr = this.cr;
   var batches = layer.batches;
   var sindex = this.sindex;
-  var cached = this.canRenderCachedBuffer();
   for (var ii = 0; ii < batches.length; ++ii) {
     var batch = batches[ii];
     var bounds = batch.bounds;
-    if (cached && !batch.forceRendering) { continue; }
+    if (!batch.forceRendering) { continue; }
     // batch index is higher than stack index, so ignore this batch
     if (sindex - batch.getStackIndex() < 0) {
       if (!batch.forceRendering) { continue; }
@@ -3615,10 +3666,6 @@ function renderLayer(layer) {
       gl$1.blendFunc(gl$1.SRC_ALPHA, gl$1.ONE_MINUS_SRC_ALPHA);
     }
   }
-}
-
-function getActiveCursorSize() {
-
 }
 
 function renderHoveredTile() {
@@ -3789,13 +3836,10 @@ function drawResizeRectangle(x, y, w, h, color) {
 
 var _render = Object.freeze({
 	updateGrid: updateGrid,
-	canRenderCachedBuffer: canRenderCachedBuffer,
 	render: render,
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
-	renderLayers: renderLayers,
 	renderLayer: renderLayer,
-	getActiveCursorSize: getActiveCursorSize,
 	renderHoveredTile: renderHoveredTile,
 	renderSelection: renderSelection,
 	renderShapeSelection: renderShapeSelection,
@@ -3914,44 +3958,6 @@ function currentStackOperation() {
 
 /**
  * @param {Command} cmd
- * @return {Number}
- */
-function getCommandKind(cmd) {
-  var kind = cmd.kind;
-  switch (kind) {
-    case CommandKind.LAYER_LOCK:
-    case CommandKind.LAYER_FLIP:
-    case CommandKind.LAYER_MOVE:
-    case CommandKind.LAYER_ORDER:
-    case CommandKind.LAYER_RENAME:
-    case CommandKind.LAYER_ROTATE:
-    case CommandKind.LAYER_VISIBILITY:
-    case CommandKind.LAYER_ADD:
-    case CommandKind.LAYER_REMOVE:
-      return (CommandKind.LAYER_OPERATION);
-    break;
-    case CommandKind.DRAW:
-    case CommandKind.ERASE:
-    case CommandKind.FILL:
-    case CommandKind.BACKGROUND:
-    case CommandKind.PASTE:
-    case CommandKind.CUT:
-    case CommandKind.INSERT_IMAGE:
-    case CommandKind.STROKE:
-    case CommandKind.RECT_FILL:
-    case CommandKind.RECT_STROKE:
-    case CommandKind.ARC_FILL:
-    case CommandKind.ARC_STROKE:
-    case CommandKind.FLOOD_FILL:
-    case CommandKind.LIGHTING:
-      return (CommandKind.BATCH_OPERATION);
-    break;
-  }
-  return (CommandKind.UNKNOWN);
-}
-
-/**
- * @param {Command} cmd
  * @param {Boolean} state
  */
 function fire(cmd, state) {
@@ -3974,37 +3980,50 @@ function fireLayerOperation(cmd, state) {
   var kind = cmd.kind;
   var batch = cmd.batch;
   var layer = batch.layer;
+  var main = layer.batch;
   switch (kind) {
-    case CommandKind.LAYER_ADD:
+    case CommandKind.LAYER_CLONE:
+      layer.updateBoundings();
       if (state) {
+        this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
-        this.layers.push(layer);
         this.setActiveLayer(layer);
       } else {
-        var index = layer.getIndex() - 1;
-        index = index < 0 ? 0 : index;
         layer.removeUiReference();
-        layer.removeFromLayers();
-        var nlayer = this.getLayerByIndex(index);
-        this.setActiveLayer(nlayer);
+        this.layers.splice(batch.index, 1);
+        var index = batch.index < 0 ? 0 : batch.index;
+        this.setActiveLayer(this.getLayerByIndex(index));
+      }
+      main.injectMatrix(layer.batch, state);
+      main.refreshTexture(true);
+    break;
+    case CommandKind.LAYER_ADD:
+      if (state) {
+        this.layers.splice(batch.index, 0, layer);
+        layer.addUiReference();
+        this.setActiveLayer(layer);
+      } else {
+        layer.removeUiReference();
+        this.layers.splice(batch.index, 1);
+        var index$1 = batch.index < 0 ? 0 : batch.index;
+        this.setActiveLayer(this.getLayerByIndex(index$1));
       }
     break;
     case CommandKind.LAYER_REMOVE:
-      if (state) {
-        var index$1 = layer.getIndex() - 1;
-        index$1 = index$1 < 0 ? 0 : index$1;
-        layer.removeUiReference();
-        layer.removeFromLayers();
-        var nlayer$1 = this.getLayerByIndex(index$1);
-        this.setActiveLayer(nlayer$1);
-      } else {
+      if (!state) {
+        this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
-        this.layers.push(layer);
         this.setActiveLayer(layer);
+      } else {
+        layer.removeUiReference();
+        this.layers.splice(batch.index, 1);
+        var index$2 = batch.index < 0 ? 0 : batch.index;
+        index$2 = index$2 === this.layers.length ? index$2 - 1 : index$2;
+        this.setActiveLayer(this.getLayerByIndex(index$2));
       }
     break;
     case CommandKind.LAYER_RENAME:
-      layer.name = cmd.batch[state ? "name": "oname"];
+      layer.name = batch[state ? "name": "oname"];
     break;
     case CommandKind.LAYER_LOCK:
       layer.locked = !layer.locked;
@@ -4012,11 +4031,33 @@ function fireLayerOperation(cmd, state) {
     case CommandKind.LAYER_VISIBILITY:
       layer.visible = !layer.visible;
     break;
+    case CommandKind.LAYER_ORDER:
+      if (state) {
+        var tmp = this.layers[batch.oindex];
+        this.layers[batch.oindex] = this.layers[batch.index];
+        this.layers[batch.index] = tmp;
+        tmp.removeUiReference(); tmp.addUiReference();
+        this.setActiveLayer(tmp);
+      } else {
+        var tmp$1 = this.layers[batch.index];
+        this.layers[batch.index] = this.layers[batch.oindex];
+        this.layers[batch.oindex] = tmp$1;
+        tmp$1.removeUiReference(); tmp$1.addUiReference();
+        this.setActiveLayer(tmp$1);
+      }
+    break;
     case CommandKind.LAYER_MOVE:
       layer.updateBoundings();
       var dir = state ? 1 : -1;
       layer.x += (batch.position.x * dir);
       layer.y += (batch.position.y * dir);
+    break;
+    case CommandKind.LAYER_FLIP_VERTICAL:
+    break;
+    case CommandKind.LAYER_FLIP_HORIZONTAL:
+    break;
+    case CommandKind.LAYER_MERGE:
+      batch.merge.mergeWithLayer(layer, state);
     break;
   }
 }
@@ -4035,14 +4076,55 @@ function fireBatchOperation(cmd, state) {
   main.refreshTexture(true);
 }
 
+/**
+ * @param {Command} cmd
+ * @return {Number}
+ */
+function getCommandKind(cmd) {
+  var kind = cmd.kind;
+  switch (kind) {
+    case CommandKind.LAYER_LOCK:
+    case CommandKind.LAYER_MOVE:
+    case CommandKind.LAYER_ORDER:
+    case CommandKind.LAYER_RENAME:
+    case CommandKind.LAYER_ROTATE:
+    case CommandKind.LAYER_VISIBILITY:
+    case CommandKind.LAYER_ADD:
+    case CommandKind.LAYER_REMOVE:
+    case CommandKind.LAYER_CLONE:
+    case CommandKind.LAYER_MERGE:
+    case CommandKind.LAYER_FLIP_VERTICAL:
+    case CommandKind.LAYER_FLIP_HORIZONTAL:
+      return (CommandKind.LAYER_OPERATION);
+    break;
+    case CommandKind.DRAW:
+    case CommandKind.ERASE:
+    case CommandKind.FILL:
+    case CommandKind.BACKGROUND:
+    case CommandKind.PASTE:
+    case CommandKind.CUT:
+    case CommandKind.INSERT_IMAGE:
+    case CommandKind.STROKE:
+    case CommandKind.RECT_FILL:
+    case CommandKind.RECT_STROKE:
+    case CommandKind.ARC_FILL:
+    case CommandKind.ARC_STROKE:
+    case CommandKind.FLOOD_FILL:
+    case CommandKind.LIGHTING:
+      return (CommandKind.BATCH_OPERATION);
+    break;
+  }
+  return (CommandKind.UNKNOWN);
+}
+
 
 var _state = Object.freeze({
 	refreshStack: refreshStack,
 	currentStackOperation: currentStackOperation,
-	getCommandKind: getCommandKind,
 	fire: fire,
 	fireLayerOperation: fireLayerOperation,
-	fireBatchOperation: fireBatchOperation
+	fireBatchOperation: fireBatchOperation,
+	getCommandKind: getCommandKind
 });
 
 /**
@@ -4128,6 +4210,36 @@ function appendStorage(key, value) {
 var _write = Object.freeze({
 	writeStorage: writeStorage,
 	appendStorage: appendStorage
+});
+
+/**
+ * @param {Batch} base
+ * @param {Boolean} vertical
+ */
+function flip(base, vertical) {
+  var x = base.bounds.x;
+  var y = base.bounds.y;
+  var ww = base.bounds.w;
+  var hh = base.bounds.h;
+  base.data = base.data.reverse();
+}
+
+
+var _transflip = Object.freeze({
+	flip: flip
+});
+
+/**
+ * Rotate in 90° steps
+ * @param {Number} value
+ */
+function rotate(value) {
+  value = value ? 90 : -90;
+}
+
+
+var _transrotate = Object.freeze({
+	rotate: rotate
 });
 
 function resetModes() {
@@ -4287,9 +4399,11 @@ function clickedLayer(e, dbl) {
           if (!el.value) {
             layer.name = oname;
           } else {
-            this$1.enqueue(CommandKind.LAYER_RENAME, {
-              oname: oname, name: el.value, layer: layer
-            });
+            if (String(oname) !== el.value) {
+              this$1.enqueue(CommandKind.LAYER_RENAME, {
+                oname: oname, name: el.value, layer: layer
+              });
+            }
           }
           el.setAttribute("readonly", "readonly");
         };
@@ -4435,25 +4549,75 @@ function setupUi() {
   layers.addEventListener("dblclick", function (e) { return this$1.clickedLayer(e, true); });
 
   add_layer.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    var index = layer ? layer.getIndex() : 0;
+    index = index < 0 ? 0 : index;
     this$1.enqueue(CommandKind.LAYER_ADD, {
-      layer: new Layer(this$1)
+      layer: new Layer(this$1), index: index
     });
-    layers.scrollTop = 0;
+  };
+  remove_layer.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    var index = layer ? layer.getIndex() : 0;
+    index = index < 0 ? 0 : index;
+    if (layer !== null) { this$1.enqueue(CommandKind.LAYER_REMOVE, {
+      layer: layer, index: index
+    }); }
+    this$1.redraw = true;
   };
 
   move_layer_up.onclick = function (e) {
-    console.log("Move up", this$1.getCurrentLayer());
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null && layer.getIndex() > 0) {
+      this$1.enqueue(CommandKind.LAYER_ORDER, {
+        layer: layer, index: layer.getIndex() - 1, oindex: layer.getIndex()
+      });
+    }
+    this$1.redraw = true;
   };
   move_layer_down.onclick = function (e) {
-    console.log("Move down", this$1.getCurrentLayer());
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null && layer.getIndex() < this$1.layers.length - 1) {
+      this$1.enqueue(CommandKind.LAYER_ORDER, {
+        layer: layer, index: layer.getIndex() + 1, oindex: layer.getIndex()
+      });
+    }
+    this$1.redraw = true;
   };
 
-  remove_layer.onclick = function (e) {
-    if (this$1.layers.length > 1) {
-      this$1.enqueue(CommandKind.LAYER_REMOVE, {
-        layer: this$1.getCurrentLayer()
+  clone.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null) {
+      var index = layer ? layer.getIndex() : 0;
+      index = index < 0 ? 0 : index;
+      this$1.enqueue(CommandKind.LAYER_CLONE, {
+        layer: layer.clone(), index: index
       });
-      this$1.redraw = true;
+    }
+  };
+
+  flip_horizontal.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null) {
+      var data = new Uint8Array(layer.batch.data);
+      this$1.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer: layer, data: data });
+    }
+  };
+  flip_vertical.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null) {
+      var data = new Uint8Array(layer.batch.data);
+      this$1.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer: layer, data: data });
+    }
+  };
+
+  merge.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null && this$1.layers.length > 1) {
+      if (layer.getIndex() < this$1.layers.length - 1) {
+        var merge = this$1.getLayerByIndex(layer.getIndex() + 1);
+        this$1.enqueue(CommandKind.LAYER_MERGE, { layer: layer, merge: merge });
+      }
     }
   };
 
@@ -4611,11 +4775,57 @@ function getPixelAt$1(x, y) {
   return (this.batch.getRawPixelAt(dx, dy));
 }
 
+/**
+ * Access live pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getLivePixelAt$1(x, y) {
+  var this$1 = this;
+
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  // normalize coordinates
+  var dx = (x - this.x) | 0;
+  var dy = (y - this.y) | 0;
+  var xx = dx - this.bounds.x;
+  var yy = dy - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) { return (null); }
+  for (var ii = 0; ii < this.batches.length; ++ii) {
+    var idx = (this$1.batches.length - 1) - ii;
+    var batch = this$1.batches[idx];
+    var pixel = batch.getRawPixelAt(dx, dy);
+    if (pixel !== null) { return (pixel); }
+  }
+  return (null);
+}
+
+/**
+ * Merges two layers
+ * Resize this by layer<->this bounding diff
+ * Inject this matrix into layer matrix at layer bound pos
+ * @param {Layer} layer
+ */
+function mergeWithLayer$1(layer, state) {
+  this.batches.push(layer.batch);
+  this.updateBoundings();
+  this.batch.injectMatrix(layer.batch, state);
+  this.batch.refreshTexture(true);
+}
+
 
 var _matrix$2 = Object.freeze({
 	hasResized: hasResized$1,
 	updateBoundings: updateBoundings$1,
-	getPixelAt: getPixelAt$1
+	getPixelAt: getPixelAt$1,
+	getLivePixelAt: getLivePixelAt$1,
+	mergeWithLayer: mergeWithLayer$1
 });
 
 /**
@@ -4630,7 +4840,8 @@ var Layer$2 = function Layer(instance) {
   // last boundings
   this.last = { x: 0, y: 0, w: 0, h: 0 };
   // we can name layers
-  this._name = "Layer " + this.instance.layers.length;
+  this.index = this.generateLayerNameIndex();
+  this._name = "Layer " + this.index;
   // reference to ui node
   this.node = null;
   // opacity applied over local batches
@@ -4648,25 +4859,6 @@ var Layer$2 = function Layer(instance) {
 };
 
 var prototypeAccessors$1 = { name: {},visible: {},locked: {} };
-Layer$2.prototype.allocateLayerMatrix = function allocateLayerMatrix () {
-  var instance = this.instance;
-  this.batch = instance.createDynamicBatch(0, 0);
-  // add reference to unused layer so we can use
-  // the batch matrix logic for our layers too
-  // but without including layer x,y in calculations
-  this.batch.layer = instance.cache.layer;
-};
-Layer$2.prototype.addUiReference = function addUiReference () {
-  var tmpl = "\n      <div class=\"layer-item\">\n        <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n        <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n        <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n      </div>\n    ";
-  // 'afterbegin' equals array.unshift
-  layers.insertAdjacentHTML("afterbegin", tmpl);
-  // save reference to inserted layer node
-  this.node = layers.children[0];
-};
-Layer$2.prototype.removeUiReference = function removeUiReference () {
-  this.node.parentNode.removeChild(this.node);
-  this.node = null;
-};
 /**
  * @return {String}
  */
@@ -4713,6 +4905,32 @@ prototypeAccessors$1.locked.set = function (state) {
 };
 
 Object.defineProperties( Layer$2.prototype, prototypeAccessors$1 );
+
+Layer$2.prototype.allocateLayerMatrix = function() {
+  var instance = this.instance;
+  this.batch = instance.createDynamicBatch(0, 0);
+  // add reference to unused layer so we can use
+  // the batch matrix logic for our layers too
+  // but without including layer x,y in calculations
+  this.batch.layer = instance.cache.layer;
+};
+
+/**
+ * @return {Layer}
+ */
+Layer$2.prototype.clone = function() {
+  var layer = new Layer$2(this.instance);
+  var batch = this.batch.clone();
+  layer.last = Object.assign(layer.last);
+  layer.opacity = this.opacity;
+  layer.bounds = this.bounds.clone();
+  layer.x = this.x; layer.y = this.y;
+  layer.batch = batch;
+  layer.batches.push(batch);
+  //layer.visible = this.visible;
+  //layer.locked = this.locked;
+  return (layer);
+};
 
 /**
  * @return {Number}
@@ -4776,6 +4994,45 @@ Layer$2.prototype.getBatchById = function(id) {
     }
   }
   return (result);
+};
+
+/**
+ * Auto generates a layer index name
+ * and filles missing layer indices
+ * @return {Number}
+ */
+Layer$2.prototype.generateLayerNameIndex = function() {
+  var layers = this.instance.layers;
+  // clone, take numeric index, sort ascending, es6 left its muck here
+  var sorted = layers.concat().map(function (item) { return item.index; }).sort(function (a, b) { return a - b; });
+  for (var ii = 0; ii < sorted.length; ++ii) {
+    if (sorted.indexOf(ii) < 0) { return (ii); }
+  }
+  return (layers.length);
+};
+
+/**
+ * yuck in here, yuck in here
+ */
+Layer$2.prototype.addUiReference = function() {
+  var tmpl = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  var parser = new DOMParser();
+  var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
+  var index = this.getIndex();
+  var layers = this.instance.layers;
+  var ctx = window.layers;
+  if (index >= ctx.children.length) {
+    window.layers.appendChild(html);
+  } else {
+    window.layers.insertBefore(html, ctx.children[index]);
+  }
+  // save reference to inserted layer node
+  this.node = html;
+};
+
+Layer$2.prototype.removeUiReference = function() {
+  this.node.parentNode.removeChild(this.node);
+  this.node = null;
 };
 
 extend(Layer$2, _matrix$2);
@@ -4918,7 +5175,6 @@ extend(Poxi, _listener);
 extend(Poxi, _env);
 extend(Poxi, _fill);
 extend(Poxi, _insert);
-extend(Poxi, _transform);
 
 extend(Poxi, _buffer);
 extend(Poxi, _build);
@@ -4935,6 +5191,9 @@ extend(Poxi, _undo);
 
 extend(Poxi, _read);
 extend(Poxi, _write);
+
+extend(Poxi, _transflip);
+extend(Poxi, _transrotate);
 
 extend(Poxi, _ui);
 

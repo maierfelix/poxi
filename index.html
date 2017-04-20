@@ -10,17 +10,67 @@
   <body>
     <div id="ui">
       <div class="right-menu">
-        <!--<div class="layer-title">
+        <div class="layer-title">
           <img class="layer-title-img" src="assets/img/layers.png">
           <span class="layer-span-title">Layers</span>
-        </div>-->
-        <div class="layer-menu">
-            <img id="add_layer" src="assets/img/plus.png">
-            <img id="move_layer_up" src="assets/img/up.png">
-            <img id="move_layer_down" src="assets/img/down.png">
-            <img id="remove_layer" src="assets/img/minus.png">
+        </div>
+        <div class="layer-menu" style="top: 34px">
+          <a class="tooltip">
+            <img id="add_layer" src="assets/img/plus.png" class="item">
+            <span class="tooltiptext">Create</span>
+          </a>
+          <a class="tooltip">
+            <img id="remove_layer" src="assets/img/minus.png" class="item">
+            <span class="tooltiptext">Delete</span>
+          </a>
+          <a class="tooltip">
+            <img id="move_layer_up" src="assets/img/up.png" class="item">
+            <span class="tooltiptext">Move Up</span>
+          </a>
+          <a class="tooltip">
+            <img id="move_layer_down" src="assets/img/down.png" class="item">
+            <span class="tooltiptext">Move Down</span>
+          </a>
         </div>
         <div id="layers" class="layer-wrapper"></div>
+        <div class="layer-menu" style="top: 203px">
+          <a class="tooltip">
+            <img id="clone" src="assets/img/clone.png" class="item">
+            <span class="tooltiptext">Clone</span>
+          </a>
+          <a class="tooltip">
+            <img id="merge" src="assets/img/merge.png" class="item">
+            <span class="tooltiptext">Merge Down</span>
+          </a>
+          <a class="tooltip">
+            <img id="flip_horizontal" src="assets/img/horizontal.png" class="item">
+            <span class="tooltiptext">Flip Horizontal</span>
+          </a>
+          <a class="tooltip">
+            <img id="flip_vertical" src="assets/img/vertical.png" class="item">
+            <span class="tooltiptext">Flip Vertical</span>
+          </a>
+          <!--<a class="tooltip">
+            <img id="rotate_right" src="assets/img/rotate_right.png" class="item">
+            <span class="tooltiptext">Rotate right</span>
+          </a>-->
+        </div>
+        <!--<div class="layer-menu" style="top: 226px">
+          <img class="item" style="opacity: 0;">
+          <img class="item" style="opacity: 0;">
+          <a class="tooltip">
+            <img id="flip_vertical" src="assets/img/vertical.png" class="item">
+            <span class="tooltiptext">Flip vertical</span>
+          </a>
+          <a class="tooltip">
+            <img id="rotate_left" src="assets/img/rotate_left.png" class="item">
+            <span class="tooltiptext">Rotate left</span>
+          </a>
+        </div>-->
+        <!--<div class="layer-menu" style="top: 225px">
+          <img id="clone" src="assets/img/clone.png">
+          <img id="merge" src="assets/img/merge.png">
+        </div>-->
       </div>
       <div class="bottom-menu">
         <div class="bottom-menu-items">

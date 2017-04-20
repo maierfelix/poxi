@@ -319,7 +319,7 @@ input[type="color"] {
   opacity: 0.65;
 }
 
-.layer-item input {
+  .layer-item input {
   outline: none;
 }
 
@@ -328,14 +328,15 @@ input[type="color"] {
 }
 
 .layer-wrapper {
-  top: 30px;
+  top: 56px;
   max-height: 142px;
+  min-height: 142px;
   position: absolute;
   width: 100%;
   border-top: 1px solid rgba(255,255,255,0.02);
   overflow-y: scroll;
   overflow-x: hidden;
-  background: rgba(0,0,0,0);
+  background-color: rgba(42, 42, 42, 0.175);
 }
 
 .layer-title {
@@ -403,7 +404,7 @@ input[type="color"] {
 }
 
 .layer-menu {
-  top: 5px;
+  top: 152px;
   position: absolute;
   width: 100%;
   background: rgba(0,0,0,0);
