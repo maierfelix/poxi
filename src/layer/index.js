@@ -210,6 +210,8 @@ Layer.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
+  this.locked = this.locked;
+  this.visible = this.visible;
 };
 
 Layer.prototype.removeUiReference = function() {

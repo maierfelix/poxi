@@ -50,6 +50,7 @@ export function fireLayerOperation(cmd, state) {
   const layer = batch.layer;
   const main = layer.batch;
   switch (kind) {
+    // TODO: buggy, not working
     case CommandKind.LAYER_CLONE:
       layer.updateBoundings();
       if (state) {
