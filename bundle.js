@@ -2461,6 +2461,8 @@ Layer.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
+  this.locked = this.locked;
+  this.visible = this.visible;
 };
 
 Layer.prototype.removeUiReference = function() {
@@ -3982,6 +3984,7 @@ function fireLayerOperation(cmd, state) {
   var layer = batch.layer;
   var main = layer.batch;
   switch (kind) {
+    // TODO: buggy, not working
     case CommandKind.LAYER_CLONE:
       layer.updateBoundings();
       if (state) {
@@ -5028,6 +5031,8 @@ Layer$2.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
+  this.locked = this.locked;
+  this.visible = this.visible;
 };
 
 Layer$2.prototype.removeUiReference = function() {
