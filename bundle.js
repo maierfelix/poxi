@@ -398,7 +398,8 @@ var CommandKind = {
   LAYER_ROTATE: 26,
   LAYER_VISIBILITY: 27,
   LAYER_CLONE: 28,
-  LAYER_MERGE: 29
+  LAYER_CLONE_BY_REF: 29,
+  LAYER_MERGE: 30
 };
 
 /**
@@ -2277,6 +2278,8 @@ var Layer = function Layer(instance) {
   this._name = "Layer " + this.index;
   // reference to ui node
   this.node = null;
+  // reference (clone) to master layer
+  this.reference = null;
   // opacity applied over local batches
   this.opacity = 255.0;
   // layer batch matrix
@@ -2339,15 +2342,6 @@ prototypeAccessors.locked.set = function (state) {
 
 Object.defineProperties( Layer.prototype, prototypeAccessors );
 
-Layer.prototype.allocateLayerMatrix = function() {
-  var instance = this.instance;
-  this.batch = instance.createDynamicBatch(0, 0);
-  // add reference to unused layer so we can use
-  // the batch matrix logic for our layers too
-  // but without including layer x,y in calculations
-  this.batch.layer = instance.cache.layer;
-};
-
 /**
  * @return {Layer}
  */
@@ -2360,9 +2354,33 @@ Layer.prototype.clone = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = batch;
   layer.batches.push(batch);
+  // TODO: fix error below
   //layer.visible = this.visible;
   //layer.locked = this.locked;
   return (layer);
+};
+
+Layer.prototype.cloneByReference = function() {
+  var layer = new Layer(this.instance);
+  layer.last = Object.assign(layer.last);
+  layer.opacity = this.opacity;
+  layer.bounds = this.bounds;
+  layer.x = this.x; layer.y = this.y;
+  layer.batch = this.batch;
+  layer.batches = this.batches;
+  layer.reference = this;
+  //layer.visible = this.visible;
+  //layer.locked = this.locked;
+  return (layer);
+};
+
+Layer.prototype.allocateLayerMatrix = function() {
+  var instance = this.instance;
+  this.batch = instance.createDynamicBatch(0, 0);
+  // add reference to unused layer so we can use
+  // the batch matrix logic for our layers too
+  // but without including layer x,y in calculations
+  this.batch.layer = instance.cache.layer;
 };
 
 /**
@@ -3986,7 +4004,7 @@ function fireLayerOperation(cmd, state) {
   switch (kind) {
     // TODO: buggy, not working
     case CommandKind.LAYER_CLONE:
-      layer.updateBoundings();
+    case CommandKind.LAYER_CLONE_REF:
       if (state) {
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
@@ -3997,7 +4015,6 @@ function fireLayerOperation(cmd, state) {
         var index = batch.index < 0 ? 0 : batch.index;
         this.setActiveLayer(this.getLayerByIndex(index));
       }
-      main.injectMatrix(layer.batch, state);
       main.refreshTexture(true);
     break;
     case CommandKind.LAYER_ADD:
@@ -4599,6 +4616,17 @@ function setupUi() {
     }
   };
 
+  clone_by_ref.onclick = function (e) {
+    var layer = this$1.getCurrentLayer();
+    if (layer !== null) {
+      var index = layer ? layer.getIndex() : 0;
+      index = index < 0 ? 0 : index;
+      this$1.enqueue(CommandKind.LAYER_CLONE, {
+        layer: layer.cloneByReference(), index: index
+      });
+    }
+  };
+
   flip_horizontal.onclick = function (e) {
     var layer = this$1.getCurrentLayer();
     if (layer !== null) {
@@ -4847,6 +4875,8 @@ var Layer$2 = function Layer(instance) {
   this._name = "Layer " + this.index;
   // reference to ui node
   this.node = null;
+  // reference (clone) to master layer
+  this.reference = null;
   // opacity applied over local batches
   this.opacity = 255.0;
   // layer batch matrix
@@ -4909,15 +4939,6 @@ prototypeAccessors$1.locked.set = function (state) {
 
 Object.defineProperties( Layer$2.prototype, prototypeAccessors$1 );
 
-Layer$2.prototype.allocateLayerMatrix = function() {
-  var instance = this.instance;
-  this.batch = instance.createDynamicBatch(0, 0);
-  // add reference to unused layer so we can use
-  // the batch matrix logic for our layers too
-  // but without including layer x,y in calculations
-  this.batch.layer = instance.cache.layer;
-};
-
 /**
  * @return {Layer}
  */
@@ -4930,9 +4951,33 @@ Layer$2.prototype.clone = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = batch;
   layer.batches.push(batch);
+  // TODO: fix error below
   //layer.visible = this.visible;
   //layer.locked = this.locked;
   return (layer);
+};
+
+Layer$2.prototype.cloneByReference = function() {
+  var layer = new Layer$2(this.instance);
+  layer.last = Object.assign(layer.last);
+  layer.opacity = this.opacity;
+  layer.bounds = this.bounds;
+  layer.x = this.x; layer.y = this.y;
+  layer.batch = this.batch;
+  layer.batches = this.batches;
+  layer.reference = this;
+  //layer.visible = this.visible;
+  //layer.locked = this.locked;
+  return (layer);
+};
+
+Layer$2.prototype.allocateLayerMatrix = function() {
+  var instance = this.instance;
+  this.batch = instance.createDynamicBatch(0, 0);
+  // add reference to unused layer so we can use
+  // the batch matrix logic for our layers too
+  // but without including layer x,y in calculations
+  this.batch.layer = instance.cache.layer;
 };
 
 /**
