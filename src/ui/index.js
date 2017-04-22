@@ -353,6 +353,17 @@ export function setupUi() {
     }
   };
 
+  clone_by_ref.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      let index = layer ? layer.getIndex() : 0;
+      index = index < 0 ? 0 : index;
+      this.enqueue(CommandKind.LAYER_CLONE, {
+        layer: layer.cloneByReference(), index
+      });
+    }
+  };
+
   flip_horizontal.onclick = (e) => {
     const layer = this.getCurrentLayer();
     if (layer !== null) {

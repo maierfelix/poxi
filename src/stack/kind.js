@@ -28,7 +28,8 @@ const CommandKind = {
   LAYER_ROTATE: 26,
   LAYER_VISIBILITY: 27,
   LAYER_CLONE: 28,
-  LAYER_MERGE: 29
+  LAYER_CLONE_BY_REF: 29,
+  LAYER_MERGE: 30
 };
 
 export default CommandKind;

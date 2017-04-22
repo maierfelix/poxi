@@ -52,7 +52,7 @@ export function fireLayerOperation(cmd, state) {
   switch (kind) {
     // TODO: buggy, not working
     case CommandKind.LAYER_CLONE:
-      layer.updateBoundings();
+    case CommandKind.LAYER_CLONE_REF:
       if (state) {
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
@@ -63,7 +63,6 @@ export function fireLayerOperation(cmd, state) {
         const index = batch.index < 0 ? 0 : batch.index;
         this.setActiveLayer(this.getLayerByIndex(index));
       }
-      main.injectMatrix(layer.batch, state);
       main.refreshTexture(true);
     break;
     case CommandKind.LAYER_ADD:
