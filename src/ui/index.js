@@ -384,7 +384,7 @@ export function setupUi() {
     if (layer !== null && this.layers.length > 1) {
       if (layer.getIndex() < this.layers.length - 1) {
         const merge = this.getLayerByIndex(layer.getIndex() + 1);
-        this.enqueue(CommandKind.LAYER_MERGE, { layer, merge });
+        this.enqueue(CommandKind.LAYER_MERGE, { layer, merge, index: layer.getIndex() });
       }
     }
   };

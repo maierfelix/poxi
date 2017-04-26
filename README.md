@@ -24,31 +24,20 @@
   </a>
 </div>
 
-### Core features
+### Engine features
  - Smart batching
- - WebGL based renderer
+ - WebGL-based renderer
+ - Low-level matrices
  - Undo/Redo for all operations
  - Infinite grid
- - Import images // *Use drag n' drop in the demo*
+ - Copy by reference
 
 ### Coming soon
  - Animations
- - Moving tool
-
-### API
-  - drawImage (ctx, x, y)
-  - fillRect (x, y, width, height, color)
-  - strokeRect (x, y, width, height, color)
-  - fillArc (x, y, radius, color)
-  - strokeArc (x, y, radius, color)
-  - fillBucket (x, y, color)
-  - applyColorLightness (batch, +-factor)
-  - applyPixelSmoothing (batch)
-  - exportAsDataUrl() => String
 
 ### Contributing
 
-Code related pull requests are very welcome, but please make sure they match the existing *super weird* code style.
+Code related pull requests are very welcome, but please make sure they match the existing code style.
 
 ### License
 [BSD-2](https://github.com/maierfelix/poxi/blob/master/LICENSE)

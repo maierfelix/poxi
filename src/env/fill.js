@@ -33,7 +33,7 @@ export function fillBucket(x, y, color) {
   // ups, we filled infinite
   if (shape === null) return;
   // now fill a buffer by our grid data
-  const bx = bounds.x + layer.x; const by = bounds.y + layer.y;
+  const bx = layer.x + bounds.x; const by = layer.y + bounds.y;
   const bw = bounds.w; const bh = bounds.h;
   const bcolor = [color[0], color[1], color[2], color[3]];
   batch.resizeRectangular(
@@ -76,7 +76,7 @@ export function floodPaint(x, y) {
   const base = layer.getPixelAt(x, y);
   // empty base tile or colors to fill are the same
   if (base === null || colorsMatch(base, color)) return;
-  const bx = bounds.x + layer.x; const by = bounds.y + layer.y;
+  const bx = layer.x + bounds.x; const by = layer.y + bounds.y;
   const bw = bounds.w; const bh = bounds.h;
   const batch = layer.createBatchAt(bx, by);
   batch.resizeRectangular(

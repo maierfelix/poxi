@@ -282,20 +282,15 @@ export function getBatchColor() {
   const data = this.data;
   const bounds = this.bounds;
   const bw = bounds.w; const bh = bounds.h;
-  const color = new Uint8Array(4);
   // calculate batch color
   for (let ii = 0; ii < bw * bh; ++ii) {
     const xx = (ii % bw) | 0;
     const yy = (ii / bw) | 0;
     const px = 4 * (yy * bw + xx);
     if (data[px + 3] <= 0) continue;
-    color[0] = data[px + 0];
-    color[1] = data[px + 1];
-    color[2] = data[px + 2];
-    color[3] = data[px + 3];
-    break;
+    return (data.subarray(px, px + 4));
   };
-  return (color);
+  return (null);
 };
 
 /**

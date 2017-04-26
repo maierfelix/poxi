@@ -100,9 +100,8 @@ Layer.prototype.clone = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = batch;
   layer.batches.push(batch);
-  // TODO: fix error below
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -115,8 +114,8 @@ Layer.prototype.cloneByReference = function() {
   layer.batch = this.batch;
   layer.batches = this.batches;
   layer.reference = this;
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -218,12 +217,11 @@ Layer.prototype.addUiReference = function() {
   const parser = new DOMParser();
   const html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   const index = this.getIndex();
-  const layers = this.instance.layers;
   const ctx = window.layers;
   if (index >= ctx.children.length) {
-    window.layers.appendChild(html);
+    ctx.appendChild(html);
   } else {
-    window.layers.insertBefore(html, ctx.children[index]);
+    ctx.insertBefore(html, ctx.children[index]);
   }
   // save reference to inserted layer node
   this.node = html;

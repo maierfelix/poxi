@@ -101,20 +101,31 @@ export function setActiveLayer(layer) {
  */
 export function getLayerByPoint(x, y) {
   const layers = this.layers;
-  let last = null;
+  // search by active pixel
   for (let ii = 0; ii < layers.length; ++ii) {
     const layer = layers[ii];
     const xx = x - layer.x;
     const yy = y - layer.y;
     if (layer.locked) continue;
     if (layer.bounds.isPointInside(xx, yy)) {
-      last = layer;
       if (layer.getPixelAt(x, y)) {
         return (layer);
       }
     }
   };
-  return (last);
+  // active pixel search failed
+  // so now search by point inside
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const idx = layers.length - 1 - ii;
+    const layer = layers[ii];
+    const xx = x - layer.x;
+    const yy = y - layer.y;
+    if (layer.locked) continue;
+    if (layer.bounds.isPointInside(xx, yy)) {
+      return (layer);
+    }
+  };
+  return (null);
 };
 
 /**

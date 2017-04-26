@@ -50,21 +50,22 @@ export function fireLayerOperation(cmd, state) {
   const layer = batch.layer;
   const main = layer.batch;
   switch (kind) {
-    // TODO: buggy, not working
-    case CommandKind.LAYER_CLONE:
-    case CommandKind.LAYER_CLONE_REF:
-      if (state) {
+    case CommandKind.LAYER_MERGE:
+      if (!state) {
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
         this.setActiveLayer(layer);
       } else {
         layer.removeUiReference();
         this.layers.splice(batch.index, 1);
-        const index = batch.index < 0 ? 0 : batch.index;
+        let index = batch.index < 0 ? 0 : batch.index;
+        index = index === this.layers.length ? index - 1 : index;
         this.setActiveLayer(this.getLayerByIndex(index));
       }
-      main.refreshTexture(true);
+      batch.merge.mergeWithLayer(layer, state);
     break;
+    case CommandKind.LAYER_CLONE:
+    case CommandKind.LAYER_CLONE_REF:
     case CommandKind.LAYER_ADD:
       if (state) {
         this.layers.splice(batch.index, 0, layer);
@@ -123,9 +124,6 @@ export function fireLayerOperation(cmd, state) {
     case CommandKind.LAYER_FLIP_VERTICAL:
     break;
     case CommandKind.LAYER_FLIP_HORIZONTAL:
-    break;
-    case CommandKind.LAYER_MERGE:
-      batch.merge.mergeWithLayer(layer, state);
     break;
   };
 };

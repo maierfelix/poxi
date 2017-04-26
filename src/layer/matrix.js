@@ -124,7 +124,9 @@ export function getLivePixelAt(x, y) {
  * @param {Layer} layer
  */
 export function mergeWithLayer(layer, state) {
-  this.batches.push(layer.batch);
+  if (state) this.batches.push(layer.batch);
+  const batch = layer.batch.data;
+  const ww = layer.batch.bounds.w;
   this.updateBoundings();
   this.batch.injectMatrix(layer.batch, state);
   this.batch.refreshTexture(true);
