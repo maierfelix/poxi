@@ -1845,20 +1845,15 @@ function getBatchColor() {
   var data = this.data;
   var bounds = this.bounds;
   var bw = bounds.w; var bh = bounds.h;
-  var color = new Uint8Array(4);
   // calculate batch color
   for (var ii = 0; ii < bw * bh; ++ii) {
     var xx = (ii % bw) | 0;
     var yy = (ii / bw) | 0;
     var px = 4 * (yy * bw + xx);
     if (data[px + 3] <= 0) { continue; }
-    color[0] = data[px + 0];
-    color[1] = data[px + 1];
-    color[2] = data[px + 2];
-    color[3] = data[px + 3];
-    break;
+    return (data.subarray(px, px + 4));
   }
-  return (color);
+  return (null);
 }
 
 /**
@@ -2247,7 +2242,9 @@ function getLivePixelAt(x, y) {
  * @param {Layer} layer
  */
 function mergeWithLayer(layer, state) {
-  this.batches.push(layer.batch);
+  if (state) { this.batches.push(layer.batch); }
+  var batch = layer.batch.data;
+  var ww = layer.batch.bounds.w;
   this.updateBoundings();
   this.batch.injectMatrix(layer.batch, state);
   this.batch.refreshTexture(true);
@@ -2354,9 +2351,8 @@ Layer.prototype.clone = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = batch;
   layer.batches.push(batch);
-  // TODO: fix error below
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -2369,8 +2365,8 @@ Layer.prototype.cloneByReference = function() {
   layer.batch = this.batch;
   layer.batches = this.batches;
   layer.reference = this;
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -2470,12 +2466,11 @@ Layer.prototype.addUiReference = function() {
   var parser = new DOMParser();
   var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   var index = this.getIndex();
-  var layers = this.instance.layers;
   var ctx = window.layers;
   if (index >= ctx.children.length) {
-    window.layers.appendChild(html);
+    ctx.appendChild(html);
   } else {
-    window.layers.insertBefore(html, ctx.children[index]);
+    ctx.insertBefore(html, ctx.children[index]);
   }
   // save reference to inserted layer node
   this.node = html;
@@ -2581,20 +2576,31 @@ function setActiveLayer(layer) {
  */
 function getLayerByPoint(x, y) {
   var layers = this.layers;
-  var last = null;
+  // search by active pixel
   for (var ii = 0; ii < layers.length; ++ii) {
     var layer = layers[ii];
     var xx = x - layer.x;
     var yy = y - layer.y;
     if (layer.locked) { continue; }
     if (layer.bounds.isPointInside(xx, yy)) {
-      last = layer;
       if (layer.getPixelAt(x, y)) {
         return (layer);
       }
     }
   }
-  return (last);
+  // active pixel search failed
+  // so now search by point inside
+  for (var ii$1 = 0; ii$1 < layers.length; ++ii$1) {
+    var idx = layers.length - 1 - ii$1;
+    var layer$1 = layers[ii$1];
+    var xx$1 = x - layer$1.x;
+    var yy$1 = y - layer$1.y;
+    if (layer$1.locked) { continue; }
+    if (layer$1.bounds.isPointInside(xx$1, yy$1)) {
+      return (layer$1);
+    }
+  }
+  return (null);
 }
 
 /**
@@ -2841,7 +2847,7 @@ function fillBucket(x, y, color) {
   // ups, we filled infinite
   if (shape === null) { return; }
   // now fill a buffer by our grid data
-  var bx = bounds.x + layer.x; var by = bounds.y + layer.y;
+  var bx = layer.x + bounds.x; var by = layer.y + bounds.y;
   var bw = bounds.w; var bh = bounds.h;
   var bcolor = [color[0], color[1], color[2], color[3]];
   batch.resizeRectangular(
@@ -2884,7 +2890,7 @@ function floodPaint(x, y) {
   var base = layer.getPixelAt(x, y);
   // empty base tile or colors to fill are the same
   if (base === null || colorsMatch(base, color)) { return; }
-  var bx = bounds.x + layer.x; var by = bounds.y + layer.y;
+  var bx = layer.x + bounds.x; var by = layer.y + bounds.y;
   var bw = bounds.w; var bh = bounds.h;
   var batch = layer.createBatchAt(bx, by);
   batch.resizeRectangular(
@@ -3550,9 +3556,31 @@ var _generate = Object.freeze({
  * @return {String}
  */
 function exportAsDataUrl() {
-  if (!(this.main.buffer instanceof CanvasRenderingContext2D)) { return (""); }
-  var buffer = this.main.buffer;
+  var layers = this.layers;
+  var ww = this.bounds.w; var hh = this.bounds.h;
+  var sx = this.bounds.x; var sy = this.bounds.y;
+  var buffer = createCanvasBuffer(ww, hh);
   var view = buffer.canvas;
+  for (var ii = 0; ii < layers.length; ++ii) {
+    var idx = layers.length - 1 - ii;
+    var layer = layers[idx];
+    var xx = (layer.x + layer.bounds.x) - sx;
+    var yy = (layer.y + layer.bounds.y) - sy;
+    var data = layer.batch.data;
+    var lw = layer.bounds.w;
+    for (var ii$1 = 0; ii$1 < data.length; ii$1 += 4) {
+      var idx$1 = (ii$1 / 4) | 0;
+      var x = (idx$1 % lw) | 0;
+      var y = (idx$1 / lw) | 0;
+      var r = data[ii$1 + 0];
+      var g = data[ii$1 + 1];
+      var b = data[ii$1 + 2];
+      var a = data[ii$1 + 3];
+      if (a <= 0) { continue; }
+      buffer.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+      buffer.fillRect(xx + x, yy + y, 1, 1);
+    }
+  }
   return (view.toDataURL("image/png"));
 }
 
@@ -4002,10 +4030,8 @@ function fireLayerOperation(cmd, state) {
   var layer = batch.layer;
   var main = layer.batch;
   switch (kind) {
-    // TODO: buggy, not working
-    case CommandKind.LAYER_CLONE:
-    case CommandKind.LAYER_CLONE_REF:
-      if (state) {
+    case CommandKind.LAYER_MERGE:
+      if (!state) {
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
         this.setActiveLayer(layer);
@@ -4013,10 +4039,13 @@ function fireLayerOperation(cmd, state) {
         layer.removeUiReference();
         this.layers.splice(batch.index, 1);
         var index = batch.index < 0 ? 0 : batch.index;
+        index = index === this.layers.length ? index - 1 : index;
         this.setActiveLayer(this.getLayerByIndex(index));
       }
-      main.refreshTexture(true);
+      batch.merge.mergeWithLayer(layer, state);
     break;
+    case CommandKind.LAYER_CLONE:
+    case CommandKind.LAYER_CLONE_REF:
     case CommandKind.LAYER_ADD:
       if (state) {
         this.layers.splice(batch.index, 0, layer);
@@ -4075,9 +4104,6 @@ function fireLayerOperation(cmd, state) {
     case CommandKind.LAYER_FLIP_VERTICAL:
     break;
     case CommandKind.LAYER_FLIP_HORIZONTAL:
-    break;
-    case CommandKind.LAYER_MERGE:
-      batch.merge.mergeWithLayer(layer, state);
     break;
   }
 }
@@ -4647,7 +4673,7 @@ function setupUi() {
     if (layer !== null && this$1.layers.length > 1) {
       if (layer.getIndex() < this$1.layers.length - 1) {
         var merge = this$1.getLayerByIndex(layer.getIndex() + 1);
-        this$1.enqueue(CommandKind.LAYER_MERGE, { layer: layer, merge: merge });
+        this$1.enqueue(CommandKind.LAYER_MERGE, { layer: layer, merge: merge, index: layer.getIndex() });
       }
     }
   };
@@ -4844,7 +4870,9 @@ function getLivePixelAt$1(x, y) {
  * @param {Layer} layer
  */
 function mergeWithLayer$1(layer, state) {
-  this.batches.push(layer.batch);
+  if (state) { this.batches.push(layer.batch); }
+  var batch = layer.batch.data;
+  var ww = layer.batch.bounds.w;
   this.updateBoundings();
   this.batch.injectMatrix(layer.batch, state);
   this.batch.refreshTexture(true);
@@ -4951,9 +4979,8 @@ Layer$2.prototype.clone = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = batch;
   layer.batches.push(batch);
-  // TODO: fix error below
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -4966,8 +4993,8 @@ Layer$2.prototype.cloneByReference = function() {
   layer.batch = this.batch;
   layer.batches = this.batches;
   layer.reference = this;
-  //layer.visible = this.visible;
-  //layer.locked = this.locked;
+  layer._visible = this.visible;
+  layer._locked = this.locked;
   return (layer);
 };
 
@@ -5067,12 +5094,11 @@ Layer$2.prototype.addUiReference = function() {
   var parser = new DOMParser();
   var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   var index = this.getIndex();
-  var layers = this.instance.layers;
   var ctx = window.layers;
   if (index >= ctx.children.length) {
-    window.layers.appendChild(html);
+    ctx.appendChild(html);
   } else {
-    window.layers.insertBefore(html, ctx.children[index]);
+    ctx.insertBefore(html, ctx.children[index]);
   }
   // save reference to inserted layer node
   this.node = html;
