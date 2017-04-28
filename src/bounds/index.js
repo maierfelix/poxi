@@ -47,6 +47,16 @@ Boundings.prototype.update = function(x, y, w, h) {
 };
 
 /**
+ * @param {Boundings} bounds
+ */
+Boundings.prototype.updateByBoundings = function(bounds) {
+  this.x = bounds.x | 0;
+  this.y = bounds.y | 0;
+  this.w = bounds.w | 0;
+  this.h = bounds.h | 0;
+};
+
+/**
  * @param {Number} x
  * @param {Number} y
  * @return {Boolean}

@@ -74,7 +74,7 @@ export function resizeByMatrixData() {
     const idx = (ii / 4) | 0;
     const xx = (idx % bw) | 0;
     const yy = (idx / bw) | 0;
-    const px = (yy * bw + xx) * 4;
+    const px = 4 * (yy * bw + xx);
     const r = data[px + 0];
     const g = data[px + 1];
     const b = data[px + 2];
@@ -126,7 +126,7 @@ export function resizeMatrix(x, y, w, h) {
     const idx = (ii / 4) | 0;
     const xx = (idx % ow) | 0;
     const yy = (idx / ow) | 0;
-    const opx = (yy * ow + xx) * 4;
+    const opx = 4 * (yy * ow + xx);
     // black magic 🦄
     const npx = opx + (yy * (nw - ow) * 4) + (x * 4) + ((y * 4) * nw);
     if (data[opx + 3] <= 0) continue;
@@ -187,27 +187,15 @@ export function injectMatrix(batch, state) {
     if (state === false && alpha <= 0 && batch.data[opx + 3] <= 0) continue;
     // manual color blending
     if (buffer[npx + 3] > 0 && alpha < 255 && alpha > 0) {
-      // redo, additive blending
-      if (state === true) {
-        const src = buffer.subarray(npx, npx + 4);
-        const dst = data.subarray(opx, opx + 4);
-        const color = additiveAlphaColorBlending(src, dst);
-        buffer[npx + 0] = color[0];
-        buffer[npx + 1] = color[1];
-        buffer[npx + 2] = color[2];
-        buffer[npx + 3] = color[3];
-        continue;
-      // undo, reverse blending
-    } else {
-        const src = buffer.subarray(npx, npx + 4);
-        const dst = data.subarray(opx, opx + 4);
-        const color = additiveAlphaColorBlending(src, dst);
-        buffer[npx + 0] = color[0];
-        buffer[npx + 1] = color[1];
-        buffer[npx + 2] = color[2];
-        buffer[npx + 3] = color[3];
-        continue;
-      }
+      // TODO: reverse additive blending on undo
+      const src = buffer.subarray(npx, npx + 4);
+      const dst = data.subarray(opx, opx + 4);
+      const color = additiveAlphaColorBlending(src, dst);
+      buffer[npx + 0] = color[0];
+      buffer[npx + 1] = color[1];
+      buffer[npx + 2] = color[2];
+      buffer[npx + 3] = color[3];
+      continue;
     }
     // just fill colors with given batch data kind
     buffer[npx + 0] = data[opx + 0];
@@ -229,7 +217,7 @@ export function getRawPixelAt(x, y) {
   // now extract the data
   const data = this.data;
   // imagedata array is 1d
-  const idx = (yy * this.bounds.w + xx) * 4;
+  const idx = 4 * (yy * this.bounds.w + xx);
   // pixel index out of bounds
   if (idx < 0 || idx >= data.length) return (null);
   // get each color value

@@ -11,6 +11,7 @@ export function undo() {
     this.fire(cmd, false);
     this.sindex--;
   }
+  this.refreshUiLayers();
   this.updateGlobalBoundings();
   this.redraw = true;
   return;
@@ -31,6 +32,8 @@ export function dequeue(from, to) {
     switch (kind) {
       case CommandKind.BATCH_OPERATION:
         cmd.batch.kill();
+      break;
+      case CommandKind.LAYER_OPERATION:
       break;
     };
     this.stack.splice(idx, 1);

@@ -51,18 +51,26 @@ export function fireLayerOperation(cmd, state) {
   const main = layer.batch;
   switch (kind) {
     case CommandKind.LAYER_MERGE:
-      if (!state) {
-        this.layers.splice(batch.index, 0, layer);
-        layer.addUiReference();
-        this.setActiveLayer(layer);
-      } else {
+      layer.updateBoundings();
+      const data = cmd.batch.data;
+      if (state) {
         layer.removeUiReference();
         this.layers.splice(batch.index, 1);
         let index = batch.index < 0 ? 0 : batch.index;
         index = index === this.layers.length ? index - 1 : index;
-        this.setActiveLayer(this.getLayerByIndex(index));
+        const merge = this.getLayerByIndex(index);
+        this.setActiveLayer(merge);
+        merge.updateBoundings();
+        merge.batch.injectMatrix(data, true);
+        merge.batch.refreshTexture(true);
+      } else {
+        this.layers.splice(batch.index, 0, layer);
+        layer.addUiReference();
+        this.setActiveLayer(layer);
+        main.injectMatrix(data, false);
+        main.refreshTexture(true);
       }
-      batch.merge.mergeWithLayer(layer, state);
+      // TODO: matrix inject here
     break;
     case CommandKind.LAYER_CLONE:
     case CommandKind.LAYER_CLONE_REF:
@@ -122,8 +130,18 @@ export function fireLayerOperation(cmd, state) {
       layer.y += (batch.position.y * dir);
     break;
     case CommandKind.LAYER_FLIP_VERTICAL:
+      this.flipVertically(layer);
     break;
     case CommandKind.LAYER_FLIP_HORIZONTAL:
+      this.flipHorizontally(layer);
+    break;
+    case CommandKind.LAYER_ROTATE_LEFT:
+      if (state) this.rotateLeft(layer);
+      else this.rotateRight(layer);
+    break;
+    case CommandKind.LAYER_ROTATE_RIGHT:
+      if (state) this.rotateRight(layer);
+      else this.rotateLeft(layer);
     break;
   };
 };
@@ -153,12 +171,14 @@ export function getCommandKind(cmd) {
     case CommandKind.LAYER_MOVE:
     case CommandKind.LAYER_ORDER:
     case CommandKind.LAYER_RENAME:
-    case CommandKind.LAYER_ROTATE:
+    case CommandKind.LAYER_ROTATE_LEFT:
+    case CommandKind.LAYER_ROTATE_RIGHT:
     case CommandKind.LAYER_VISIBILITY:
     case CommandKind.LAYER_ADD:
     case CommandKind.LAYER_REMOVE:
-    case CommandKind.LAYER_CLONE:
     case CommandKind.LAYER_MERGE:
+    case CommandKind.LAYER_CLONE:
+    case CommandKind.LAYER_CLONE_REF:
     case CommandKind.LAYER_FLIP_VERTICAL:
     case CommandKind.LAYER_FLIP_HORIZONTAL:
       return (CommandKind.LAYER_OPERATION);

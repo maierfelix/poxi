@@ -122,12 +122,36 @@ export function getLivePixelAt(x, y) {
  * Resize this by layer<->this bounding diff
  * Inject this matrix into layer matrix at layer bound pos
  * @param {Layer} layer
+ * @return {Batch}
  */
-export function mergeWithLayer(layer, state) {
-  if (state) this.batches.push(layer.batch);
-  const batch = layer.batch.data;
-  const ww = layer.batch.bounds.w;
-  this.updateBoundings();
-  this.batch.injectMatrix(layer.batch, state);
-  this.batch.refreshTexture(true);
+export function mergeWithLayer(layer) {
+  const main = this.batch;
+  const ldata = layer.batch.data;
+  const lw = layer.bounds.w;
+  const lh = layer.bounds.h;
+  const lx = layer.bounds.x;
+  const ly = layer.bounds.y;
+  const dx = this.bounds.x - lx;
+  const dy = this.bounds.y - ly;
+  const bx = this.bounds.x - dx;
+  const by = this.bounds.y - dy;
+  const batch = this.createBatchAt(bx, by);
+  // pre-resize batch
+  batch.bounds.w = lw;
+  batch.bounds.h = lh;
+  // allocate pixel memory
+  batch.data = new Uint8Array(ldata.length);
+  batch.reverse = new Uint8Array(ldata.length);
+  // draw batch matrix into layer matrix
+  // and save earlier state
+  for (let ii = 0; ii < ldata.length; ii += 4) {
+    const idx = (ii / 4) | 0;
+    const xx = (idx % lw) | 0;
+    const yy = (idx / lw) | 0;
+    const pixel = layer.getPixelAt(lx + xx, ly + yy);
+    if (pixel === null) continue;
+    batch.drawPixelFast(lx + xx, ly + yy, pixel);
+  };
+  batch.refreshTexture(true);
+  return (batch);
 };

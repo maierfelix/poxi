@@ -1,5 +1,6 @@
 import extend from "../extend";
 import { uid } from "../utils";
+import { getRainbowColor } from "../color";
 
 import Batch from "../batch/index";
 import Boundings from "../bounds/index";
@@ -20,6 +21,8 @@ class Layer {
     // position
     this.x = 0;
     this.y = 0;
+    // references layers inference colors
+    this.color = { value: null };
     // last boundings
     this.last = { x: 0, y: 0, w: 0, h: 0 };
     // we can name layers
@@ -86,6 +89,23 @@ class Layer {
     const node = this.node.querySelector(".layer-item-locked");
     node.src = state ? "assets/img/locked.png" : "assets/img/unlocked.png";
   }
+  /**
+   * Returns if layer is active
+   * @return {Boolean}
+   */
+  get isActive() {
+    const current = this.instance.getCurrentLayer();
+    return (current === this);
+  }
+  /**
+   * Indicates if layer is a reference (absolute or referenced)
+   * @return {Boolean}
+   */
+  get isReference() {
+    return (
+      (this.getReferencedLayers().length > 0 || this.reference !== null)
+    );
+  }
 };
 
 /**
@@ -106,6 +126,11 @@ Layer.prototype.clone = function() {
 };
 
 Layer.prototype.cloneByReference = function() {
+  if (this.color.value === null) {
+    this.color.value = getRainbowColor();
+    this.removeUiReference();
+    this.addUiReference();
+  }
   const layer = new Layer(this.instance);
   layer.last = Object.assign(layer.last);
   layer.opacity = this.opacity;
@@ -113,10 +138,44 @@ Layer.prototype.cloneByReference = function() {
   layer.x = this.x; layer.y = this.y;
   layer.batch = this.batch;
   layer.batches = this.batches;
+  //layer.reference = this.reference || this;
   layer.reference = this;
+  layer.color = this.color;
   layer._visible = this.visible;
   layer._locked = this.locked;
   return (layer);
+};
+
+/**
+ * Walks through referenced layers until
+ * the absolute layer reference is found
+ * @return {Layer}
+ */
+Layer.prototype.getAbsoluteReference = function() {
+  let layer = this.reference;
+  while (true) {
+    if (layer.reference === null) {
+      return (layer);
+    }
+    layer = layer.reference;
+  };
+  return (null);
+};
+
+/**
+ * @return {Array}
+ */
+Layer.prototype.getReferencedLayers = function() {
+  const layers = this.instance.layers;
+  const references = [];
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const layer = layers[ii];
+    if (layer === this) continue;
+    if (layer.reference !== null) {
+      if (layer.reference === this) references.push(layer);
+    }
+  };
+  return (references);
 };
 
 Layer.prototype.allocateLayerMatrix = function() {
@@ -225,6 +284,20 @@ Layer.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
+  // add color to layer if necessary
+  (() => {
+    // only attach color to layer if
+    // layer is a absolute reference or is a reference
+    const count = this.isReference;
+    const cc = this.color.value;
+    const color = (
+      cc && count ? `rgba(${cc[0]},${cc[1]},${cc[2]},0.1)` : ""
+    );
+    html.style.backgroundColor = color;
+  })();
+  if (this.isActive) {
+    this.instance.setActiveLayer(this);
+  }
   this.locked = this.locked;
   this.visible = this.visible;
 };

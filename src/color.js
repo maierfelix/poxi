@@ -124,10 +124,10 @@ export function randomRgbaColor() {
   return ([r, g, b, 1]);
 };
 
-let velo = 12;
-let rr = 127; let rrr = 1;
-let rg = 12; let rrg = 1;
-let rb = 108; let rrb = 1;
+let velo = 64;
+let rr = 127; let rrr = velo;
+let rg = 12; let rrg = velo;
+let rb = 108; let rrb = velo;
 /**
  * @return {Array}
  */

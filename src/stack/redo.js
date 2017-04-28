@@ -11,6 +11,7 @@ export function redo() {
     const cmd = this.currentStackOperation();
     this.fire(cmd, true);
   }
+  this.refreshUiLayers();
   this.updateGlobalBoundings();
   this.redraw = true;
   return;

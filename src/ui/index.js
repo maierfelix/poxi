@@ -358,7 +358,7 @@ export function setupUi() {
     if (layer !== null) {
       let index = layer ? layer.getIndex() : 0;
       index = index < 0 ? 0 : index;
-      this.enqueue(CommandKind.LAYER_CLONE, {
+      this.enqueue(CommandKind.LAYER_CLONE_REF, {
         layer: layer.cloneByReference(), index
       });
     }
@@ -367,15 +367,26 @@ export function setupUi() {
   flip_horizontal.onclick = (e) => {
     const layer = this.getCurrentLayer();
     if (layer !== null) {
-      const data = new Uint8Array(layer.batch.data);
-      this.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer, data });
+      this.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer });
     }
   };
   flip_vertical.onclick = (e) => {
     const layer = this.getCurrentLayer();
     if (layer !== null) {
-      const data = new Uint8Array(layer.batch.data);
-      this.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer, data });
+      this.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer });
+    }
+  };
+
+  rotate_right.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      this.enqueue(CommandKind.LAYER_ROTATE_RIGHT, { layer });
+    }
+  };
+  rotate_left.onclick = (e) => {
+    const layer = this.getCurrentLayer();
+    if (layer !== null) {
+      this.enqueue(CommandKind.LAYER_ROTATE_LEFT, { layer });
     }
   };
 
@@ -384,7 +395,8 @@ export function setupUi() {
     if (layer !== null && this.layers.length > 1) {
       if (layer.getIndex() < this.layers.length - 1) {
         const merge = this.getLayerByIndex(layer.getIndex() + 1);
-        this.enqueue(CommandKind.LAYER_MERGE, { layer, merge, index: layer.getIndex() });
+        const data = merge.mergeWithLayer(layer);
+        this.enqueue(CommandKind.LAYER_MERGE, { data, layer, index: layer.getIndex() });
       }
     }
   };

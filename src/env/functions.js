@@ -94,6 +94,15 @@ export function setActiveLayer(layer) {
   this.redraw = true;
 };
 
+export function refreshUiLayers() {
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const layer = layers[ii];
+    layer.removeUiReference();
+    layer.addUiReference();
+  };
+};
+
 /**
  * @param {Number} x
  * @param {Number} y
