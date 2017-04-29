@@ -939,7 +939,7 @@ function onMouseDown(e) {
     return;
   }
   // finalize earlier operations and abort
-  if (this.isInActiveState()) {
+  if (this.isInActiveState() && e.which === 1) {
     this.onMouseUp(e);
     return;
   }
@@ -1061,6 +1061,7 @@ function onMouseMove(e) {
   var rx = relative.x; var ry = relative.y;
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
+  this.updateCursorPosition(x, y);
   if (this.modes.move) {
     this.redraw = true;
   }
@@ -2266,6 +2267,7 @@ function getLivePixelAt(x, y) {
  * @return {Batch}
  */
 function mergeWithLayer(layer) {
+  // TODO: fix merging referenced layers
   var main = this.batch;
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;
@@ -2781,7 +2783,7 @@ function getLayerByPoint(x, y) {
 function getCurrentDrawingBatch() {
   var this$1 = this;
 
-  for (var key in this.states) {
+  for (var key in this$1.states) {
     var state = this$1.states[key];
     if (state === true && this$1.buffers[key]) {
       return (this$1.buffers[key]);
@@ -2947,7 +2949,7 @@ function getBinaryShape(x, y, base) {
 function getCursorSize() {
   var this$1 = this;
 
-  for (var key in this.modes) {
+  for (var key in this$1.modes) {
     if (!this$1.modes[key]) { continue; }
     switch (key) {
       case "arc":
@@ -4592,11 +4594,65 @@ var _transrotate = Object.freeze({
 function resetModes() {
   var this$1 = this;
 
-  for (var key in this.modes) {
+  for (var key in this$1.modes) {
     this$1.resetSelection();
+    if (this$1.modes[key] === true) {
+      this$1.resetActiveCursor(key);
+    }
     this$1.modes[key] = false;
   }
   this.resetActiveUiButtons();
+}
+
+/**
+ * @param {String} mode
+ */
+function resetActiveCursor(mode) {
+  var el = this.getCursorNodeByMode(mode);
+  if (el !== null) {
+    el.style.left = "0px";
+    el.style.top = "0px";
+    el.style.display = "none";
+  }
+}
+
+/**
+ * Returns the current active mode as a string
+ * @return {String}
+ */
+function getActiveMode() {
+  var this$1 = this;
+
+  for (var key in this$1.modes) {
+    if (this$1.modes[key] === true) { return (key); }
+  }
+  return (null);
+}
+
+/**
+ * @param {String} mode
+ * @return {HTMLElement}
+ */
+function getCursorNodeByMode(mode) {
+  var value = "#c" + mode;
+  var el = document.querySelector(value);
+  return (el);
+}
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Void}
+ */
+function updateCursorPosition(x, y) {
+  var mode = this.getActiveMode();
+  if (mode === null) { return; }
+  var el = this.getCursorNodeByMode(mode);
+  if (el === null) { return; }
+  el.style.left = x + "px";
+  el.style.top = (y - 16) + "px";
+  el.style.display = "block";
+  return;
 }
 
 function resetActiveUiButtons() {
@@ -4722,7 +4778,7 @@ function hoverLayer(e) {
   );
   var layer = this.getLayerByNode(parent);
   if (layer === null) { return; }
-  var canvas = layer.toCanvas();
+  //const canvas = layer.toCanvas();
 }
 
 /**
@@ -5016,6 +5072,10 @@ function setupUi() {
 
 var _ui = Object.freeze({
 	resetModes: resetModes,
+	resetActiveCursor: resetActiveCursor,
+	getActiveMode: getActiveMode,
+	getCursorNodeByMode: getCursorNodeByMode,
+	updateCursorPosition: updateCursorPosition,
 	resetActiveUiButtons: resetActiveUiButtons,
 	setUiColor: setUiColor,
 	addCustomColor: addCustomColor,
@@ -5201,6 +5261,7 @@ function getLivePixelAt$1(x, y) {
  * @return {Batch}
  */
 function mergeWithLayer$1(layer) {
+  // TODO: fix merging referenced layers
   var main = this.batch;
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;

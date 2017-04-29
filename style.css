@@ -2,6 +2,7 @@ canvas {
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
+  cursor: none;
 }
 
 @font-face {
@@ -84,6 +85,7 @@ input[type="color"] {
 
 .bottom-menu {
   position: absolute;
+  z-index: 10;
   left: 0px;
   bottom: 0px;
   background: rgba(31, 31, 31, 0.95);
@@ -149,9 +151,11 @@ input[type="color"] {
 
 .cursor {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 21px;
+  height: 21px;
   display: none;
+  pointer-events: none;
+  z-index: 0;
 }
 
 #cursors {
@@ -292,6 +296,7 @@ input[type="color"] {
 
 .right-menu {
   position: absolute;
+  z-index: 10;
   top: 0px;
   right: 0px;
   width: 128px;
