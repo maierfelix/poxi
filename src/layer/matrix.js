@@ -15,6 +15,10 @@ export function hasResized() {
   );
 };
 
+/**
+ * Updates the layer's boundings by calculating
+ * min/max of x,y,w,h of all stored batches
+ */
 export function updateBoundings() {
   let x = MAX_SAFE_INTEGER; let y = MAX_SAFE_INTEGER;
   let w = -MAX_SAFE_INTEGER; let h = -MAX_SAFE_INTEGER;
@@ -129,12 +133,12 @@ export function mergeWithLayer(layer) {
   const ldata = layer.batch.data;
   const lw = layer.bounds.w;
   const lh = layer.bounds.h;
-  const lx = layer.bounds.x;
-  const ly = layer.bounds.y;
-  const dx = this.bounds.x - lx;
-  const dy = this.bounds.y - ly;
-  const bx = this.bounds.x - dx;
-  const by = this.bounds.y - dy;
+  const lx = layer.x + layer.bounds.x;
+  const ly = layer.y + layer.bounds.y;
+  const sx = this.x + this.bounds.x;
+  const sy = this.y + this.bounds.y;
+  const dx = sx - lx; const dy = sy - ly;
+  const bx = sx - dx; const by = sy - dy;
   const batch = this.createBatchAt(bx, by);
   // pre-resize batch
   batch.bounds.w = lw;

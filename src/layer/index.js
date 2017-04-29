@@ -1,5 +1,8 @@
 import extend from "../extend";
-import { uid } from "../utils";
+import {
+  uid,
+  createCanvasBuffer
+} from "../utils";
 import { getRainbowColor } from "../color";
 
 import Batch from "../batch/index";
@@ -245,6 +248,45 @@ Layer.prototype.getBatchById = function(id) {
     }
   };
   return (result);
+};
+
+/**
+ * Returns the layer position
+ * relative to our stage
+ * @return {Object}
+ */
+Layer.prototype.getRelativePosition = function() {
+  const sx = this.instance.bounds.x;
+  const sy = this.instance.bounds.y;
+  const x = (this.x + this.bounds.x) - sx;
+  const y = (this.y + this.bounds.y) - sy;
+  return ({ x, y });
+};
+
+/**
+ * Fill imagedata with pixels then
+ * put it into a canvas and return it
+ * @return {HTMLCanvasElement}
+ */
+Layer.prototype.toCanvas = function() {
+  const data = this.batch.data;
+  const lw = this.bounds.w | 0;
+  const lh = this.bounds.h | 0;
+  const buffer = createCanvasBuffer(lw, lh);
+  // prevent imagedata construction from failing
+  if (lw <= 0 || lh <= 0) return (buffer.canvas);
+  const img = new ImageData(lw, lh);
+  const idata = img.data;
+  for (let ii = 0; ii < data.length; ii += 4) {
+    const alpha = data[ii + 3] | 0;
+    if (alpha <= 0) continue;
+    idata[ii + 0] = data[ii + 0] | 0;
+    idata[ii + 1] = data[ii + 1] | 0;
+    idata[ii + 2] = data[ii + 2] | 0;
+    idata[ii + 3] = alpha;
+  };
+  buffer.putImageData(img, 0, 0);
+  return (buffer.canvas);
 };
 
 /**

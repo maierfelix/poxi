@@ -25,6 +25,8 @@ export function updateGrid() {
 export function render() {
   const selection = this.sw !== -0 && this.sh !== -0;
   const cr = this.cr;
+  // clear foreground buffer
+  this.cache.fg.clearRect(0, 0, this.cw, this.ch);
   this.renderBackground();
   if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
@@ -43,6 +45,7 @@ export function render() {
       [0, 1, 0, 0.1]
     );
   }
+  // render all layers
   const layers = this.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
     const idx = layers.length - 1 - ii;
@@ -61,15 +64,26 @@ export function render() {
     // don't forget to render live batches
     this.renderLayer(layer);
   };
-  // render live data
-  //this.renderLayers();
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
   if (this.shape !== null) this.renderShapeSelection();
   else if (selection) this.renderSelection();
   if (MODES.DEV) this.renderStats();
+  // render foreground buffer
+  this.renderForeground();
   this.redraw = false;
+};
+
+export function renderForeground() {
+  const texture = this.cache.fgTexture;
+  const fg = this.cache.fg;
+  const view = fg.canvas;
+  this.updateTextureByCanvas(texture, view);
+  this.drawImage(
+    texture,
+    0, 0, view.width, view.height
+  );
 };
 
 export function renderBackground() {
@@ -134,6 +148,15 @@ export function renderLayer(layer) {
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
   };
+  // draw a thin rectangle around active layers
+  if (layer.isActive) {
+    const bounds = layer.bounds;
+    const x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr));
+    const y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr));
+    const w = (bounds.w * TILE_SIZE) * cr;
+    const h = (bounds.h * TILE_SIZE) * cr;
+    this.drawStrokedRect(x, y, w, h, "rgba(255,255,255,0.2)");
+  }
 };
 
 export function renderHoveredTile() {
@@ -196,12 +219,8 @@ export function renderShapeSelection() {
 export function renderStats() {
   const buffer = this.cache.fg;
   const bounds = this.bounds;
-  const view = buffer.canvas;
-  const texture = this.cache.fgTexture;
   const mx = this.last.mx;
   const my = this.last.my;
-  // clear
-  buffer.clearRect(0, 0, this.cw, this.ch);
   // font style
   buffer.font = "10px Verdana";
   buffer.fillStyle = "#fff";
@@ -231,12 +250,6 @@ export function renderStats() {
   if (this.sw !== 0 && this.sh !== 0) {
     this.drawSelectionShape();
   }
-  // update texture, then draw it
-  this.updateTextureByCanvas(texture, view);
-  this.drawImage(
-    texture,
-    0, 0, view.width, view.height
-  );
 };
 
 export function drawSelectionShape() {
@@ -254,6 +267,29 @@ export function drawSelectionShape() {
   buffer.strokeRect(
     xx, yy,
     ww, hh
+  );
+};
+
+/**
+ * Draws a stroked rectangle
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} w
+ * @param {Number} h
+ * @param {String} color
+ */
+export function drawStrokedRect(x, y, w, h, color) {
+  const cr = this.cr;
+  const size = TILE_SIZE * cr;
+  const lw = Math.max(1, 1 * cr);
+  const buffer = this.cache.fg;
+  buffer.strokeStyle = color;
+  buffer.lineWidth = lw;
+  buffer.setLineDash([size, size]);
+  // main rectangle
+  buffer.strokeRect(
+    x - (lw / 2), y - (lw / 2),
+    w + lw, h + lw
   );
 };
 
@@ -277,7 +313,6 @@ export function drawResizeRectangle(x, y, w, h, color) {
     x, y,
     w, h
   );
-  return;
   buffer.lineWidth = Math.max(0.4, 0.3 * cr);
   // left rectangle
   buffer.strokeRect(

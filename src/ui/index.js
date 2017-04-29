@@ -1,3 +1,5 @@
+import { spawnThread } from "../utils";
+
 import {
   hexToRgba,
   rgbaToHex,
@@ -126,6 +128,17 @@ export function updateFastColorPickMenu() {
     }
     colors.appendChild(node);
   };
+};
+
+export function hoverLayer(e) {
+  const el = e.target;
+  const kind = el.classList.value;
+  const parent = (
+    kind !== "layer-item" ? el.parentNode : el
+  );
+  const layer = this.getLayerByNode(parent);
+  if (layer === null) return;
+  const canvas = layer.toCanvas();
 };
 
 /**
@@ -302,6 +315,7 @@ export function setupUi() {
     file.style.display = "none";
   });
 
+  layers.addEventListener("mouseover", (e) => this.hoverLayer(e));
   layers.addEventListener("click", (e) => this.clickedLayer(e, false));
   layers.addEventListener("dblclick", (e) => this.clickedLayer(e, true));
 

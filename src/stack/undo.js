@@ -34,6 +34,9 @@ export function dequeue(from, to) {
         cmd.batch.kill();
       break;
       case CommandKind.LAYER_OPERATION:
+        if (cmd.kind === CommandKind.LAYER_MERGE) {
+          cmd.batch.data.kill();
+        }
       break;
     };
     this.stack.splice(idx, 1);

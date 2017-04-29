@@ -127,6 +127,11 @@ export function onMouseDown(e) {
     this.processUIClick(e.target);
     return;
   }
+  // finalize earlier operations and abort
+  if (this.isInActiveState()) {
+    this.onMouseUp(e);
+    return;
+  }
   const x = e.clientX;
   const y = e.clientY;
   const relative = this.getRelativeTileOffset(x, y);

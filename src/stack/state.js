@@ -64,11 +64,12 @@ export function fireLayerOperation(cmd, state) {
         merge.batch.injectMatrix(data, true);
         merge.batch.refreshTexture(true);
       } else {
+        const merge = this.getLayerByIndex(batch.index);
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
         this.setActiveLayer(layer);
-        main.injectMatrix(data, false);
-        main.refreshTexture(true);
+        merge.batch.injectMatrix(data, false);
+        merge.batch.refreshTexture(true);
       }
       // TODO: matrix inject here
     break;
