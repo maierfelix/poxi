@@ -1,5 +1,3 @@
-import { spawnThread } from "../utils";
-
 import {
   hexToRgba,
   rgbaToHex,
@@ -12,9 +10,61 @@ import CommandKind from "../stack/kind";
 export function resetModes() {
   for (let key in this.modes) {
     this.resetSelection();
+    if (this.modes[key] === true) {
+      this.resetActiveCursor(key);
+    }
     this.modes[key] = false;
   };
   this.resetActiveUiButtons();
+};
+
+/**
+ * @param {String} mode
+ */
+export function resetActiveCursor(mode) {
+  const el = this.getCursorNodeByMode(mode);
+  if (el !== null) {
+    el.style.left = "0px";
+    el.style.top = "0px";
+    el.style.display = "none";
+  }
+};
+
+/**
+ * Returns the current active mode as a string
+ * @return {String}
+ */
+export function getActiveMode() {
+  for (let key in this.modes) {
+    if (this.modes[key] === true) return (key);
+  };
+  return (null);
+};
+
+/**
+ * @param {String} mode
+ * @return {HTMLElement}
+ */
+export function getCursorNodeByMode(mode) {
+  const value = "#c" + mode;
+  const el = document.querySelector(value);
+  return (el);
+};
+
+/**
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Void}
+ */
+export function updateCursorPosition(x, y) {
+  const mode = this.getActiveMode();
+  if (mode === null) return;
+  const el = this.getCursorNodeByMode(mode);
+  if (el === null) return;
+  el.style.left = x + "px";
+  el.style.top = (y - 16) + "px";
+  el.style.display = "block";
+  return;
 };
 
 export function resetActiveUiButtons() {
@@ -138,7 +188,7 @@ export function hoverLayer(e) {
   );
   const layer = this.getLayerByNode(parent);
   if (layer === null) return;
-  const canvas = layer.toCanvas();
+  //const canvas = layer.toCanvas();
 };
 
 /**

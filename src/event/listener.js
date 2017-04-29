@@ -128,7 +128,7 @@ export function onMouseDown(e) {
     return;
   }
   // finalize earlier operations and abort
-  if (this.isInActiveState()) {
+  if (this.isInActiveState() && e.which === 1) {
     this.onMouseUp(e);
     return;
   }
@@ -250,6 +250,7 @@ export function onMouseMove(e) {
   const rx = relative.x; const ry = relative.y;
   // mouse polling rate isn't 'per-pixel'
   // so we try to interpolate missed offsets
+  this.updateCursorPosition(x, y);
   if (this.modes.move) {
     this.redraw = true;
   }

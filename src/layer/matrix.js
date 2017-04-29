@@ -129,6 +129,7 @@ export function getLivePixelAt(x, y) {
  * @return {Batch}
  */
 export function mergeWithLayer(layer) {
+  // TODO: fix merging referenced layers
   const main = this.batch;
   const ldata = layer.batch.data;
   const lw = layer.bounds.w;
