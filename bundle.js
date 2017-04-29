@@ -938,6 +938,11 @@ function onMouseDown(e) {
     this.processUIClick(e.target);
     return;
   }
+  // finalize earlier operations and abort
+  if (this.isInActiveState()) {
+    this.onMouseUp(e);
+    return;
+  }
   var x = e.clientX;
   var y = e.clientY;
   var relative = this.getRelativeTileOffset(x, y);
@@ -2145,6 +2150,10 @@ function hasResized() {
   );
 }
 
+/**
+ * Updates the layer's boundings by calculating
+ * min/max of x,y,w,h of all stored batches
+ */
 function updateBoundings() {
   var x = MAX_SAFE_INTEGER; var y = MAX_SAFE_INTEGER;
   var w = -MAX_SAFE_INTEGER; var h = -MAX_SAFE_INTEGER;
@@ -2261,12 +2270,12 @@ function mergeWithLayer(layer) {
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;
   var lh = layer.bounds.h;
-  var lx = layer.bounds.x;
-  var ly = layer.bounds.y;
-  var dx = this.bounds.x - lx;
-  var dy = this.bounds.y - ly;
-  var bx = this.bounds.x - dx;
-  var by = this.bounds.y - dy;
+  var lx = layer.x + layer.bounds.x;
+  var ly = layer.y + layer.bounds.y;
+  var sx = this.x + this.bounds.x;
+  var sy = this.y + this.bounds.y;
+  var dx = sx - lx; var dy = sy - ly;
+  var bx = sx - dx; var by = sy - dy;
   var batch = this.createBatchAt(bx, by);
   // pre-resize batch
   batch.bounds.w = lw;
@@ -2539,6 +2548,45 @@ Layer.prototype.getBatchById = function(id) {
     }
   }
   return (result);
+};
+
+/**
+ * Returns the layer position
+ * relative to our stage
+ * @return {Object}
+ */
+Layer.prototype.getRelativePosition = function() {
+  var sx = this.instance.bounds.x;
+  var sy = this.instance.bounds.y;
+  var x = (this.x + this.bounds.x) - sx;
+  var y = (this.y + this.bounds.y) - sy;
+  return ({ x: x, y: y });
+};
+
+/**
+ * Fill imagedata with pixels then
+ * put it into a canvas and return it
+ * @return {HTMLCanvasElement}
+ */
+Layer.prototype.toCanvas = function() {
+  var data = this.batch.data;
+  var lw = this.bounds.w | 0;
+  var lh = this.bounds.h | 0;
+  var buffer = createCanvasBuffer(lw, lh);
+  // prevent imagedata construction from failing
+  if (lw <= 0 || lh <= 0) { return (buffer.canvas); }
+  var img = new ImageData(lw, lh);
+  var idata = img.data;
+  for (var ii = 0; ii < data.length; ii += 4) {
+    var alpha = data[ii + 3] | 0;
+    if (alpha <= 0) { continue; }
+    idata[ii + 0] = data[ii + 0] | 0;
+    idata[ii + 1] = data[ii + 1] | 0;
+    idata[ii + 2] = data[ii + 2] | 0;
+    idata[ii + 3] = alpha;
+  }
+  buffer.putImageData(img, 0, 0);
+  return (buffer.canvas);
 };
 
 /**
@@ -3688,22 +3736,15 @@ function exportAsDataUrl() {
   for (var ii = 0; ii < layers.length; ++ii) {
     var idx = layers.length - 1 - ii;
     var layer = layers[idx];
-    var xx = (layer.x + layer.bounds.x) - sx;
-    var yy = (layer.y + layer.bounds.y) - sy;
-    var data = layer.batch.data;
-    var lw = layer.bounds.w;
-    for (var ii$1 = 0; ii$1 < data.length; ii$1 += 4) {
-      var idx$1 = (ii$1 / 4) | 0;
-      var x = (idx$1 % lw) | 0;
-      var y = (idx$1 / lw) | 0;
-      var r = data[ii$1 + 0];
-      var g = data[ii$1 + 1];
-      var b = data[ii$1 + 2];
-      var a = data[ii$1 + 3];
-      if (a <= 0) { continue; }
-      buffer.fillStyle = "rgba(" + r + "," + g + "," + b + "," + a + ")";
-      buffer.fillRect(xx + x, yy + y, 1, 1);
-    }
+    var pos = layer.getRelativePosition();
+    var canvas = layer.toCanvas();
+    buffer.drawImage(
+      canvas,
+      0, 0,
+      canvas.width, canvas.height,
+      pos.x, pos.y,
+      canvas.width, canvas.height
+    );
   }
   return (view.toDataURL("image/png"));
 }
@@ -3727,6 +3768,8 @@ function render() {
 
   var selection = this.sw !== -0 && this.sh !== -0;
   var cr = this.cr;
+  // clear foreground buffer
+  this.cache.fg.clearRect(0, 0, this.cw, this.ch);
   this.renderBackground();
   if (this.cr > HIDE_GRID) { this.renderGrid(); }
   // render cached version of our working area
@@ -3745,6 +3788,7 @@ function render() {
       [0, 1, 0, 0.1]
     );
   }
+  // render all layers
   var layers = this.layers;
   for (var ii = 0; ii < layers.length; ++ii) {
     var idx = layers.length - 1 - ii;
@@ -3763,15 +3807,26 @@ function render() {
     // don't forget to render live batches
     this$1.renderLayer(layer);
   }
-  // render live data
-  //this.renderLayers();
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
   if (this.shape !== null) { this.renderShapeSelection(); }
   else if (selection) { this.renderSelection(); }
   if (MODES.DEV) { this.renderStats(); }
+  // render foreground buffer
+  this.renderForeground();
   this.redraw = false;
+}
+
+function renderForeground() {
+  var texture = this.cache.fgTexture;
+  var fg = this.cache.fg;
+  var view = fg.canvas;
+  this.updateTextureByCanvas(texture, view);
+  this.drawImage(
+    texture,
+    0, 0, view.width, view.height
+  );
 }
 
 function renderBackground() {
@@ -3838,6 +3893,15 @@ function renderLayer(layer) {
       gl$1.blendFunc(gl$1.SRC_ALPHA, gl$1.ONE_MINUS_SRC_ALPHA);
     }
   }
+  // draw a thin rectangle around active layers
+  if (layer.isActive) {
+    var bounds$1 = layer.bounds;
+    var x$1 = (cx + (((layer.x + bounds$1.x) * TILE_SIZE) * cr));
+    var y$1 = (cy + (((layer.y + bounds$1.y) * TILE_SIZE) * cr));
+    var w$1 = (bounds$1.w * TILE_SIZE) * cr;
+    var h$1 = (bounds$1.h * TILE_SIZE) * cr;
+    this.drawStrokedRect(x$1, y$1, w$1, h$1, "rgba(255,255,255,0.2)");
+  }
 }
 
 function renderHoveredTile() {
@@ -3900,12 +3964,8 @@ function renderShapeSelection() {
 function renderStats() {
   var buffer = this.cache.fg;
   var bounds = this.bounds;
-  var view = buffer.canvas;
-  var texture = this.cache.fgTexture;
   var mx = this.last.mx;
   var my = this.last.my;
-  // clear
-  buffer.clearRect(0, 0, this.cw, this.ch);
   // font style
   buffer.font = "10px Verdana";
   buffer.fillStyle = "#fff";
@@ -3935,12 +3995,6 @@ function renderStats() {
   if (this.sw !== 0 && this.sh !== 0) {
     this.drawSelectionShape();
   }
-  // update texture, then draw it
-  this.updateTextureByCanvas(texture, view);
-  this.drawImage(
-    texture,
-    0, 0, view.width, view.height
-  );
 }
 
 function drawSelectionShape() {
@@ -3958,6 +4012,29 @@ function drawSelectionShape() {
   buffer.strokeRect(
     xx, yy,
     ww, hh
+  );
+}
+
+/**
+ * Draws a stroked rectangle
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} w
+ * @param {Number} h
+ * @param {String} color
+ */
+function drawStrokedRect(x, y, w, h, color) {
+  var cr = this.cr;
+  var size = TILE_SIZE * cr;
+  var lw = Math.max(1, 1 * cr);
+  var buffer = this.cache.fg;
+  buffer.strokeStyle = color;
+  buffer.lineWidth = lw;
+  buffer.setLineDash([size, size]);
+  // main rectangle
+  buffer.strokeRect(
+    x - (lw / 2), y - (lw / 2),
+    w + lw, h + lw
   );
 }
 
@@ -3981,7 +4058,6 @@ function drawResizeRectangle(x, y, w, h, color) {
     x, y,
     w, h
   );
-  return;
   buffer.lineWidth = Math.max(0.4, 0.3 * cr);
   // left rectangle
   buffer.strokeRect(
@@ -4009,6 +4085,7 @@ function drawResizeRectangle(x, y, w, h, color) {
 var _render = Object.freeze({
 	updateGrid: updateGrid,
 	render: render,
+	renderForeground: renderForeground,
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
 	renderLayer: renderLayer,
@@ -4017,6 +4094,7 @@ var _render = Object.freeze({
 	renderShapeSelection: renderShapeSelection,
 	renderStats: renderStats,
 	drawSelectionShape: drawSelectionShape,
+	drawStrokedRect: drawStrokedRect,
 	drawResizeRectangle: drawResizeRectangle
 });
 
@@ -4169,11 +4247,12 @@ function fireLayerOperation(cmd, state) {
         merge.batch.injectMatrix(data, true);
         merge.batch.refreshTexture(true);
       } else {
+        var merge$1 = this.getLayerByIndex(batch.index);
         this.layers.splice(batch.index, 0, layer);
         layer.addUiReference();
         this.setActiveLayer(layer);
-        main.injectMatrix(data, false);
-        main.refreshTexture(true);
+        merge$1.batch.injectMatrix(data, false);
+        merge$1.batch.refreshTexture(true);
       }
       // TODO: matrix inject here
     break;
@@ -4354,6 +4433,9 @@ function dequeue(from, to) {
         cmd.batch.kill();
       break;
       case CommandKind.LAYER_OPERATION:
+        if (cmd.kind === CommandKind.LAYER_MERGE) {
+          cmd.batch.data.kill();
+        }
       break;
     }
     this$1.stack.splice(idx, 1);
@@ -4632,6 +4714,17 @@ function updateFastColorPickMenu() {
   }
 }
 
+function hoverLayer(e) {
+  var el = e.target;
+  var kind = el.classList.value;
+  var parent = (
+    kind !== "layer-item" ? el.parentNode : el
+  );
+  var layer = this.getLayerByNode(parent);
+  if (layer === null) { return; }
+  var canvas = layer.toCanvas();
+}
+
 /**
  * @param {HTMLElement} e
  * @param {Boolean} dbl
@@ -4810,6 +4903,7 @@ function setupUi() {
     file.style.display = "none";
   });
 
+  layers.addEventListener("mouseover", function (e) { return this$1.hoverLayer(e); });
   layers.addEventListener("click", function (e) { return this$1.clickedLayer(e, false); });
   layers.addEventListener("dblclick", function (e) { return this$1.clickedLayer(e, true); });
 
@@ -4928,6 +5022,7 @@ var _ui = Object.freeze({
 	closeFastColorPickerMenu: closeFastColorPickerMenu,
 	openFastColorPickerMenu: openFastColorPickerMenu,
 	updateFastColorPickMenu: updateFastColorPickMenu,
+	hoverLayer: hoverLayer,
 	clickedLayer: clickedLayer,
 	setupUi: setupUi
 });
@@ -4990,6 +5085,10 @@ function hasResized$1() {
   );
 }
 
+/**
+ * Updates the layer's boundings by calculating
+ * min/max of x,y,w,h of all stored batches
+ */
 function updateBoundings$1() {
   var x = MAX_SAFE_INTEGER; var y = MAX_SAFE_INTEGER;
   var w = -MAX_SAFE_INTEGER; var h = -MAX_SAFE_INTEGER;
@@ -5106,12 +5205,12 @@ function mergeWithLayer$1(layer) {
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;
   var lh = layer.bounds.h;
-  var lx = layer.bounds.x;
-  var ly = layer.bounds.y;
-  var dx = this.bounds.x - lx;
-  var dy = this.bounds.y - ly;
-  var bx = this.bounds.x - dx;
-  var by = this.bounds.y - dy;
+  var lx = layer.x + layer.bounds.x;
+  var ly = layer.y + layer.bounds.y;
+  var sx = this.x + this.bounds.x;
+  var sy = this.y + this.bounds.y;
+  var dx = sx - lx; var dy = sy - ly;
+  var bx = sx - dx; var by = sy - dy;
   var batch = this.createBatchAt(bx, by);
   // pre-resize batch
   batch.bounds.w = lw;
@@ -5384,6 +5483,45 @@ Layer$2.prototype.getBatchById = function(id) {
     }
   }
   return (result);
+};
+
+/**
+ * Returns the layer position
+ * relative to our stage
+ * @return {Object}
+ */
+Layer$2.prototype.getRelativePosition = function() {
+  var sx = this.instance.bounds.x;
+  var sy = this.instance.bounds.y;
+  var x = (this.x + this.bounds.x) - sx;
+  var y = (this.y + this.bounds.y) - sy;
+  return ({ x: x, y: y });
+};
+
+/**
+ * Fill imagedata with pixels then
+ * put it into a canvas and return it
+ * @return {HTMLCanvasElement}
+ */
+Layer$2.prototype.toCanvas = function() {
+  var data = this.batch.data;
+  var lw = this.bounds.w | 0;
+  var lh = this.bounds.h | 0;
+  var buffer = createCanvasBuffer(lw, lh);
+  // prevent imagedata construction from failing
+  if (lw <= 0 || lh <= 0) { return (buffer.canvas); }
+  var img = new ImageData(lw, lh);
+  var idata = img.data;
+  for (var ii = 0; ii < data.length; ii += 4) {
+    var alpha = data[ii + 3] | 0;
+    if (alpha <= 0) { continue; }
+    idata[ii + 0] = data[ii + 0] | 0;
+    idata[ii + 1] = data[ii + 1] | 0;
+    idata[ii + 2] = data[ii + 2] | 0;
+    idata[ii + 3] = alpha;
+  }
+  buffer.putImageData(img, 0, 0);
+  return (buffer.canvas);
 };
 
 /**

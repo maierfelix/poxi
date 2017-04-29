@@ -60,13 +60,12 @@ input[type="color"] {
   height: 23px;
   border-radius: 14px;
   display: inline-block;
-  width: 28px;
-  height: 28px;
+  width: 23px;
+  height: 23px;
   opacity: 0.65;
   /*transition: opacity 0.1s ease-in-out;
   -moz-transition: opacity 0.1s ease-in-out;
   -webkit-transition: opacity 0.1s ease-in-out;*/
-  top: 2px;
   vertical-align: bottom;
   position: relative;
 }
@@ -88,7 +87,7 @@ input[type="color"] {
   left: 0px;
   bottom: 0px;
   background: rgba(31, 31, 31, 0.95);
-  height: 38px;
+  height: 32px;
   width: 100%;
   cursor: default;
   display: inline;
@@ -101,8 +100,8 @@ input[type="color"] {
 
 .bottom-menu-items .item {
   top: 6px;
-  width: 26px;
-  height: 26px;
+  width: 21px;
+  height: 21px;
   position: relative;
   opacity: 0.295;
   padding-right: 8px;
@@ -296,7 +295,7 @@ input[type="color"] {
   top: 0px;
   right: 0px;
   width: 128px;
-  height: calc(100% - 38px);
+  height: calc(100% - 32px);
   background: rgba(31, 31, 31, 0.95);
   text-shadow: 0 0 black;
 }
@@ -313,6 +312,14 @@ input[type="color"] {
   cursor: pointer;
   width: 124px;
   margin-left: 1px;
+}
+
+.layer-item-preview {
+  opacity: 0.0;
+}
+
+.layer-item:hover + .layer-item-preview {
+  opacity: 1.0;
 }
 
 .layer-item img:hover {
