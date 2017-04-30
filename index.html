@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/png" href="assets/img/tree.png"/>
     <title>Poxi - Unleash the pixels!</title>
-    <link href="./style.css?v=3" rel="stylesheet" />
+    <link href="./style.css?v=4" rel="stylesheet" />
   </head>
   <body>
     <div id="ui">
@@ -42,7 +43,7 @@
             <img id="merge" src="assets/img/merge.png" class="item">
             <span class="tooltiptext">Merge Down</span>
           </a>
-          <a class="tooltip">
+          <a class="tooltip" style="opacity: 0;">
             <img id="flip_horizontal" src="assets/img/horizontal.png" class="item">
             <span class="tooltiptext">Flip Horizontal</span>
           </a>
@@ -57,7 +58,7 @@
             <span class="tooltiptext">Clone by Reference</span>
           </a>
           <img class="item" style="opacity: 0;" />
-          <a class="tooltip">
+          <a class="tooltip" style="opacity: 0;">
             <img id="flip_vertical" src="assets/img/vertical.png" class="item">
             <span class="tooltiptext">Flip Vertical</span>
           </a>
@@ -143,7 +144,7 @@
             <span class="tooltiptext">Flood Paint</span>
           </a>
           <a href="https://github.com/maierfelix/poxi" style="float: right;">
-            <img src="assets/img/github.png" class="item" style="float:right;" />
+            <img src="assets/img/github.png" class="item" style="cursor: pointer;" />
           </a>
           <a class="tooltip" style="float: right;">
             <img id="download" src="assets/img/download.png" class="item" />
@@ -182,7 +183,7 @@
       </div>
     </div>
     <input id="file" type="file" title=" " />
-    <script type="text/javascript" src="./bundle.js?v=3"></script>
+    <script type="text/javascript" src="./bundle.js?v=4"></script>
     <!--<script type="text/javascript" src="./stats.js"></script>
     <script>
       var stats = new Stats();

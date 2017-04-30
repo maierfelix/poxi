@@ -2088,7 +2088,7 @@ Batch.prototype.kill = function() {
   this.buffer = null;
   this.data = null;
   this.reverse = null;
-  this.instance.destroyTexture(this.texture);
+  this.destroyTexture();
   // finally remove batch from layer
   var count = 0;
   for (var ii = 0; ii < layers.length; ++ii) {
@@ -2105,6 +2105,16 @@ Batch.prototype.kill = function() {
   /*if (count <= 0 && !this.isMover) {
     throw new Error(`Failed to kill batch:${this.id}`);
   }*/
+};
+
+/**
+ * Frees the batch texture from the gpu
+ */
+Batch.prototype.destroyTexture = function() {
+  var texture = this.texture;
+  if (texture !== null) {
+    this.instance.destroyTexture(texture);
+  }
 };
 
 /**
@@ -4176,6 +4186,11 @@ function enqueue(kind, batch) {
   // => clean up all more recent batches
   this.refreshStack();
   var cmd = new Command(kind, batch);
+  var type = this.getCommandKind(cmd);
+  // free the texture from gpu, we dont need it anymore
+  if (type === CommandKind.BATCH_OPERATION) {
+    batch.destroyTexture();
+  }
   this.stack.push(cmd);
   this.redo();
   //this.undo();
@@ -4498,18 +4513,18 @@ function flipHorizontally(layer) {
   var data = batch.data;
   var ww = batch.bounds.w;
   var hh = batch.bounds.h;
-	var pixels = new Uint8Array(data.length);
-	for (var ii = 0; ii < data.length; ii += 4) {
+  var pixels = new Uint8Array(data.length);
+  for (var ii = 0; ii < data.length; ii += 4) {
     var idx = (ii / 4) | 0;
     var xx = (idx % ww) | 0;
-		var yy = (idx / ww) | 0;
+    var yy = (idx / ww) | 0;
     var opx = 4 * (yy * ww + xx);
     var npx = 4 * ((ww - xx) + (yy * ww) - 1);
     pixels[opx + 0] = data[npx + 0];
     pixels[opx + 1] = data[npx + 1];
     pixels[opx + 2] = data[npx + 2];
     pixels[opx + 3] = data[npx + 3];
-	}
+  }
   batch.data = pixels;
   batch.refreshTexture(true);
 }
@@ -4522,18 +4537,18 @@ function flipVertically(layer) {
   var data = batch.data;
   var ww = batch.bounds.w;
   var hh = batch.bounds.h;
-	var pixels = new Uint8Array(data.length);
-	for (var ii = 0; ii < data.length; ii += 4) {
+  var pixels = new Uint8Array(data.length);
+  for (var ii = 0; ii < data.length; ii += 4) {
     var idx = (ii / 4) | 0;
     var xx = (idx % ww) | 0;
-		var yy = (idx / ww) | 0;
+    var yy = (idx / ww) | 0;
     var opx = 4 * (yy * ww + xx);
     var npx = 4 * (((hh - yy - 1) * ww) + xx);
     pixels[opx + 0] = data[npx + 0];
     pixels[opx + 1] = data[npx + 1];
     pixels[opx + 2] = data[npx + 2];
     pixels[opx + 3] = data[npx + 3];
-	}
+  }
   batch.data = pixels;
   batch.refreshTexture(true);
 }
@@ -4555,18 +4570,18 @@ function rotateRight(layer) {
   var data = main.data;
   var ww = main.bounds.w;
   var hh = main.bounds.h;
-	var pixels = new Uint8Array(data.length);
-	for (var ii = 0; ii < data.length; ii += 4) {
+  var pixels = new Uint8Array(data.length);
+  for (var ii = 0; ii < data.length; ii += 4) {
     var idx = (ii / 4) | 0;
     var xx = (idx % ww) | 0;
-		var yy = (idx / ww) | 0;
+    var yy = (idx / ww) | 0;
     var opx = 4 * (yy * ww + xx);
     var npx = 4 * ((xx * ww) + (hh - yy - 1));
     pixels[opx + 0] = data[npx + 0];
     pixels[opx + 1] = data[npx + 1];
     pixels[opx + 2] = data[npx + 2];
     pixels[opx + 3] = data[npx + 3];
-	}
+  }
   batch.data = pixels;
   batch.bounds.w = hh;
   batch.bounds.h = ww;
