@@ -141,7 +141,7 @@ var WGL_SUPPORTED = (
 
 // dev mode state
 var MODES = {
-  DEV: false
+  DEV: true
 };
 
 // different settings
@@ -1035,7 +1035,8 @@ function onMouseDown(e) {
       }
     }
   }
-  else if (e.which === 3) {
+  else if (e.which === 2 || e.which === 3) {
+    e.preventDefault();
     this.states.dragging = true;
     this.click(x, y);
   }
@@ -1225,7 +1226,7 @@ function onMouseUp(e) {
       this.states.pipette = false;
     }
   }
-  if (e.which === 3) {
+  if (e.which === 2 || e.which === 3) {
     this.states.dragging = false;
   }
 }

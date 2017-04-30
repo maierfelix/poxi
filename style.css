@@ -89,7 +89,7 @@ input[type="color"] {
   left: 0px;
   bottom: 0px;
   background: rgba(31, 31, 31, 0.95);
-  height: 32px;
+  height: 36px;
   width: 100%;
   cursor: default;
   display: inline;
@@ -102,8 +102,8 @@ input[type="color"] {
 
 .bottom-menu-items .item {
   top: 6px;
-  width: 21px;
-  height: 21px;
+  width: 24px;
+  height: 24px;
   position: relative;
   opacity: 0.295;
   padding-right: 8px;
@@ -300,7 +300,7 @@ input[type="color"] {
   top: 0px;
   right: 0px;
   width: 128px;
-  height: calc(100% - 32px);
+  height: calc(100% - 36px);
   background: rgba(31, 31, 31, 0.95);
   text-shadow: 0 0 black;
 }
@@ -426,8 +426,8 @@ input[type="color"] {
 }
 
 .layer-menu img {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
   opacity: 0.295;
   cursor: pointer;
 }
