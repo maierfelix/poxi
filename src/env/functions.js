@@ -184,7 +184,9 @@ export function getAbsolutePixelAt(x, y) {
   // and search for the given pixel
   const layers = this.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
-    const pixel = layers[ii].getPixelAt(x, y);
+    const layer = layers[ii];
+    if (!layer.visible) continue;
+    const pixel = layer.getPixelAt(x, y);
     if (pixel !== null) return (pixel);
   };
   return (null);
@@ -213,6 +215,33 @@ export function getRelativePixelAt(x, y) {
   if (layer !== null) {
     return (layer.getPixelAt(x, y));
   }
+  return (null);
+};
+/**
+ * Get absolute live pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+export function getLivePixelAt(x, y) {
+  // normalize coordinates
+  const bw = this.bounds.w;
+  const bh = this.bounds.h;
+  const xx = x - this.bounds.x;
+  const yy = y - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) return (null);
+  // go through each layer reversed
+  // and search for the given pixel
+  const layers = this.layers;
+  for (let ii = 0; ii < layers.length; ++ii) {
+    const pixel = layers[ii].getLivePixelAt(x, y);
+    if (pixel !== null) return (pixel);
+  };
   return (null);
 };
 
@@ -277,7 +306,12 @@ export function getBinaryShape(x, y, base) {
     // color based
     else {
       if (color === null) continue;
-      if (!(base[0] === color[0] && base[1] === color[1] && base[2] === color[2])) continue;
+      if (!(
+        base[0] === color[0] &&
+        base[1] === color[1] &&
+        base[2] === color[2] &&
+        base[3] === color[3]
+      )) continue;
     }
     // fill tiles with 1's if we got a color match
     grid[yy * bw + xx] = 1;

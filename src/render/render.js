@@ -12,6 +12,21 @@ import {
 
 import { createCanvasBuffer } from "../utils";
 import { colorToRgbaString } from "../color";
+import { intersectRectangles } from "../math";
+
+export function update() {
+  const containers = this.containers;
+  for (let ii = 0; ii < containers.length; ++ii) {
+    const container = containers[ii];
+    const ww = container.bounds.w;
+    const hh = container.bounds.h;
+    if (this.frames % 32 === 0) {
+      const frame = container.animation.frame;
+      container.animation.frame = (frame >= (ww * hh) - 1) ? 0 : frame + 1;
+    }
+    this.redraw = true;
+  };
+};
 
 export function updateGrid() {
   // only redraw texture if it's absolutely necessary
@@ -23,12 +38,18 @@ export function updateGrid() {
 
 /** Main render method */
 export function render() {
+  this.frames++;
   const selection = this.sw !== -0 && this.sh !== -0;
   const cr = this.cr;
+  const gl = this.gl;
+  const glOpacity = gl.getUniformLocation(this.program, "vOpacity");
+  gl.uniform1f(
+    glOpacity, 1.0
+  );
   // clear foreground buffer
   this.cache.fg.clearRect(0, 0, this.cw, this.ch);
   this.renderBackground();
-  if (this.cr > HIDE_GRID) this.renderGrid();
+  //if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
   const cx = this.cx | 0;
   const cy = this.cy | 0;
@@ -45,12 +66,22 @@ export function render() {
       [0, 1, 0, 0.1]
     );
   }
-  // render all layers
+  // render containers
+  const containers = this.containers;
+  for (let ii = 0; ii < containers.length; ++ii) {
+    const container = containers[ii];
+    if (!container.visible) continue;
+    this.renderContainer(container);
+  };
+  // render layers
   const layers = this.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
     const idx = layers.length - 1 - ii;
     const layer = layers[idx];
     if (!layer.visible) continue;
+    gl.uniform1f(
+      glOpacity, layer.opacity
+    );
     const bounds = layer.bounds;
     const ww = (bounds.w * TILE_SIZE) * cr;
     const hh = (bounds.h * TILE_SIZE) * cr;
@@ -64,6 +95,9 @@ export function render() {
     // don't forget to render live batches
     this.renderLayer(layer);
   };
+  gl.uniform1f(
+    glOpacity, 1.0
+  );
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
@@ -75,33 +109,6 @@ export function render() {
   this.redraw = false;
 };
 
-export function renderForeground() {
-  const texture = this.cache.fgTexture;
-  const fg = this.cache.fg;
-  const view = fg.canvas;
-  this.updateTextureByCanvas(texture, view);
-  this.drawImage(
-    texture,
-    0, 0, view.width, view.height
-  );
-};
-
-export function renderBackground() {
-  this.drawImage(
-    this.cache.bg,
-    0, 0,
-    this.cw, this.ch
-  );
-};
-
-export function renderGrid() {
-  this.drawImage(
-    this.cache.gridTexture,
-    0, 0,
-    this.cw, this.ch
-  );
-};
-
 /**
  * @param {Layer} layer
  */
@@ -109,6 +116,8 @@ export function renderLayer(layer) {
   const cx = this.cx | 0;
   const cy = this.cy | 0;
   const cr = this.cr;
+  const gl = this.gl;
+  const glOpacity = gl.getUniformLocation(this.program, "vOpacity");
   const batches = layer.batches;
   const sindex = this.sindex;
   for (let ii = 0; ii < batches.length; ++ii) {
@@ -119,6 +128,9 @@ export function renderLayer(layer) {
     if (sindex - batch.getStackIndex() < 0) {
       if (!batch.forceRendering) continue;
     }
+    gl.uniform1f(
+      glOpacity, layer.opacity
+    );
     //if (!this.boundsInsideView(bounds)) continue;
     const x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr)) | 0;
     const y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr)) | 0;
@@ -147,9 +159,12 @@ export function renderLayer(layer) {
       const gl = this.gl;
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
+    gl.uniform1f(
+      glOpacity, 1.0
+    );
   };
   // draw a thin rectangle around active layers
-  if (layer.isActive) {
+  if (MODES.DEV && layer.isActive) {
     const bounds = layer.bounds;
     const x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr));
     const y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr));
@@ -157,6 +172,46 @@ export function renderLayer(layer) {
     const h = (bounds.h * TILE_SIZE) * cr;
     this.drawStrokedRect(x, y, w, h, "rgba(255,255,255,0.2)");
   }
+};
+
+/**
+ * @param {Container} container
+ */
+export function renderContainer(container) {
+  container.renderBoundings();
+  const ww = container.bounds.w | 0;
+  const hh = container.bounds.h | 0;
+  for (let ii = 0; ii < ww * hh; ++ii) {
+    container.renderFrame(ii);
+  };
+  container.renderAnimationPreview();
+};
+
+export function renderForeground() {
+  const texture = this.cache.fgTexture;
+  const fg = this.cache.fg;
+  const view = fg.canvas;
+  this.updateTextureByCanvas(texture, view);
+  this.drawImage(
+    texture,
+    0, 0, view.width, view.height
+  );
+};
+
+export function renderBackground() {
+  this.drawImage(
+    this.cache.bg,
+    0, 0,
+    this.cw, this.ch
+  );
+};
+
+export function renderGrid() {
+  this.drawImage(
+    this.cache.gridTexture,
+    0, 0,
+    this.cw, this.ch
+  );
 };
 
 export function renderHoveredTile() {
@@ -188,7 +243,7 @@ export function renderSelection() {
   const yy = (cy + (this.sy * TILE_SIZE) * cr) | 0;
   const ww = ((this.sw * TILE_SIZE) * cr) | 0;
   const hh = ((this.sh * TILE_SIZE) * cr) | 0;
-  let color = (
+  const color = (
     this.states.selecting ?
     SELECTION_COLOR_ACTIVE :
     SELECTION_COLOR
@@ -268,6 +323,7 @@ export function drawSelectionShape() {
     xx, yy,
     ww, hh
   );
+  buffer.setLineDash([0, 0]);
 };
 
 /**
@@ -280,12 +336,10 @@ export function drawSelectionShape() {
  */
 export function drawStrokedRect(x, y, w, h, color) {
   const cr = this.cr;
-  const size = TILE_SIZE * cr;
-  const lw = Math.max(1, 1 * cr);
+  const lw = Math.max(0.55, 0.55 * cr);
   const buffer = this.cache.fg;
   buffer.strokeStyle = color;
   buffer.lineWidth = lw;
-  buffer.setLineDash([size, size]);
   // main rectangle
   buffer.strokeRect(
     x - (lw / 2), y - (lw / 2),

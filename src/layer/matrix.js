@@ -125,12 +125,14 @@ export function getLivePixelAt(x, y) {
  * Merges two layers
  * Resize this by layer<->this bounding diff
  * Inject this matrix into layer matrix at layer bound pos
- * @param {Layer} layer
+ * @param {Layer} olayer
  * @return {Batch}
  */
-export function mergeWithLayer(layer) {
+export function mergeWithLayer(olayer) {
+  const layer = olayer.clone();
   // TODO: fix merging referenced layers
   const main = this.batch;
+  const opacity = this.opacity;
   const ldata = layer.batch.data;
   const lw = layer.bounds.w;
   const lh = layer.bounds.h;
@@ -155,6 +157,8 @@ export function mergeWithLayer(layer) {
     const yy = (idx / lw) | 0;
     const pixel = layer.getPixelAt(lx + xx, ly + yy);
     if (pixel === null) continue;
+    //console.log(pixel[3], layer.oapcity);
+    pixel[3] = pixel[3] * (opacity * layer.opacity);
     batch.drawPixelFast(lx + xx, ly + yy, pixel);
   };
   batch.refreshTexture(true);

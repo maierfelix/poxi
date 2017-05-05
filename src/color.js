@@ -6,7 +6,7 @@ import { MAGIC_RGB_A_BYTE } from "./cfg";
  * @return {Number}
  */
 export function alphaByteToRgbAlpha(a) {
-  return (Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10);
+  return ((a * MAGIC_RGB_A_BYTE) * 10) / 10;
 };
 
 /**
@@ -16,7 +16,7 @@ export function alphaByteToRgbAlpha(a) {
  * @return {Number}
  */
 export function rgbAlphaToAlphaByte(a) {
-  return (Math.round((a / MAGIC_RGB_A_BYTE) * 10) / 10) | 0;
+  return ((a / MAGIC_RGB_A_BYTE) * 10) / 10;
 };
 
 /**
@@ -70,13 +70,10 @@ export function additiveAlphaColorBlending(src, dst) {
   const a1 = ((src[3] * MAGIC_RGB_A_BYTE) * 10) / 10;
   const a2 = ((dst[3] * MAGIC_RGB_A_BYTE) * 10) / 10;
   const a = 1 - (1 - a2) * (1 - a1);
-  const r = ((dst[0] * a2 / a) + (src[0] * a1 * (1 - a2) / a)) | 0;
-  const g = ((dst[1] * a2 / a) + (src[1] * a1 * (1 - a2) / a)) | 0;
-  const b = ((dst[2] * a2 / a) + (src[2] * a1 * (1 - a2) / a)) | 0;
-  src[0] = r;
-  src[1] = g;
-  src[2] = b;
-  src[3] = ((a / MAGIC_RGB_A_BYTE) * 10) / 10;
+  src[0] = ((dst[0] * a2 / a) + (src[0] * a1 * (1 - a2) / a)) | 0;
+  src[1] = ((dst[1] * a2 / a) + (src[1] * a1 * (1 - a2) / a)) | 0;
+  src[2] = ((dst[2] * a2 / a) + (src[2] * a1 * (1 - a2) / a)) | 0;
+  src[3] = (((a / MAGIC_RGB_A_BYTE) * 10) / 10) | 0;
   return (src);
 };
 

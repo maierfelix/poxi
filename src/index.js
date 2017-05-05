@@ -85,6 +85,8 @@ class Poxi {
     this.sindex = -1;
     // layer related
     this.layers = [];
+    // container related
+    this.containers = [];
     // general cache
     this.cache = {
       bg: null,
@@ -160,6 +162,8 @@ class Poxi {
       stroke: false,
       pipette: false
     };
+    // how many frames we have drawn
+    this.frames = 0;
     // indicates if we have to redraw our stage
     this.redraw = false;
     // global fill style

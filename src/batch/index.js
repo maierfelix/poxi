@@ -115,7 +115,7 @@ Batch.prototype.kill = function() {
   this.buffer = null;
   this.data = null;
   this.reverse = null;
-  this.instance.destroyTexture(this.texture);
+  this.destroyTexture();
   // finally remove batch from layer
   let count = 0;
   for (let ii = 0; ii < layers.length; ++ii) {
@@ -132,6 +132,17 @@ Batch.prototype.kill = function() {
   /*if (count <= 0 && !this.isMover) {
     throw new Error(`Failed to kill batch:${this.id}`);
   }*/
+};
+
+/**
+ * Frees the batch texture from the gpu
+ */
+Batch.prototype.destroyTexture = function() {
+  const texture = this.texture;
+  if (texture !== null) {
+    this.instance.destroyTexture(texture);
+    this.texture = null;
+  }
 };
 
 /**

@@ -36,7 +36,7 @@ class Layer {
     // reference (clone) to master layer
     this.reference = null;
     // opacity applied over local batches
-    this.opacity = 255.0;
+    this._opacity = 1.0;
     // layer batch matrix
     this.batch = null;
     // batches we hold here
@@ -61,6 +61,19 @@ class Layer {
     this._name = value;
     const node = this.node.querySelector(".layer-text");
     node.value = value;
+  }
+  /**
+   * @return {Number}
+   */
+  get opacity() {
+    return (this._opacity);
+  }
+  /**
+   * @param {Number}
+   */
+  set opacity(value) {
+    this._opacity = value;
+    this.instance.redraw = true;
   }
   /**
    * @return {Boolean}
@@ -202,6 +215,13 @@ Layer.prototype.getIndex = function() {
   return (-1);
 };
 
+/**
+ * @return {Boolean}
+ */
+Layer.prototype.isEmpty = function() {
+  return (this.batch.isEmpty());
+};
+
 Layer.prototype.removeFromLayers = function() {
   const layers = this.instance.layers;
   for (let ii = 0; ii < layers.length; ++ii) {
@@ -266,15 +286,16 @@ Layer.prototype.getRelativePosition = function() {
 /**
  * Fill imagedata with pixels then
  * put it into a canvas and return it
- * @return {HTMLCanvasElement}
+ * @return {CanvasRenderingContext2D}
  */
-Layer.prototype.toCanvas = function() {
+Layer.prototype.toCanvasBuffer = function() {
+  // TODO: also draw batch[n].forceRendering for live previews
   const data = this.batch.data;
   const lw = this.bounds.w | 0;
   const lh = this.bounds.h | 0;
   const buffer = createCanvasBuffer(lw, lh);
   // prevent imagedata construction from failing
-  if (lw <= 0 || lh <= 0) return (buffer.canvas);
+  if (lw <= 0 || lh <= 0) return (buffer);
   const img = new ImageData(lw, lh);
   const idata = img.data;
   for (let ii = 0; ii < data.length; ii += 4) {
@@ -286,7 +307,7 @@ Layer.prototype.toCanvas = function() {
     idata[ii + 3] = alpha;
   };
   buffer.putImageData(img, 0, 0);
-  return (buffer.canvas);
+  return (buffer);
 };
 
 /**
@@ -305,16 +326,40 @@ Layer.prototype.generateLayerNameIndex = function() {
 };
 
 /**
- * yuck in here, yuck in here
+ * Returns the string version of the dom node
+ * @return {String}
  */
-Layer.prototype.addUiReference = function() {
-  const tmpl = `
+Layer.prototype.generateUiNode = function() {
+  const html = `
     <div class="layer-item">
       <img class="layer-item-visible" src="assets/img/visible.png">
       <img class="layer-item-locked" src="assets/img/unlocked.png">
       <input class="layer-text" value="${this.name}" readonly />
     </div>
   `;
+  return (html);
+};
+
+/**
+ * Returns color of the layer node
+ * @return {String}
+ */
+Layer.prototype.getUiNodeColor = function() {
+  // only attach color to layer if
+  // layer is a absolute reference or is a reference
+  const count = this.isReference;
+  const cc = this.color.value;
+  const color = (
+    cc && count ? `rgba(${cc[0]},${cc[1]},${cc[2]},0.1)` : ""
+  );
+  return (color);
+};
+
+/**
+ * yuck in here, yuck in here
+ */
+Layer.prototype.addUiReference = function() {
+  const tmpl = this.generateUiNode();
   const parser = new DOMParser();
   const html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   const index = this.getIndex();
@@ -326,17 +371,7 @@ Layer.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
-  // add color to layer if necessary
-  (() => {
-    // only attach color to layer if
-    // layer is a absolute reference or is a reference
-    const count = this.isReference;
-    const cc = this.color.value;
-    const color = (
-      cc && count ? `rgba(${cc[0]},${cc[1]},${cc[2]},0.1)` : ""
-    );
-    html.style.backgroundColor = color;
-  })();
+  html.style.backgroundColor = this.getUiNodeColor();
   if (this.isActive) {
     this.instance.setActiveLayer(this);
   }

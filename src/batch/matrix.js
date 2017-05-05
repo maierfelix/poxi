@@ -187,15 +187,26 @@ export function injectMatrix(batch, state) {
     if (state === false && alpha <= 0 && batch.data[opx + 3] <= 0) continue;
     // manual color blending
     if (buffer[npx + 3] > 0 && alpha < 255 && alpha > 0) {
-      // TODO: reverse additive blending on undo
       const src = buffer.subarray(npx, npx + 4);
       const dst = data.subarray(opx, opx + 4);
-      const color = additiveAlphaColorBlending(src, dst);
-      buffer[npx + 0] = color[0];
-      buffer[npx + 1] = color[1];
-      buffer[npx + 2] = color[2];
-      buffer[npx + 3] = color[3];
-      continue;
+      // manual color blending
+      if (state) {
+        const src = buffer.subarray(npx, npx + 4);
+        const dst = data.subarray(opx, opx + 4);
+        const color = additiveAlphaColorBlending(src, dst);
+        buffer[npx + 0] = color[0];
+        buffer[npx + 1] = color[1];
+        buffer[npx + 2] = color[2];
+        buffer[npx + 3] = color[3];
+        continue;
+      // simply fill with reverse data
+      } else {
+        buffer[npx + 0] = data[opx + 0];
+        buffer[npx + 1] = data[opx + 1];
+        buffer[npx + 2] = data[opx + 2];
+        buffer[npx + 3] = data[opx + 3];
+        continue;
+      }
     }
     // just fill colors with given batch data kind
     buffer[npx + 0] = data[opx + 0];
@@ -264,6 +275,7 @@ export function prepareMatrix(x, y) {
 /**
  * Returns the very first found pixel color
  * *We expect that the batch is single colored*
+ * @ignore
  * @return {Uint8Array}
  */
 export function getBatchColor() {

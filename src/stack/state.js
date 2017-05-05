@@ -18,10 +18,25 @@ export function refreshStack() {
 
 /**
  * Returns the latest stack operation
- * @return {Object}
+ * @return {Command}
  */
 export function currentStackOperation() {
-  return (this.stack[this.sindex]);
+  return (this.stack[this.sindex] || null);
+};
+
+/**
+ * Indicates if an operation is mergeable
+ * with an older same kind but opposite operation
+ * @param {Number} kind
+ * @return {Boolean}
+ */
+export function isMergeableOperation(kind) {
+  return (
+    kind === CommandKind.LAYER_LOCK ||
+    kind === CommandKind.LAYER_FLIP_VERTICAL ||
+    kind === CommandKind.LAYER_FLIP_HORIZONTAL ||
+    kind === CommandKind.LAYER_VISIBILITY
+  );
 };
 
 /**
@@ -37,7 +52,29 @@ export function fire(cmd, state) {
     case CommandKind.BATCH_OPERATION:
       this.fireBatchOperation(cmd, state);
     break;
+    case CommandKind.CONTAINER_OPERATION:
+      this.fireContainerOperation(cmd, state);
+    break;
   };
+};
+
+/**
+ * @param {Command} cmd
+ * @param {Boolean} state
+ */
+export function fireContainerOperation(cmd, state) {
+  const batch = cmd.batch;
+  const container = batch.container;
+  if (state) {
+    this.containers.push(container);
+  } else {
+    for (let ii = 0; ii < this.containers.length; ++ii) {
+      if (this.containers[ii].id === container.id) {
+        this.containers.splice(ii, 1);
+        break;
+      }
+    };
+  }
 };
 
 /**
@@ -71,7 +108,6 @@ export function fireLayerOperation(cmd, state) {
         merge.batch.injectMatrix(data, false);
         merge.batch.refreshTexture(true);
       }
-      // TODO: matrix inject here
     break;
     case CommandKind.LAYER_CLONE:
     case CommandKind.LAYER_CLONE_REF:
@@ -108,6 +144,9 @@ export function fireLayerOperation(cmd, state) {
     break;
     case CommandKind.LAYER_VISIBILITY:
       layer.visible = !layer.visible;
+    break;
+    case CommandKind.LAYER_OPACITY:
+      layer.opacity = batch[state ? "opacity" : "oopacity"];
     break;
     case CommandKind.LAYER_ORDER:
       if (state) {
@@ -175,6 +214,7 @@ export function getCommandKind(cmd) {
     case CommandKind.LAYER_ROTATE_LEFT:
     case CommandKind.LAYER_ROTATE_RIGHT:
     case CommandKind.LAYER_VISIBILITY:
+    case CommandKind.LAYER_OPACITY:
     case CommandKind.LAYER_ADD:
     case CommandKind.LAYER_REMOVE:
     case CommandKind.LAYER_MERGE:
@@ -199,6 +239,10 @@ export function getCommandKind(cmd) {
     case CommandKind.FLOOD_FILL:
     case CommandKind.LIGHTING:
       return (CommandKind.BATCH_OPERATION);
+    break;
+    case CommandKind.CONTAINER_ADD:
+    case CommandKind.CONTAINER_REMOVE:
+      return (CommandKind.CONTAINER_OPERATION);
     break;
   };
   return (CommandKind.UNKNOWN);

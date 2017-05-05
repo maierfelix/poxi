@@ -81,7 +81,7 @@ export function onColorMenuClick(el) {
   if (element.id) return;
   const value = element.getAttribute("color");
   const rgba = JSON.parse(value);
-  this.setUiColor(rgbaToHex(rgba));
+  this.setUiColorByRgba(rgba);
   return;
 };
 
@@ -224,7 +224,8 @@ export function onMouseDown(e) {
       }
     }
   }
-  else if (e.which === 3) {
+  else if (e.which === 2 || e.which === 3) {
+    e.preventDefault();
     this.states.dragging = true;
     this.click(x, y);
   }
@@ -350,7 +351,7 @@ export function onMouseUp(e) {
       this.setActiveLayer(this.buffers.mLayer);
       this.buffers.move = null;
     }
-    else if (this.modes.arc) {
+    else if (this.states.arc) {
       const batch = this.buffers.arc;
       batch.forceRendering = false;
       this.states.arc = false;
@@ -360,7 +361,7 @@ export function onMouseUp(e) {
       else this.enqueue(CommandKind.ARC_FILL, batch);
       this.buffers.arc = null;
     }
-    else if (this.modes.rect) {
+    else if (this.states.rect) {
       const batch = this.buffers.rect;
       batch.forceRendering = false;
       this.states.rect = false;
@@ -370,7 +371,7 @@ export function onMouseUp(e) {
       else this.enqueue(CommandKind.RECT_FILL, batch);
       this.buffers.rect = null;
     }
-    else if (this.modes.stroke) {
+    else if (this.states.stroke) {
       const batch = this.buffers.stroke;
       batch.forceRendering = false;
       this.states.stroke = false;
@@ -380,7 +381,7 @@ export function onMouseUp(e) {
       else this.enqueue(CommandKind.STROKE, batch);
       this.buffers.stroke = null;
     }
-    else if (this.modes.select) {
+    else if (this.states.select) {
       this.states.selecting = false;
       this.redraw = true;
     }
@@ -414,7 +415,7 @@ export function onMouseUp(e) {
       this.states.pipette = false;
     }
   }
-  if (e.which === 3) {
+  if (e.which === 2 || e.which === 3) {
     this.states.dragging = false;
   }
 };

@@ -51,7 +51,7 @@ export const WASM_SUPPORTED = (
 
 // dev mode state
 export let MODES = {
-  DEV: true
+  DEV: false
 };
 
 // different settings

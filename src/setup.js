@@ -11,20 +11,22 @@ export function setup() {
   view.width = width;
   view.height = height;
   // sync storage colors with stage colors
-  const colors = this.readStorage("favorite_colors");
+  /*const colors = this.readStorage("favorite_colors");
   if (colors && colors.length > 2) {
     this.favoriteColors = JSON.parse(colors);
     this.updateFastColorPickMenu();
-    this.setUiColor(rgbaToHex(this.favoriteColors[0].color));
+    this.setUiColorByRgba(this.favoriteColors[0].color);
   } else {
-    this.setUiColor(rgbaToHex([255, 0, 0, 1]));
-  }
+    this.setUiColorByHex([255, 0, 0, 1]);
+  }*/
+  this.setUiColorByRgba([255, 0, 0, 1]);
   this.setupRenderer(view);
   this.initListeners();
   this.resize(width, height);
   this.scale(0);
   const draw = () => {
     requestAnimationFrame(() => draw());
+    this.update();
     if (this.redraw) {
       this.clear();
       this.render();

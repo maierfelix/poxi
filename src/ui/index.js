@@ -5,6 +5,7 @@ import {
 } from "../color";
 
 import Layer from "../layer/index";
+import Container from "../container/index";
 import CommandKind from "../stack/kind";
 
 export function resetModes() {
@@ -83,9 +84,10 @@ export function resetActiveUiButtons() {
 };
 
 /**
+ * @param {String} value
  * @return {Void}
  */
-export function setUiColor(value) {
+export function setUiColorByHex(value) {
   // close fast color picker menu
   if (this.states.fastColorMenu) {
     this.closeFastColorPickerMenu();
@@ -102,6 +104,28 @@ export function setUiColor(value) {
   ) return;
   this.fillStyle = rgba;
   this.addCustomColor(rgba);
+  return;
+};
+
+/**
+ * @param {Array} rgba
+ * @return {Void}
+ */
+export function setUiColorByRgba(rgba) {
+  const r = rgba[0];
+  const g = rgba[1];
+  const b = rgba[2];
+  const a = rgba[3];
+  color_view.style.background = `rgba(${r},${g},${b},${a})`;
+  const hex = rgbaToHex(rgba);
+  // prevent changing color if it didnt changed
+  if (
+    this.fillStyle[0] === r &&
+    this.fillStyle[1] === g &&
+    this.fillStyle[2] === b &&
+    this.fillStyle[3] === a
+  ) return;
+  this.fillStyle = rgba;
   return;
 };
 
@@ -310,7 +334,7 @@ export function setupUi() {
     move.style.opacity = 1.0;
   };
   color.onchange = (e) => {
-    this.setUiColor(color.value);
+    this.setUiColorByHex(color.value);
   };
 
   undo.onclick = (e) => {
@@ -430,26 +454,26 @@ export function setupUi() {
 
   flip_horizontal.onclick = (e) => {
     const layer = this.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer });
     }
   };
   flip_vertical.onclick = (e) => {
     const layer = this.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer });
     }
   };
 
   rotate_right.onclick = (e) => {
     const layer = this.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this.enqueue(CommandKind.LAYER_ROTATE_RIGHT, { layer });
     }
   };
   rotate_left.onclick = (e) => {
     const layer = this.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this.enqueue(CommandKind.LAYER_ROTATE_LEFT, { layer });
     }
   };
@@ -465,12 +489,31 @@ export function setupUi() {
     }
   };
 
+  add_animation.onclick = (e) => {
+    const container = new Container(this);
+    const relative = this.getRelativeTileOffset(this.mx, this.my);
+    container.bounds.x = relative.x; container.bounds.y = relative.y;
+    this.enqueue(CommandKind.CONTAINER_ADD, {
+      container: container
+    });
+  };
+
+  const layer_opacity = (e) => {
+    const opacity = 0.5;
+    const oopacity = layer.opacity;
+    if (oopacity !== opacity) {
+      this.enqueue(CommandKind.LAYER_OPACITY, {
+        oopacity, opacity, layer: layer
+      });
+    }
+  };
+
   this.modes.draw = true;
   tiled.style.opacity = 1.0;
 
   // setup ui list button states
-  this.processUIClick(document.querySelector("#light-size").children[0]);
+  /*this.processUIClick(document.querySelector("#light-size").children[0]);
   this.processUIClick(document.querySelector("#eraser-size").children[0]);
-  this.processUIClick(document.querySelector("#pencil-size").children[0]);
+  this.processUIClick(document.querySelector("#pencil-size").children[0]);*/
 
 };

@@ -28,7 +28,6 @@ export function createGridBuffer() {
 };
 
 /**
- * TODO: use imagedata and draw the grid onto
  * @return {Void}
  */
 export function redrawGridBuffer() {
@@ -104,7 +103,7 @@ export function createForegroundBuffer() {
   const cw = this.cw;
   const ch = this.ch;
   const buffer = createCanvasBuffer(cw, ch);
-  applyImageSmoothing(buffer, true);
+  applyImageSmoothing(buffer, false);
   if (this.cache.fg !== null) {
     this.cache.fg = null;
     this.destroyTexture(this.cache.fgTexture);

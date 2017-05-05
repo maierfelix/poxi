@@ -28,6 +28,7 @@ export const SPRITE_FRAGMENT = `
   uniform sampler2D uSampler;
   varying vec2 uv;
   uniform int isRect;
+  uniform float vOpacity;
   uniform vec4 vColor;
   void main(void) {
     if (isRect == 0) {
@@ -35,6 +36,7 @@ export const SPRITE_FRAGMENT = `
     } else {
       gl_FragColor = vColor + texture2D(uSampler, uv);
     }
-    if (gl_FragColor.a < 0.1) discard;
+    gl_FragColor.a *=  vOpacity;
+    if (gl_FragColor.a < 0.01) discard;
   }
 `;
