@@ -36,8 +36,7 @@ function getSelection() {
   h = h < 0 ? -h : h;
   return ({
     shape: null,
-    x: x, y: y,
-    w: w, h: h
+    x: x, y: y, w: w, h: h
   });
 }
 
@@ -230,7 +229,7 @@ function getWGLContext(canvas) {
  * @return {Number}
  */
 function alphaByteToRgbAlpha(a) {
-  return (Math.round((a * MAGIC_RGB_A_BYTE) * 10) / 10);
+  return ((a * MAGIC_RGB_A_BYTE) * 10) / 10;
 }
 
 /**
@@ -240,7 +239,7 @@ function alphaByteToRgbAlpha(a) {
  * @return {Number}
  */
 function rgbAlphaToAlphaByte(a) {
-  return (Math.round((a / MAGIC_RGB_A_BYTE) * 10) / 10) | 0;
+  return ((a / MAGIC_RGB_A_BYTE) * 10) / 10;
 }
 
 /**
@@ -281,13 +280,10 @@ function additiveAlphaColorBlending(src, dst) {
   var a1 = ((src[3] * MAGIC_RGB_A_BYTE) * 10) / 10;
   var a2 = ((dst[3] * MAGIC_RGB_A_BYTE) * 10) / 10;
   var a = 1 - (1 - a2) * (1 - a1);
-  var r = ((dst[0] * a2 / a) + (src[0] * a1 * (1 - a2) / a)) | 0;
-  var g = ((dst[1] * a2 / a) + (src[1] * a1 * (1 - a2) / a)) | 0;
-  var b = ((dst[2] * a2 / a) + (src[2] * a1 * (1 - a2) / a)) | 0;
-  src[0] = r;
-  src[1] = g;
-  src[2] = b;
-  src[3] = ((a / MAGIC_RGB_A_BYTE) * 10) / 10;
+  src[0] = ((dst[0] * a2 / a) + (src[0] * a1 * (1 - a2) / a)) | 0;
+  src[1] = ((dst[1] * a2 / a) + (src[1] * a1 * (1 - a2) / a)) | 0;
+  src[2] = ((dst[2] * a2 / a) + (src[2] * a1 * (1 - a2) / a)) | 0;
+  src[3] = (((a / MAGIC_RGB_A_BYTE) * 10) / 10) | 0;
   return (src);
 }
 
@@ -387,7 +383,7 @@ var CommandKind = {
   UNKNOWN: 0,
   LAYER_OPERATION: 1,
   BATCH_OPERATION: 2,
-  0xDEADBEEF: 3,
+  CONTAINER_OPERATION: 3,
   DRAW: 4,
   ERASE: 5,
   FILL: 6,
@@ -413,9 +409,12 @@ var CommandKind = {
   LAYER_ROTATE_LEFT: 26,
   LAYER_ROTATE_RIGHT: 27,
   LAYER_VISIBILITY: 28,
-  LAYER_CLONE: 29,
-  LAYER_CLONE_REF: 30,
-  LAYER_MERGE: 31
+  LAYER_OPACITY: 29,
+  LAYER_CLONE: 30,
+  LAYER_CLONE_REF: 31,
+  LAYER_MERGE: 32,
+  CONTAINER_ADD: 33,
+  CONTAINER_REMOVE: 34
 };
 
 /**
@@ -531,8 +530,6 @@ function cut(selection) {
  * @return {Void}
  */
 function clearSelection(selection) {
-  var this$1 = this;
-
   var shape = selection.shape;
   var bounds = shape.bounds;
   var data = shape.data;
@@ -553,7 +550,7 @@ function clearSelection(selection) {
     var yy = (idx / bw) | 0;
     var px = (yy * bw + xx) * 4;
     if (data[px + 3] <= 0) { continue; }
-    var pixel = this$1.getAbsolutePixelAt(x + xx, y + yy);
+    var pixel = layer.getPixelAt(x + xx, y + yy);
     // only erase if we have sth to erase
     if (pixel === null) { continue; }
     batch.erasePixelFast(x + xx, y + yy, pixel);
@@ -575,14 +572,15 @@ function clearSelection(selection) {
  * @return {Batch}
  */
 function getShapeAt(x, y) {
-  var color = this.getAbsolutePixelAt(x, y);
-  if (color === null) { return (null); }
+  var layer = this.getCurrentLayer();
+  var color = layer.getPixelAt(x, y);
+  if (color === null) { color = [0, 0, 0, 0]; }
   var shape = this.getBinaryShape(x, y, color);
   if (shape === null) { return (null); }
   var batch = this.createDynamicBatch(x, y);
-  var bounds = this.bounds;
-  var bx = bounds.x;
-  var by = bounds.y;
+  var bounds = layer.bounds;
+  var bx = layer.x + bounds.x;
+  var by = layer.y + bounds.y;
   var bw = bounds.w;
   var bh = bounds.h;
   // create buffer to draw a fake shape into
@@ -600,7 +598,8 @@ function getShapeAt(x, y) {
     );
   }
   batch.buffer = buffer;
-  batch.data = new Uint8Array(buffer.getImageData(0, 0, bw, bh).data);
+  var data = buffer.getImageData(0, 0, bw, bh).data;
+  batch.data = new Uint8Array(data);
   batch.bounds.update(bx, by, bw, bh);
   batch.resizeByMatrixData();
   batch.refreshTexture(true);
@@ -892,7 +891,7 @@ function onColorMenuClick(el) {
   if (element.id) { return; }
   var value = element.getAttribute("color");
   var rgba = JSON.parse(value);
-  this.setUiColor(rgbaToHex(rgba));
+  this.setUiColorByRgba(rgba);
   return;
 }
 
@@ -1162,7 +1161,7 @@ function onMouseUp(e) {
       this.setActiveLayer(this.buffers.mLayer);
       this.buffers.move = null;
     }
-    else if (this.modes.arc) {
+    else if (this.states.arc) {
       var batch$1 = this.buffers.arc;
       batch$1.forceRendering = false;
       this.states.arc = false;
@@ -1172,7 +1171,7 @@ function onMouseUp(e) {
       else { this.enqueue(CommandKind.ARC_FILL, batch$1); }
       this.buffers.arc = null;
     }
-    else if (this.modes.rect) {
+    else if (this.states.rect) {
       var batch$2 = this.buffers.rect;
       batch$2.forceRendering = false;
       this.states.rect = false;
@@ -1182,7 +1181,7 @@ function onMouseUp(e) {
       else { this.enqueue(CommandKind.RECT_FILL, batch$2); }
       this.buffers.rect = null;
     }
-    else if (this.modes.stroke) {
+    else if (this.states.stroke) {
       var batch$3 = this.buffers.stroke;
       batch$3.forceRendering = false;
       this.states.stroke = false;
@@ -1192,7 +1191,7 @@ function onMouseUp(e) {
       else { this.enqueue(CommandKind.STROKE, batch$3); }
       this.buffers.stroke = null;
     }
-    else if (this.modes.select) {
+    else if (this.states.select) {
       this.states.selecting = false;
       this.redraw = true;
     }
@@ -1783,15 +1782,26 @@ function injectMatrix(batch, state) {
     if (state === false && alpha <= 0 && batch.data[opx + 3] <= 0) { continue; }
     // manual color blending
     if (buffer[npx + 3] > 0 && alpha < 255 && alpha > 0) {
-      // TODO: reverse additive blending on undo
       var src = buffer.subarray(npx, npx + 4);
       var dst = data.subarray(opx, opx + 4);
-      var color = additiveAlphaColorBlending(src, dst);
-      buffer[npx + 0] = color[0];
-      buffer[npx + 1] = color[1];
-      buffer[npx + 2] = color[2];
-      buffer[npx + 3] = color[3];
-      continue;
+      // manual color blending
+      if (state) {
+        var src$1 = buffer.subarray(npx, npx + 4);
+        var dst$1 = data.subarray(opx, opx + 4);
+        var color = additiveAlphaColorBlending(src$1, dst$1);
+        buffer[npx + 0] = color[0];
+        buffer[npx + 1] = color[1];
+        buffer[npx + 2] = color[2];
+        buffer[npx + 3] = color[3];
+        continue;
+      // simply fill with reverse data
+      } else {
+        buffer[npx + 0] = data[opx + 0];
+        buffer[npx + 1] = data[opx + 1];
+        buffer[npx + 2] = data[opx + 2];
+        buffer[npx + 3] = data[opx + 3];
+        continue;
+      }
     }
     // just fill colors with given batch data kind
     buffer[npx + 0] = data[opx + 0];
@@ -1829,16 +1839,6 @@ function getRawPixelAt(x, y) {
 }
 
 /**
- * Clears all pixels non-reversible
- */
-function clear() {
-  var data = this.data;
-  for (var ii = 0; ii < data.length; ++ii) {
-    data[ii] = 0;
-  }
-}
-
-/**
  * @param {Number} x
  * @param {Number} y
  */
@@ -1860,6 +1860,7 @@ function prepareMatrix(x, y) {
 /**
  * Returns the very first found pixel color
  * *We expect that the batch is single colored*
+ * @ignore
  * @return {Uint8Array}
  */
 function getBatchColor() {
@@ -1897,6 +1898,25 @@ function isEmpty() {
   return (count <= 0);
 }
 
+/**
+ * Clears all pixels non-reversible
+ */
+function clear() {
+  var data = this.data;
+  for (var ii = 0; ii < data.length; ++ii) {
+    data[ii] = 0;
+  }
+}
+
+/**
+ * Returns reversed data without mutating the source
+ * @return {Uint8Array}
+ */
+function reverse() {
+  var data = new Uint8Array(this.data).reverse();
+  return (data);
+}
+
 
 var _matrix = Object.freeze({
 	resizeRectangular: resizeRectangular,
@@ -1905,10 +1925,11 @@ var _matrix = Object.freeze({
 	resizeMatrix: resizeMatrix,
 	injectMatrix: injectMatrix,
 	getRawPixelAt: getRawPixelAt,
-	clear: clear,
 	prepareMatrix: prepareMatrix,
 	getBatchColor: getBatchColor,
-	isEmpty: isEmpty
+	isEmpty: isEmpty,
+	clear: clear,
+	reverse: reverse
 });
 
 /**
@@ -2115,6 +2136,7 @@ Batch.prototype.destroyTexture = function() {
   var texture = this.texture;
   if (texture !== null) {
     this.instance.destroyTexture(texture);
+    this.texture = null;
   }
 };
 
@@ -2245,7 +2267,7 @@ function getPixelAt(x, y) {
  * @param {Number} y
  * @return {Array}
  */
-function getLivePixelAt(x, y) {
+function getLivePixelAt$1(x, y) {
   var this$1 = this;
 
   var bw = this.bounds.w;
@@ -2274,12 +2296,14 @@ function getLivePixelAt(x, y) {
  * Merges two layers
  * Resize this by layer<->this bounding diff
  * Inject this matrix into layer matrix at layer bound pos
- * @param {Layer} layer
+ * @param {Layer} olayer
  * @return {Batch}
  */
-function mergeWithLayer(layer) {
+function mergeWithLayer(olayer) {
+  var layer = olayer.clone();
   // TODO: fix merging referenced layers
   var main = this.batch;
+  var opacity = this.opacity;
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;
   var lh = layer.bounds.h;
@@ -2304,6 +2328,8 @@ function mergeWithLayer(layer) {
     var yy = (idx / lw) | 0;
     var pixel = layer.getPixelAt(lx + xx, ly + yy);
     if (pixel === null) { continue; }
+    //console.log(pixel[3], layer.oapcity);
+    pixel[3] = pixel[3] * (opacity * layer.opacity);
     batch.drawPixelFast(lx + xx, ly + yy, pixel);
   }
   batch.refreshTexture(true);
@@ -2315,7 +2341,7 @@ var _matrix$1 = Object.freeze({
 	hasResized: hasResized,
 	updateBoundings: updateBoundings,
 	getPixelAt: getPixelAt,
-	getLivePixelAt: getLivePixelAt,
+	getLivePixelAt: getLivePixelAt$1,
 	mergeWithLayer: mergeWithLayer
 });
 
@@ -2340,7 +2366,7 @@ var Layer = function Layer(instance) {
   // reference (clone) to master layer
   this.reference = null;
   // opacity applied over local batches
-  this.opacity = 255.0;
+  this._opacity = 1.0;
   // layer batch matrix
   this.batch = null;
   // batches we hold here
@@ -2353,7 +2379,7 @@ var Layer = function Layer(instance) {
   this.allocateLayerMatrix();
 };
 
-var prototypeAccessors = { name: {},visible: {},locked: {},isActive: {},isReference: {} };
+var prototypeAccessors = { name: {},opacity: {},visible: {},locked: {},isActive: {},isReference: {} };
 /**
  * @return {String}
  */
@@ -2367,6 +2393,19 @@ prototypeAccessors.name.set = function (value) {
   this._name = value;
   var node = this.node.querySelector(".layer-text");
   node.value = value;
+};
+/**
+ * @return {Number}
+ */
+prototypeAccessors.opacity.get = function () {
+  return (this._opacity);
+};
+/**
+ * @param {Number}
+ */
+prototypeAccessors.opacity.set = function (value) {
+  this._opacity = value;
+  this.instance.redraw = true;
 };
 /**
  * @return {Boolean}
@@ -2513,6 +2552,13 @@ Layer.prototype.getIndex = function() {
   return (-1);
 };
 
+/**
+ * @return {Boolean}
+ */
+Layer.prototype.isEmpty = function() {
+  return (this.batch.isEmpty());
+};
+
 Layer.prototype.removeFromLayers = function() {
   var this$1 = this;
 
@@ -2579,15 +2625,16 @@ Layer.prototype.getRelativePosition = function() {
 /**
  * Fill imagedata with pixels then
  * put it into a canvas and return it
- * @return {HTMLCanvasElement}
+ * @return {CanvasRenderingContext2D}
  */
-Layer.prototype.toCanvas = function() {
+Layer.prototype.toCanvasBuffer = function() {
+  // TODO: also draw batch[n].forceRendering for live previews
   var data = this.batch.data;
   var lw = this.bounds.w | 0;
   var lh = this.bounds.h | 0;
   var buffer = createCanvasBuffer(lw, lh);
   // prevent imagedata construction from failing
-  if (lw <= 0 || lh <= 0) { return (buffer.canvas); }
+  if (lw <= 0 || lh <= 0) { return (buffer); }
   var img = new ImageData(lw, lh);
   var idata = img.data;
   for (var ii = 0; ii < data.length; ii += 4) {
@@ -2599,7 +2646,7 @@ Layer.prototype.toCanvas = function() {
     idata[ii + 3] = alpha;
   }
   buffer.putImageData(img, 0, 0);
-  return (buffer.canvas);
+  return (buffer);
 };
 
 /**
@@ -2618,12 +2665,34 @@ Layer.prototype.generateLayerNameIndex = function() {
 };
 
 /**
+ * Returns the string version of the dom node
+ * @return {String}
+ */
+Layer.prototype.generateUiNode = function() {
+  var html = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  return (html);
+};
+
+/**
+ * Returns color of the layer node
+ * @return {String}
+ */
+Layer.prototype.getUiNodeColor = function() {
+  // only attach color to layer if
+  // layer is a absolute reference or is a reference
+  var count = this.isReference;
+  var cc = this.color.value;
+  var color = (
+    cc && count ? ("rgba(" + (cc[0]) + "," + (cc[1]) + "," + (cc[2]) + ",0.1)") : ""
+  );
+  return (color);
+};
+
+/**
  * yuck in here, yuck in here
  */
 Layer.prototype.addUiReference = function() {
-  var this$1 = this;
-
-  var tmpl = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  var tmpl = this.generateUiNode();
   var parser = new DOMParser();
   var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   var index = this.getIndex();
@@ -2635,17 +2704,7 @@ Layer.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
-  // add color to layer if necessary
-  (function () {
-    // only attach color to layer if
-    // layer is a absolute reference or is a reference
-    var count = this$1.isReference;
-    var cc = this$1.color.value;
-    var color = (
-      cc && count ? ("rgba(" + (cc[0]) + "," + (cc[1]) + "," + (cc[2]) + ",0.1)") : ""
-    );
-    html.style.backgroundColor = color;
-  })();
+  html.style.backgroundColor = this.getUiNodeColor();
   if (this.isActive) {
     this.instance.setActiveLayer(this);
   }
@@ -2836,7 +2895,9 @@ function getAbsolutePixelAt(x, y) {
   // and search for the given pixel
   var layers = this.layers;
   for (var ii = 0; ii < layers.length; ++ii) {
-    var pixel = layers[ii].getPixelAt(x, y);
+    var layer = layers[ii];
+    if (!layer.visible) { continue; }
+    var pixel = layer.getPixelAt(x, y);
     if (pixel !== null) { return (pixel); }
   }
   return (null);
@@ -2864,6 +2925,33 @@ function getRelativePixelAt(x, y) {
   var layer = this.getCurrentLayer();
   if (layer !== null) {
     return (layer.getPixelAt(x, y));
+  }
+  return (null);
+}
+/**
+ * Get absolute live pixel
+ * @param {Number} x
+ * @param {Number} y
+ * @return {Array}
+ */
+function getLivePixelAt(x, y) {
+  // normalize coordinates
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  var xx = x - this.bounds.x;
+  var yy = y - this.bounds.y;
+  // check if point inside boundings
+  if (
+    (xx < 0 || yy < 0) ||
+    (bw <= 0 || bh <= 0) ||
+    (xx >= bw || yy >= bh)
+  ) { return (null); }
+  // go through each layer reversed
+  // and search for the given pixel
+  var layers = this.layers;
+  for (var ii = 0; ii < layers.length; ++ii) {
+    var pixel = layers[ii].getLivePixelAt(x, y);
+    if (pixel !== null) { return (pixel); }
   }
   return (null);
 }
@@ -2929,7 +3017,12 @@ function getBinaryShape(x, y, base) {
     // color based
     else {
       if (color === null) { continue; }
-      if (!(base[0] === color[0] && base[1] === color[1] && base[2] === color[2])) { continue; }
+      if (!(
+        base[0] === color[0] &&
+        base[1] === color[1] &&
+        base[2] === color[2] &&
+        base[3] === color[3]
+      )) { continue; }
     }
     // fill tiles with 1's if we got a color match
     grid[yy * bw + xx] = 1;
@@ -3005,6 +3098,7 @@ var _env = Object.freeze({
 	createDynamicBatch: createDynamicBatch,
 	getAbsolutePixelAt: getAbsolutePixelAt,
 	getRelativePixelAt: getRelativePixelAt,
+	getLivePixelAt: getLivePixelAt,
 	updateGlobalBoundings: updateGlobalBoundings,
 	getBinaryShape: getBinaryShape,
 	getCursorSize: getCursorSize
@@ -3435,7 +3529,7 @@ var _buffer = Object.freeze({
 
 var SPRITE_VERTEX = "\n  precision lowp float;\n  uniform vec2 uScale;\n  uniform vec2 uObjScale;\n  attribute vec2 aObjCen;\n  attribute float aIdx;\n  varying vec2 uv;\n  void main(void) {\n    if (aIdx == 0.0) {\n      uv = vec2(0.0,0.0);\n    } else if (aIdx == 1.0) {\n      uv = vec2(1.0,0.0);\n    } else if (aIdx == 2.0) {\n      uv = vec2(0.0,1.0);\n    } else {\n      uv = vec2(1.0,1.0);\n    }\n    gl_Position = vec4(\n      -1.0 + 2.0 * (aObjCen.x + uObjScale.x * (-0.5 + uv.x)) / uScale.x,\n      1.0 - 2.0 * (aObjCen.y + uObjScale.y * (-0.5 + uv.y)) / uScale.y,\n      0.0, 1.0\n    );\n  }\n";
 
-var SPRITE_FRAGMENT = "\n  precision lowp float;\n  uniform sampler2D uSampler;\n  varying vec2 uv;\n  uniform int isRect;\n  uniform vec4 vColor;\n  void main(void) {\n    if (isRect == 0) {\n      gl_FragColor = texture2D(uSampler, uv);\n    } else {\n      gl_FragColor = vColor + texture2D(uSampler, uv);\n    }\n    if (gl_FragColor.a < 0.1) discard;\n  }\n";
+var SPRITE_FRAGMENT = "\n  precision lowp float;\n  uniform sampler2D uSampler;\n  varying vec2 uv;\n  uniform int isRect;\n  uniform float vOpacity;\n  uniform vec4 vColor;\n  void main(void) {\n    if (isRect == 0) {\n      gl_FragColor = texture2D(uSampler, uv);\n    } else {\n      gl_FragColor = vColor + texture2D(uSampler, uv);\n    }\n    gl_FragColor.a *=  vOpacity;\n    if (gl_FragColor.a < 0.01) discard;\n  }\n";
 
 
 var _shaders = Object.freeze({
@@ -3643,7 +3737,6 @@ function createGridBuffer() {
 }
 
 /**
- * TODO: use imagedata and draw the grid onto
  * @return {Void}
  */
 function redrawGridBuffer() {
@@ -3719,7 +3812,7 @@ function createForegroundBuffer() {
   var cw = this.cw;
   var ch = this.ch;
   var buffer = createCanvasBuffer(cw, ch);
-  applyImageSmoothing(buffer, true);
+  applyImageSmoothing(buffer, false);
   if (this.cache.fg !== null) {
     this.cache.fg = null;
     this.destroyTexture(this.cache.fgTexture);
@@ -3767,6 +3860,22 @@ var _main = Object.freeze({
 	exportAsDataUrl: exportAsDataUrl
 });
 
+function update() {
+  var this$1 = this;
+
+  var containers = this.containers;
+  for (var ii = 0; ii < containers.length; ++ii) {
+    var container = containers[ii];
+    var ww = container.bounds.w;
+    var hh = container.bounds.h;
+    if (this$1.frames % 32 === 0) {
+      var frame = container.animation.frame;
+      container.animation.frame = (frame >= (ww * hh) - 1) ? 0 : frame + 1;
+    }
+    this$1.redraw = true;
+  }
+}
+
 function updateGrid() {
   // only redraw texture if it's absolutely necessary
   if (this.last.cx !== this.cx || this.last.cy !== this.cy) {
@@ -3779,12 +3888,18 @@ function updateGrid() {
 function render() {
   var this$1 = this;
 
+  this.frames++;
   var selection = this.sw !== -0 && this.sh !== -0;
   var cr = this.cr;
+  var gl = this.gl;
+  var glOpacity = gl.getUniformLocation(this.program, "vOpacity");
+  gl.uniform1f(
+    glOpacity, 1.0
+  );
   // clear foreground buffer
   this.cache.fg.clearRect(0, 0, this.cw, this.ch);
   this.renderBackground();
-  if (this.cr > HIDE_GRID) { this.renderGrid(); }
+  //if (this.cr > HIDE_GRID) this.renderGrid();
   // render cached version of our working area
   var cx = this.cx | 0;
   var cy = this.cy | 0;
@@ -3801,12 +3916,22 @@ function render() {
       [0, 1, 0, 0.1]
     );
   }
-  // render all layers
+  // render containers
+  var containers = this.containers;
+  for (var ii = 0; ii < containers.length; ++ii) {
+    var container = containers[ii];
+    if (!container.visible) { continue; }
+    this$1.renderContainer(container);
+  }
+  // render layers
   var layers = this.layers;
-  for (var ii = 0; ii < layers.length; ++ii) {
-    var idx = layers.length - 1 - ii;
+  for (var ii$1 = 0; ii$1 < layers.length; ++ii$1) {
+    var idx = layers.length - 1 - ii$1;
     var layer = layers[idx];
     if (!layer.visible) { continue; }
+    gl.uniform1f(
+      glOpacity, layer.opacity
+    );
     var bounds$1 = layer.bounds;
     var ww = (bounds$1.w * TILE_SIZE) * cr;
     var hh = (bounds$1.h * TILE_SIZE) * cr;
@@ -3820,6 +3945,9 @@ function render() {
     // don't forget to render live batches
     this$1.renderLayer(layer);
   }
+  gl.uniform1f(
+    glOpacity, 1.0
+  );
   if (!this.states.drawing && (!this.states.select || !selection)) {
     this.renderHoveredTile();
   }
@@ -3829,6 +3957,86 @@ function render() {
   // render foreground buffer
   this.renderForeground();
   this.redraw = false;
+}
+
+/**
+ * @param {Layer} layer
+ */
+function renderLayer(layer) {
+  var this$1 = this;
+
+  var cx = this.cx | 0;
+  var cy = this.cy | 0;
+  var cr = this.cr;
+  var gl = this.gl;
+  var glOpacity = gl.getUniformLocation(this.program, "vOpacity");
+  var batches = layer.batches;
+  var sindex = this.sindex;
+  for (var ii = 0; ii < batches.length; ++ii) {
+    var batch = batches[ii];
+    var bounds = batch.bounds;
+    if (!batch.forceRendering) { continue; }
+    // batch index is higher than stack index, so ignore this batch
+    if (sindex - batch.getStackIndex() < 0) {
+      if (!batch.forceRendering) { continue; }
+    }
+    gl.uniform1f(
+      glOpacity, layer.opacity
+    );
+    //if (!this.boundsInsideView(bounds)) continue;
+    var x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr)) | 0;
+    var y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr)) | 0;
+    var w = (bounds.w * TILE_SIZE) * cr;
+    var h = (bounds.h * TILE_SIZE) * cr;
+    // draw batch boundings
+    if (MODES.DEV) {
+      this$1.drawRectangle(
+        x, y,
+        w, h,
+        [1, 0, 0, 0.1]
+      );
+    }
+    // erase by alpha blending
+    if (batch.isEraser) {
+      var gl$1 = this$1.gl;
+      gl$1.blendFuncSeparate(gl$1.ONE_MINUS_SRC_ALPHA, gl$1.ONE_MINUS_SRC_ALPHA, gl$1.ZERO, gl$1.ZERO);
+    }
+    this$1.drawImage(
+      batch.texture,
+      x, y,
+      w, h
+    );
+    // reset blending state
+    if (batch.isEraser) {
+      var gl$2 = this$1.gl;
+      gl$2.blendFunc(gl$2.SRC_ALPHA, gl$2.ONE_MINUS_SRC_ALPHA);
+    }
+    gl.uniform1f(
+      glOpacity, 1.0
+    );
+  }
+  // draw a thin rectangle around active layers
+  if (MODES.DEV && layer.isActive) {
+    var bounds$1 = layer.bounds;
+    var x$1 = (cx + (((layer.x + bounds$1.x) * TILE_SIZE) * cr));
+    var y$1 = (cy + (((layer.y + bounds$1.y) * TILE_SIZE) * cr));
+    var w$1 = (bounds$1.w * TILE_SIZE) * cr;
+    var h$1 = (bounds$1.h * TILE_SIZE) * cr;
+    this.drawStrokedRect(x$1, y$1, w$1, h$1, "rgba(255,255,255,0.2)");
+  }
+}
+
+/**
+ * @param {Container} container
+ */
+function renderContainer(container) {
+  container.renderBoundings();
+  var ww = container.bounds.w | 0;
+  var hh = container.bounds.h | 0;
+  for (var ii = 0; ii < ww * hh; ++ii) {
+    container.renderFrame(ii);
+  }
+  container.renderAnimationPreview();
 }
 
 function renderForeground() {
@@ -3856,65 +4064,6 @@ function renderGrid() {
     0, 0,
     this.cw, this.ch
   );
-}
-
-/**
- * @param {Layer} layer
- */
-function renderLayer(layer) {
-  var this$1 = this;
-
-  var cx = this.cx | 0;
-  var cy = this.cy | 0;
-  var cr = this.cr;
-  var batches = layer.batches;
-  var sindex = this.sindex;
-  for (var ii = 0; ii < batches.length; ++ii) {
-    var batch = batches[ii];
-    var bounds = batch.bounds;
-    if (!batch.forceRendering) { continue; }
-    // batch index is higher than stack index, so ignore this batch
-    if (sindex - batch.getStackIndex() < 0) {
-      if (!batch.forceRendering) { continue; }
-    }
-    //if (!this.boundsInsideView(bounds)) continue;
-    var x = (cx + (((layer.x + bounds.x) * TILE_SIZE) * cr)) | 0;
-    var y = (cy + (((layer.y + bounds.y) * TILE_SIZE) * cr)) | 0;
-    var w = (bounds.w * TILE_SIZE) * cr;
-    var h = (bounds.h * TILE_SIZE) * cr;
-    // draw batch boundings
-    if (MODES.DEV) {
-      this$1.drawRectangle(
-        x, y,
-        w, h,
-        [1, 0, 0, 0.1]
-      );
-    }
-    // erase by alpha blending
-    if (batch.isEraser) {
-      var gl = this$1.gl;
-      gl.blendFuncSeparate(gl.ONE_MINUS_SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ZERO);
-    }
-    this$1.drawImage(
-      batch.texture,
-      x, y,
-      w, h
-    );
-    // reset blending state
-    if (batch.isEraser) {
-      var gl$1 = this$1.gl;
-      gl$1.blendFunc(gl$1.SRC_ALPHA, gl$1.ONE_MINUS_SRC_ALPHA);
-    }
-  }
-  // draw a thin rectangle around active layers
-  if (layer.isActive) {
-    var bounds$1 = layer.bounds;
-    var x$1 = (cx + (((layer.x + bounds$1.x) * TILE_SIZE) * cr));
-    var y$1 = (cy + (((layer.y + bounds$1.y) * TILE_SIZE) * cr));
-    var w$1 = (bounds$1.w * TILE_SIZE) * cr;
-    var h$1 = (bounds$1.h * TILE_SIZE) * cr;
-    this.drawStrokedRect(x$1, y$1, w$1, h$1, "rgba(255,255,255,0.2)");
-  }
 }
 
 function renderHoveredTile() {
@@ -4026,6 +4175,7 @@ function drawSelectionShape() {
     xx, yy,
     ww, hh
   );
+  buffer.setLineDash([0, 0]);
 }
 
 /**
@@ -4038,12 +4188,10 @@ function drawSelectionShape() {
  */
 function drawStrokedRect(x, y, w, h, color) {
   var cr = this.cr;
-  var size = TILE_SIZE * cr;
-  var lw = Math.max(1, 1 * cr);
+  var lw = Math.max(0.55, 0.55 * cr);
   var buffer = this.cache.fg;
   buffer.strokeStyle = color;
   buffer.lineWidth = lw;
-  buffer.setLineDash([size, size]);
   // main rectangle
   buffer.strokeRect(
     x - (lw / 2), y - (lw / 2),
@@ -4096,12 +4244,14 @@ function drawResizeRectangle(x, y, w, h, color) {
 
 
 var _render = Object.freeze({
+	update: update,
 	updateGrid: updateGrid,
 	render: render,
+	renderLayer: renderLayer,
+	renderContainer: renderContainer,
 	renderForeground: renderForeground,
 	renderBackground: renderBackground,
 	renderGrid: renderGrid,
-	renderLayer: renderLayer,
 	renderHoveredTile: renderHoveredTile,
 	renderSelection: renderSelection,
 	renderShapeSelection: renderShapeSelection,
@@ -4181,6 +4331,7 @@ function redo$1() {
 /**
  * @param {Number} kind
  * @param {Batch} batch
+ * @return {Void}
  */
 function enqueue(kind, batch) {
   // our stack index is out of position
@@ -4192,10 +4343,17 @@ function enqueue(kind, batch) {
   if (type === CommandKind.BATCH_OPERATION) {
     batch.destroyTexture();
   }
+  var last = this.currentStackOperation();
   this.stack.push(cmd);
   this.redo();
-  //this.undo();
-  //this.redo();
+  // delete last operation if it's mergable
+  if (last !== null && last.kind === cmd.kind) {
+    if (this.isMergeableOperation(cmd.kind)) {
+      // delete last 2 commands
+      this.stack.splice(this.sindex - 1, this.stack.length);
+      this.sindex = this.stack.length - 1;
+    }
+  }
 }
 
 
@@ -4219,10 +4377,25 @@ function refreshStack() {
 
 /**
  * Returns the latest stack operation
- * @return {Object}
+ * @return {Command}
  */
 function currentStackOperation() {
-  return (this.stack[this.sindex]);
+  return (this.stack[this.sindex] || null);
+}
+
+/**
+ * Indicates if an operation is mergeable
+ * with an older same kind but opposite operation
+ * @param {Number} kind
+ * @return {Boolean}
+ */
+function isMergeableOperation(kind) {
+  return (
+    kind === CommandKind.LAYER_LOCK ||
+    kind === CommandKind.LAYER_FLIP_VERTICAL ||
+    kind === CommandKind.LAYER_FLIP_HORIZONTAL ||
+    kind === CommandKind.LAYER_VISIBILITY
+  );
 }
 
 /**
@@ -4238,6 +4411,30 @@ function fire(cmd, state) {
     case CommandKind.BATCH_OPERATION:
       this.fireBatchOperation(cmd, state);
     break;
+    case CommandKind.CONTAINER_OPERATION:
+      this.fireContainerOperation(cmd, state);
+    break;
+  }
+}
+
+/**
+ * @param {Command} cmd
+ * @param {Boolean} state
+ */
+function fireContainerOperation(cmd, state) {
+  var this$1 = this;
+
+  var batch = cmd.batch;
+  var container = batch.container;
+  if (state) {
+    this.containers.push(container);
+  } else {
+    for (var ii = 0; ii < this.containers.length; ++ii) {
+      if (this$1.containers[ii].id === container.id) {
+        this$1.containers.splice(ii, 1);
+        break;
+      }
+    }
   }
 }
 
@@ -4272,7 +4469,6 @@ function fireLayerOperation(cmd, state) {
         merge$1.batch.injectMatrix(data, false);
         merge$1.batch.refreshTexture(true);
       }
-      // TODO: matrix inject here
     break;
     case CommandKind.LAYER_CLONE:
     case CommandKind.LAYER_CLONE_REF:
@@ -4309,6 +4505,9 @@ function fireLayerOperation(cmd, state) {
     break;
     case CommandKind.LAYER_VISIBILITY:
       layer.visible = !layer.visible;
+    break;
+    case CommandKind.LAYER_OPACITY:
+      layer.opacity = batch[state ? "opacity" : "oopacity"];
     break;
     case CommandKind.LAYER_ORDER:
       if (state) {
@@ -4376,6 +4575,7 @@ function getCommandKind(cmd) {
     case CommandKind.LAYER_ROTATE_LEFT:
     case CommandKind.LAYER_ROTATE_RIGHT:
     case CommandKind.LAYER_VISIBILITY:
+    case CommandKind.LAYER_OPACITY:
     case CommandKind.LAYER_ADD:
     case CommandKind.LAYER_REMOVE:
     case CommandKind.LAYER_MERGE:
@@ -4401,6 +4601,10 @@ function getCommandKind(cmd) {
     case CommandKind.LIGHTING:
       return (CommandKind.BATCH_OPERATION);
     break;
+    case CommandKind.CONTAINER_ADD:
+    case CommandKind.CONTAINER_REMOVE:
+      return (CommandKind.CONTAINER_OPERATION);
+    break;
   }
   return (CommandKind.UNKNOWN);
 }
@@ -4409,7 +4613,9 @@ function getCommandKind(cmd) {
 var _state = Object.freeze({
 	refreshStack: refreshStack,
 	currentStackOperation: currentStackOperation,
+	isMergeableOperation: isMergeableOperation,
 	fire: fire,
+	fireContainerOperation: fireContainerOperation,
 	fireLayerOperation: fireLayerOperation,
 	fireBatchOperation: fireBatchOperation,
 	getCommandKind: getCommandKind
@@ -4607,6 +4813,178 @@ var _transrotate = Object.freeze({
 	rotateLeft: rotateLeft
 });
 
+/**
+ * @class Container
+ * @extends Layer
+ */
+var Container = (function (Layer$$1) {
+  function Container(instance) {
+    Layer$$1.call(this, instance);
+    this.animation = {
+      w: 32, h: 32,
+      frame: 0, speed: 0
+    };
+    // tile amount x
+    this.bounds.w = 3;
+    // tile amount y
+    this.bounds.h = 5;
+  }
+
+  if ( Layer$$1 ) Container.__proto__ = Layer$$1;
+  Container.prototype = Object.create( Layer$$1 && Layer$$1.prototype );
+  Container.prototype.constructor = Container;
+
+  return Container;
+}(Layer));
+
+/**
+ * @param {Number} index
+ * @return {CanvasRenderingContext2D}
+ */
+Container.prototype.getFrameData = function(index) {
+  var instance = this.instance;
+  var animation = this.animation;
+  var fw = animation.w; var fh = animation.h;
+  var fx = this.bounds.x + (fw * ((index % this.bounds.w) | 0));
+  var fy = this.bounds.y + (fh * ((index / this.bounds.w) | 0));
+  var layers = this.instance.layers;
+  var size = fw * fh;
+  var buffer = createCanvasBuffer(fw, fh);
+  for (var ii = 0; ii < size; ++ii) {
+    var xx = (ii % fw) | 0;
+    var yy = (ii / fw) | 0;
+    var pixel = instance.getAbsolutePixelAt(fx + xx, fy + yy);
+    if (pixel === null) { continue; }
+    buffer.fillStyle = colorToRgbaString(pixel);
+    buffer.fillRect(xx, yy, 1, 1);
+  }
+  return (buffer);
+};
+
+/**
+ * @return {CanvasRenderingContext2D}
+ */
+Container.prototype.getAnimationTemplate = function() {
+  var instance = this.instance;
+  var animation = this.animation;
+  var fw = animation.w; var fh = animation.h;
+  var fx = this.bounds.x - fw;
+  var fy = this.bounds.y;
+  var layers = this.instance.layers;
+  var size = fw * fh;
+  var buffer = createCanvasBuffer(fw, fh);
+  for (var ii = 0; ii < size; ++ii) {
+    var xx = (ii % fw) | 0;
+    var yy = (ii / fw) | 0;
+    var pixel = instance.getAbsolutePixelAt(fx + xx, fy + yy);
+    if (pixel === null) { continue; }
+    buffer.fillStyle = colorToRgbaString(pixel);
+    buffer.fillRect(xx, yy, 1, 1);
+  }
+  return (buffer);
+};
+
+Container.prototype.renderAnimationPreview = function() {
+  var instance = this.instance;
+  var cx = instance.cx | 0;
+  var cy = instance.cy | 0;
+  var cr = instance.cr;
+  var buffer = instance.cache.fg;
+  var animation = this.animation;
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  var tilew = ((animation.w * TILE_SIZE) * cr) | 0;
+  var tileh = ((animation.h * TILE_SIZE) * cr) | 0;
+  var ww = (((bw * animation.w) * TILE_SIZE) * cr) | 0;
+  var hh = (((bh * animation.h) * TILE_SIZE) * cr) | 0;
+  var xx = (cx + (this.bounds.x * TILE_SIZE) * cr) | 0;
+  var yy = (cy + (this.bounds.y * TILE_SIZE) * cr) | 0;
+  var ctx = this.getFrameData(animation.frame);
+  var canvas = ctx.canvas;
+  // draw preview border
+  var preview = this.getAnimationTemplate();
+  buffer.globalAlpha = 0.25;
+  var size = ((bw * bh) * animation.w);
+  for (var ii = 0; ii < size; ii += animation.w) {
+    var px = (ii % bw) | 0;
+    var py = ((ii / bw) / animation.w) | 0;
+    buffer.drawImage(
+      preview.canvas,
+      0, 0,
+      animation.w, animation.h,
+      xx + (px * tilew), yy + (py * tileh),
+      tilew, tileh
+    );
+  }
+  buffer.globalAlpha = 1.0;
+};
+
+Container.prototype.renderFrame = function() {
+  var instance = this.instance;
+  var cx = instance.cx | 0;
+  var cy = instance.cy | 0;
+  var cr = instance.cr;
+  var buffer = instance.cache.fg;
+  var animation = this.animation;
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  var tilew = ((animation.w * TILE_SIZE) * cr) | 0;
+  var tileh = ((animation.h * TILE_SIZE) * cr) | 0;
+  var ww = (((bw * animation.w) * TILE_SIZE) * cr) | 0;
+  var hh = (((bh * animation.h) * TILE_SIZE) * cr) | 0;
+  var xx = (cx + (this.bounds.x * TILE_SIZE) * cr) | 0;
+  var yy = (cy + (this.bounds.y * TILE_SIZE) * cr) | 0;
+  var ax = xx - tilew | 0;
+  var ay = yy | 0;
+  var ctx = this.getFrameData(animation.frame);
+  var canvas = ctx.canvas;
+  buffer.drawImage(
+    canvas,
+    0, 0,
+    canvas.width | 0, canvas.height | 0,
+    ax | 0, ay | 0,
+    tilew | 0, tileh | 0
+  );
+};
+
+Container.prototype.renderBoundings = function() {
+  var instance = this.instance;
+  var cx = instance.cx | 0;
+  var cy = instance.cy | 0;
+  var cr = instance.cr;
+  var buffer = instance.cache.fg;
+  var lw = Math.max(0.55, 0.55 * cr);
+  var animation = this.animation;
+  var bw = this.bounds.w;
+  var bh = this.bounds.h;
+  var tilew = ((animation.w * TILE_SIZE) * cr) | 0;
+  var tileh = ((animation.h * TILE_SIZE) * cr) | 0;
+  var ww = (((bw * animation.w) * TILE_SIZE) * cr) | 0;
+  var hh = (((bh * animation.h) * TILE_SIZE) * cr) | 0;
+  var xx = (cx + (this.bounds.x * TILE_SIZE) * cr) | 0;
+  var yy = (cy + (this.bounds.y * TILE_SIZE) * cr) | 0;
+  var ax = xx - tilew | 0;
+  var ay = yy | 0;
+  // draw grid
+  buffer.strokeStyle = "rgba(255,255,255,0.375)";
+  buffer.lineWidth = lw;
+  buffer.beginPath();
+  for (var ii = tilew; ii < ww; ii += tilew) {
+    buffer.moveTo(xx + ii, yy);
+    buffer.lineTo(xx + ii, yy + hh);
+  }
+  for (var ii$1 = tileh; ii$1 < hh; ii$1 += tileh) {
+    buffer.moveTo(xx, yy + ii$1);
+    buffer.lineTo(xx + ww, yy + ii$1);
+  }
+  buffer.stroke();
+  buffer.closePath();
+  // draw border
+  instance.drawStrokedRect(xx, yy, ww, hh, "rgba(255,255,255,0.375)");
+  instance.drawRectangle(ax, ay, tilew - lw, tileh, [1,1,1,0.1]);
+  instance.drawStrokedRect(ax, ay, tilew - lw, tileh, "rgba(255,255,255,0.375)");
+};
+
 function resetModes() {
   var this$1 = this;
 
@@ -4687,9 +5065,10 @@ function resetActiveUiButtons() {
 }
 
 /**
+ * @param {String} value
  * @return {Void}
  */
-function setUiColor(value) {
+function setUiColorByHex(value) {
   // close fast color picker menu
   if (this.states.fastColorMenu) {
     this.closeFastColorPickerMenu();
@@ -4706,6 +5085,28 @@ function setUiColor(value) {
   ) { return; }
   this.fillStyle = rgba;
   this.addCustomColor(rgba);
+  return;
+}
+
+/**
+ * @param {Array} rgba
+ * @return {Void}
+ */
+function setUiColorByRgba(rgba) {
+  var r = rgba[0];
+  var g = rgba[1];
+  var b = rgba[2];
+  var a = rgba[3];
+  color_view.style.background = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  var hex = rgbaToHex(rgba);
+  // prevent changing color if it didnt changed
+  if (
+    this.fillStyle[0] === r &&
+    this.fillStyle[1] === g &&
+    this.fillStyle[2] === b &&
+    this.fillStyle[3] === a
+  ) { return; }
+  this.fillStyle = rgba;
   return;
 }
 
@@ -4920,7 +5321,7 @@ function setupUi() {
     move.style.opacity = 1.0;
   };
   color.onchange = function (e) {
-    this$1.setUiColor(color.value);
+    this$1.setUiColorByHex(color.value);
   };
 
   undo.onclick = function (e) {
@@ -5040,26 +5441,26 @@ function setupUi() {
 
   flip_horizontal.onclick = function (e) {
     var layer = this$1.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this$1.enqueue(CommandKind.LAYER_FLIP_HORIZONTAL, { layer: layer });
     }
   };
   flip_vertical.onclick = function (e) {
     var layer = this$1.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this$1.enqueue(CommandKind.LAYER_FLIP_VERTICAL, { layer: layer });
     }
   };
 
   rotate_right.onclick = function (e) {
     var layer = this$1.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this$1.enqueue(CommandKind.LAYER_ROTATE_RIGHT, { layer: layer });
     }
   };
   rotate_left.onclick = function (e) {
     var layer = this$1.getCurrentLayer();
-    if (layer !== null) {
+    if (layer !== null && !layer.isEmpty()) {
       this$1.enqueue(CommandKind.LAYER_ROTATE_LEFT, { layer: layer });
     }
   };
@@ -5075,13 +5476,32 @@ function setupUi() {
     }
   };
 
+  add_animation.onclick = function (e) {
+    var container = new Container(this$1);
+    var relative = this$1.getRelativeTileOffset(this$1.mx, this$1.my);
+    container.bounds.x = relative.x; container.bounds.y = relative.y;
+    this$1.enqueue(CommandKind.CONTAINER_ADD, {
+      container: container
+    });
+  };
+
+  var layer_opacity = function (e) {
+    var opacity = 0.5;
+    var oopacity = layer.opacity;
+    if (oopacity !== opacity) {
+      this$1.enqueue(CommandKind.LAYER_OPACITY, {
+        oopacity: oopacity, opacity: opacity, layer: layer
+      });
+    }
+  };
+
   this.modes.draw = true;
   tiled.style.opacity = 1.0;
 
   // setup ui list button states
-  this.processUIClick(document.querySelector("#light-size").children[0]);
+  /*this.processUIClick(document.querySelector("#light-size").children[0]);
   this.processUIClick(document.querySelector("#eraser-size").children[0]);
-  this.processUIClick(document.querySelector("#pencil-size").children[0]);
+  this.processUIClick(document.querySelector("#pencil-size").children[0]);*/
 
 }
 
@@ -5093,7 +5513,8 @@ var _ui = Object.freeze({
 	getCursorNodeByMode: getCursorNodeByMode,
 	updateCursorPosition: updateCursorPosition,
 	resetActiveUiButtons: resetActiveUiButtons,
-	setUiColor: setUiColor,
+	setUiColorByHex: setUiColorByHex,
+	setUiColorByRgba: setUiColorByRgba,
 	addCustomColor: addCustomColor,
 	closeFastColorPickerMenu: closeFastColorPickerMenu,
 	openFastColorPickerMenu: openFastColorPickerMenu,
@@ -5112,20 +5533,23 @@ function setup() {
   view.width = width;
   view.height = height;
   // sync storage colors with stage colors
-  var colors = this.readStorage("favorite_colors");
+  /*const colors = this.readStorage("favorite_colors");
   if (colors && colors.length > 2) {
     this.favoriteColors = JSON.parse(colors);
     this.updateFastColorPickMenu();
-    this.setUiColor(rgbaToHex(this.favoriteColors[0].color));
+    this.setUiColorByRgba(this.favoriteColors[0].color);
   } else {
-    this.setUiColor(rgbaToHex([255, 0, 0, 1]));
-  }
+    this.setUiColorByHex([255, 0, 0, 1]);
+  }*/
+  this.setUiColorByRgba([255, 0, 0, 1]);
   this.setupRenderer(view);
+  this.selection = new Layer(this);
   this.initListeners();
   this.resize(width, height);
   this.scale(0);
   var draw = function () {
     requestAnimationFrame(function () { return draw(); });
+    this$1.update();
     if (this$1.redraw) {
       this$1.clear();
       this$1.render();
@@ -5244,7 +5668,7 @@ function getPixelAt$1(x, y) {
  * @param {Number} y
  * @return {Array}
  */
-function getLivePixelAt$1(x, y) {
+function getLivePixelAt$2(x, y) {
   var this$1 = this;
 
   var bw = this.bounds.w;
@@ -5273,12 +5697,14 @@ function getLivePixelAt$1(x, y) {
  * Merges two layers
  * Resize this by layer<->this bounding diff
  * Inject this matrix into layer matrix at layer bound pos
- * @param {Layer} layer
+ * @param {Layer} olayer
  * @return {Batch}
  */
-function mergeWithLayer$1(layer) {
+function mergeWithLayer$1(olayer) {
+  var layer = olayer.clone();
   // TODO: fix merging referenced layers
   var main = this.batch;
+  var opacity = this.opacity;
   var ldata = layer.batch.data;
   var lw = layer.bounds.w;
   var lh = layer.bounds.h;
@@ -5303,6 +5729,8 @@ function mergeWithLayer$1(layer) {
     var yy = (idx / lw) | 0;
     var pixel = layer.getPixelAt(lx + xx, ly + yy);
     if (pixel === null) { continue; }
+    //console.log(pixel[3], layer.oapcity);
+    pixel[3] = pixel[3] * (opacity * layer.opacity);
     batch.drawPixelFast(lx + xx, ly + yy, pixel);
   }
   batch.refreshTexture(true);
@@ -5314,7 +5742,7 @@ var _matrix$2 = Object.freeze({
 	hasResized: hasResized$1,
 	updateBoundings: updateBoundings$1,
 	getPixelAt: getPixelAt$1,
-	getLivePixelAt: getLivePixelAt$1,
+	getLivePixelAt: getLivePixelAt$2,
 	mergeWithLayer: mergeWithLayer$1
 });
 
@@ -5339,7 +5767,7 @@ var Layer$2 = function Layer(instance) {
   // reference (clone) to master layer
   this.reference = null;
   // opacity applied over local batches
-  this.opacity = 255.0;
+  this._opacity = 1.0;
   // layer batch matrix
   this.batch = null;
   // batches we hold here
@@ -5352,7 +5780,7 @@ var Layer$2 = function Layer(instance) {
   this.allocateLayerMatrix();
 };
 
-var prototypeAccessors$1 = { name: {},visible: {},locked: {},isActive: {},isReference: {} };
+var prototypeAccessors$1 = { name: {},opacity: {},visible: {},locked: {},isActive: {},isReference: {} };
 /**
  * @return {String}
  */
@@ -5366,6 +5794,19 @@ prototypeAccessors$1.name.set = function (value) {
   this._name = value;
   var node = this.node.querySelector(".layer-text");
   node.value = value;
+};
+/**
+ * @return {Number}
+ */
+prototypeAccessors$1.opacity.get = function () {
+  return (this._opacity);
+};
+/**
+ * @param {Number}
+ */
+prototypeAccessors$1.opacity.set = function (value) {
+  this._opacity = value;
+  this.instance.redraw = true;
 };
 /**
  * @return {Boolean}
@@ -5512,6 +5953,13 @@ Layer$2.prototype.getIndex = function() {
   return (-1);
 };
 
+/**
+ * @return {Boolean}
+ */
+Layer$2.prototype.isEmpty = function() {
+  return (this.batch.isEmpty());
+};
+
 Layer$2.prototype.removeFromLayers = function() {
   var this$1 = this;
 
@@ -5578,15 +6026,16 @@ Layer$2.prototype.getRelativePosition = function() {
 /**
  * Fill imagedata with pixels then
  * put it into a canvas and return it
- * @return {HTMLCanvasElement}
+ * @return {CanvasRenderingContext2D}
  */
-Layer$2.prototype.toCanvas = function() {
+Layer$2.prototype.toCanvasBuffer = function() {
+  // TODO: also draw batch[n].forceRendering for live previews
   var data = this.batch.data;
   var lw = this.bounds.w | 0;
   var lh = this.bounds.h | 0;
   var buffer = createCanvasBuffer(lw, lh);
   // prevent imagedata construction from failing
-  if (lw <= 0 || lh <= 0) { return (buffer.canvas); }
+  if (lw <= 0 || lh <= 0) { return (buffer); }
   var img = new ImageData(lw, lh);
   var idata = img.data;
   for (var ii = 0; ii < data.length; ii += 4) {
@@ -5598,7 +6047,7 @@ Layer$2.prototype.toCanvas = function() {
     idata[ii + 3] = alpha;
   }
   buffer.putImageData(img, 0, 0);
-  return (buffer.canvas);
+  return (buffer);
 };
 
 /**
@@ -5617,12 +6066,34 @@ Layer$2.prototype.generateLayerNameIndex = function() {
 };
 
 /**
+ * Returns the string version of the dom node
+ * @return {String}
+ */
+Layer$2.prototype.generateUiNode = function() {
+  var html = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  return (html);
+};
+
+/**
+ * Returns color of the layer node
+ * @return {String}
+ */
+Layer$2.prototype.getUiNodeColor = function() {
+  // only attach color to layer if
+  // layer is a absolute reference or is a reference
+  var count = this.isReference;
+  var cc = this.color.value;
+  var color = (
+    cc && count ? ("rgba(" + (cc[0]) + "," + (cc[1]) + "," + (cc[2]) + ",0.1)") : ""
+  );
+  return (color);
+};
+
+/**
  * yuck in here, yuck in here
  */
 Layer$2.prototype.addUiReference = function() {
-  var this$1 = this;
-
-  var tmpl = "\n    <div class=\"layer-item\">\n      <img class=\"layer-item-visible\" src=\"assets/img/visible.png\">\n      <img class=\"layer-item-locked\" src=\"assets/img/unlocked.png\">\n      <input class=\"layer-text\" value=\"" + (this.name) + "\" readonly />\n    </div>\n  ";
+  var tmpl = this.generateUiNode();
   var parser = new DOMParser();
   var html = parser.parseFromString(tmpl, "text/html").querySelector(".layer-item");
   var index = this.getIndex();
@@ -5634,17 +6105,7 @@ Layer$2.prototype.addUiReference = function() {
   }
   // save reference to inserted layer node
   this.node = html;
-  // add color to layer if necessary
-  (function () {
-    // only attach color to layer if
-    // layer is a absolute reference or is a reference
-    var count = this$1.isReference;
-    var cc = this$1.color.value;
-    var color = (
-      cc && count ? ("rgba(" + (cc[0]) + "," + (cc[1]) + "," + (cc[2]) + ",0.1)") : ""
-    );
-    html.style.backgroundColor = color;
-  })();
+  html.style.backgroundColor = this.getUiNodeColor();
   if (this.isActive) {
     this.instance.setActiveLayer(this);
   }
@@ -5692,6 +6153,7 @@ var Poxi = function Poxi() {
   this.sw = -0;
   this.sh = -0;
   this.shape = null;
+  this.selection = null;
   // mouse offset
   this.mx = 0;
   this.my = 0;
@@ -5700,6 +6162,8 @@ var Poxi = function Poxi() {
   this.sindex = -1;
   // layer related
   this.layers = [];
+  // container related
+  this.containers = [];
   // general cache
   this.cache = {
     bg: null,
@@ -5775,6 +6239,8 @@ var Poxi = function Poxi() {
     stroke: false,
     pipette: false
   };
+  // how many frames we have drawn
+  this.frames = 0;
   // indicates if we have to redraw our stage
   this.redraw = false;
   // global fill style

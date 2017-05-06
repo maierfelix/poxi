@@ -6,11 +6,112 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/png" href="assets/img/tree.png"/>
     <title>Poxi - Unleash the pixels!</title>
-    <link href="./style.css?v=5" rel="stylesheet" />
+    <link href="./style.css?v=2" rel="stylesheet" />
   </head>
   <body>
     <div id="ui">
-      <div class="right-menu">
+      <div class="right-menu" style="left: 0px;border-right: 1px solid rgba(42,42,42,1.0);">
+
+        <div class="layer-menu" style="top: 8px;border-bottom: 1px solid rgba(42,42,42,1.0);padding-bottom: 8px;">
+          <a class="tooltip">
+            <span id="color_view" class="color-wrapper" style="background: rgb(255, 0, 0);">
+                <input id="color" type="color" class="item" value="#ff0000">
+              </span>
+            <span id="color_hex" class="tooltiptext" style="margin-bottom: 3.5px;cursor:pointer;">#FF0000</span>
+          </a>
+        </div>
+
+        <div class="layer-menu" style="top: 46px;">
+          <a class="tooltip">
+            <img id="select" src="assets/img/select.png" class="item">
+            <span class="tooltiptext">Selection</span>
+          </a>
+          <a class="tooltip">
+            <img id="shape" src="assets/img/shape.png" class="item">
+            <span class="tooltiptext">Shape Selection</span>
+          </a>
+          <a class="tooltip">
+            <img id="move" src="assets/img/move.png" class="item">
+            <span class="tooltiptext">Move</span>
+          </a>
+        </div>
+        <div class="layer-menu" style="top: 78px;">
+          <a class="tooltip">
+            <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item">
+            <span class="tooltiptext">Insert Rectangle</span>
+          </a>
+          <a class="tooltip">
+            <img id="arc" src="assets/img/circle_stroke.png" class="item">
+            <span class="tooltiptext">Insert Circle</span>
+          </a>
+          <a class="tooltip">
+            <img id="stroke" src="assets/img/stroke.png" class="item">
+            <span class="tooltiptext">Insert Line</span>
+          </a>
+        </div>
+        <div class="layer-menu" style="top: 108px;">
+          <a class="tooltip">
+            <img id="tiled" src="assets/img/pencil.png" class="item" style="">
+            <span class="tooltiptext">Pencil</span>
+          </a>
+          <a class="tooltip">
+            <img id="erase" src="assets/img/eraser.png" class="item">
+            <span class="tooltiptext">Eraser</span>
+          </a>
+          <a class="tooltip">
+            <img id="pipette" src="assets/img/pipette.png" class="item">
+            <span class="tooltiptext">Pipette</span>
+          </a>
+        </div>
+        <div class="layer-menu" style="top: 138px;">
+          <a class="tooltip">
+            <img id="bucket" src="assets/img/bucket.png" class="item">
+            <span class="tooltiptext">Bucket</span>
+          </a>
+          <a class="tooltip">
+            <img id="paint_all" src="assets/img/palette.png" class="item">
+            <span class="tooltiptext">Flood Paint</span>
+          </a>
+        </div>
+        <div class="layer-menu" style="top: calc(100% - 28px);">
+          <a class="tooltip" style="">
+            <img id="undo" src="assets/img/redo.png" class="item">
+            <span class="tooltiptext">Undo</span>
+          </a>
+          <a class="tooltip" style="">
+            <img id="redo" src="assets/img/undo.png" class="item">
+            <span class="tooltiptext">Redo</span>
+          </a>
+          <a class="tooltip">
+            <img id="download" src="assets/img/download.png" class="item">
+            <span class="tooltiptext">Download</span>
+          </a>
+          <a href="https://github.com/maierfelix/poxi" style="">
+            <img src="assets/img/github.png" class="item" style="cursor: pointer;">
+          </a>
+        </div>
+      </div>
+
+    <div class="bottom-menu" style="left: 128px;">
+      <div class="layer-title">
+        <img class="layer-title-img" src="assets/img/movie.png" style="padding: 0;">
+        <span class="layer-span-title">Animations</span>
+      </div>
+      <div class="bottom-menu-items" style="top: -8px; position: relative;">
+        <a class="tooltip" style="float: left;">
+          <img id="add_animation" src="assets/img/plus.png" class="item">
+          <span class="tooltiptext">Add Animation</span>
+        </a>
+      </div>
+      <div id="animations" class="layer-wrapper">
+        <div class="layer-item">
+          <img class="layer-item-visible" src="assets/img/play.png">
+          <input class="layer-text" value="Animation 0" readonly="">
+        </div>
+      </div>
+    </div>
+
+      <div class="right-menu" style="border-left: 1px solid rgba(42,42,42,1.0);">
         <div class="layer-title">
           <img class="layer-title-img" src="assets/img/layers.png">
           <span class="layer-span-title">Layers</span>
@@ -57,7 +158,7 @@
             <img id="clone_by_ref" src="assets/img/clone_by_ref.png" class="item">
             <span class="tooltiptext">Clone by Reference</span>
           </a>
-          <img class="item" style="opacity: 0;" />
+          <img class="item" style="opacity: 0;">
           <a class="tooltip">
             <img id="flip_vertical" src="assets/img/vertical.png" class="item">
             <span class="tooltiptext">Flip Vertical</span>
@@ -68,132 +169,49 @@
           </a>
         </div>
       </div>
-      <div class="bottom-menu">
-        <div class="bottom-menu-items">
-          <a class="tooltip" style="float: left;">
-            <img id="select" src="assets/img/select.png" class="item" />
-            <span class="tooltiptext">Selection</span>
-          </a>
-          <a class="tooltip" style="float: left;">
-            <img id="shape" src="assets/img/shape.png" class="item" />
-            <span class="tooltiptext">Shape Selection</span>
-          </a>
-          <a class="tooltip" style="float: left;">
-            <img id="move" src="assets/img/move.png" class="item" />
-            <span class="tooltiptext">Move</span>
-          </a>
-          <img class="item" style="opacity: 0; float: left;" />
-          <a class="tooltip" style="float: left;">
-            <img id="rectangle" src="assets/img/rectangle_stroke.png" class="item" />
-            <span class="tooltiptext">Insert Rectangle</span>
-          </a>
-          <a class="tooltip" style="float: left;">
-            <img id="arc" src="assets/img/circle_stroke.png" class="item" />
-            <span class="tooltiptext">Insert Circle</span>
-          </a>
-          <a class="tooltip" style="float: left;">
-            <img id="stroke" src="assets/img/stroke.png" class="item" />
-            <span class="tooltiptext">Insert Line</span>
-          </a>
-          <div class="dropdown" style="display:none;">
-            <img id="lighting" src="assets/img/light_on.png" class="item" />
-            <div id="light-size" class="dropdown-content">
-              <a href="#">1</a>
-              <a href="#">2</a>
-              <a href="#">4</a>
-              <a href="#">8</a>
-              <a href="#">16</a>
-            </div>
-          </div>
-          <div class="dropdown">
-            <img id="tiled" src="assets/img/pencil.png" class="item" />
-            <div id="pencil-size" class="dropdown-content">
-              <a href="#">1</a>
-              <a href="#">2</a>
-              <a href="#">4</a>
-              <a href="#">8</a>
-              <a href="#">16</a>
-            </div>
-          </div>
-          <div class="dropdown">
-            <img id="erase" src="assets/img/eraser.png" class="item" />
-            <div id="eraser-size" class="dropdown-content">
-              <a href="#">1</a>
-              <a href="#">2</a>
-              <a href="#">4</a>
-              <a href="#">8</a>
-              <a href="#">16</a>
-            </div>
-          </div>
-          <a class="tooltip">
-            <span id="color_view" class="color-wrapper">
-              <input id="color" type="color" class="item" value="#ff0000"/>
-            </span>
-            <span id="color_hex" class="tooltiptext" style="margin-bottom: 3.5px;"></span>
-          </a>
-          <a class="tooltip">
-            <img id="pipette" src="assets/img/pipette.png" class="item" />
-            <span class="tooltiptext">Pipette</span>
-          </a>
-          <a class="tooltip">
-            <img id="bucket" src="assets/img/bucket.png" class="item" />
-            <span class="tooltiptext">Bucket</span>
-          </a>
-          <a class="tooltip">
-            <img id="paint_all" src="assets/img/palette.png" class="item" />
-            <span class="tooltiptext">Flood Paint</span>
-          </a>
-          <a href="https://github.com/maierfelix/poxi" style="float: right;">
-            <img src="assets/img/github.png" class="item" style="cursor: pointer;" />
-          </a>
-          <a class="tooltip" style="float: right;">
-            <img id="download" src="assets/img/download.png" class="item" />
-            <span class="tooltiptext">Download</span>
-          </a>
-          <img class="item" style="opacity: 0; float: right;" />
-          <img class="item" style="opacity: 0; float: right;" />
-          <a class="tooltip" style="float: right;">
-            <img id="redo" src="assets/img/undo.png" class="item" />
-            <span class="tooltiptext">Undo</span>
-          </a>
-          <a class="tooltip" style="float: right;">
-            <img id="undo" src="assets/img/redo.png" class="item" />
-            <span class="tooltiptext">Redo</span>
-          </a>
+
+      <div class="dropdown" style="display:none;">
+        <img id="lighting" src="assets/img/light_on.png" class="item">
+        <div id="light-size" class="dropdown-content">
+          <a href="#">1</a>
+          <a href="#">2</a>
+          <a href="#">4</a>
+          <a href="#">8</a>
+          <a href="#">16</a>
         </div>
       </div>
+
       <!-- hd cursors -->
       <div id="cursors">
-        <img id="cdraw" src="assets/img/pencil.png" class="cursor" />
-        <img id="cerase" src="assets/img/eraser.png" class="cursor" />
-        <img id="cpipette" src="assets/img/pipette.png" class="cursor" />
-        <img id="cfill" src="assets/img/bucket.png" class="cursor" />
-        <img id="cselect" src="assets/img/select.png" class="cursor" />
-        <img id="cshape" src="assets/img/shape.png" class="cursor" />
-        <img id="cmove" src="assets/img/move.png" class="cursor" />
-        <img id="crect" src="assets/img/rectangle_stroke.png" class="cursor" />
-        <img id="carc" src="assets/img/circle_stroke.png" class="cursor" />
-        <img id="cstroke" src="assets/img/stroke.png" class="cursor" />
-        <img id="cflood" src="assets/img/palette.png" class="cursor" />
+        <img id="cdraw" src="assets/img/pencil.png" class="cursor">
+        <img id="cerase" src="assets/img/eraser.png" class="cursor">
+        <img id="cpipette" src="assets/img/pipette.png" class="cursor">
+        <img id="cfill" src="assets/img/bucket.png" class="cursor">
+        <img id="cselect" src="assets/img/select.png" class="cursor">
+        <img id="cshape" src="assets/img/shape.png" class="cursor">
+        <img id="cmove" src="assets/img/move.png" class="cursor">
+        <img id="crect" src="assets/img/rectangle_stroke.png" class="cursor">
+        <img id="carc" src="assets/img/circle_stroke.png" class="cursor">
+        <img id="cstroke" src="assets/img/stroke.png" class="cursor">
+        <img id="cflood" src="assets/img/palette.png" class="cursor">
       </div>
       <div id="menu">
-        <div id="colors" class="dropdown-wrapper">
-          <div color="[255, 0, 0, 1]" style="background: #ff0000"></div>
-        </div>
+        <div id="colors" class="dropdown-wrapper"></div>
       </div>
     </div>
-    <input id="file" type="file" title=" " />
-    <script type="text/javascript" src="./bundle.js?v=5"></script>
+    <input id="file" type="file" title=" ">
+    <script type="text/javascript" src="./bundle.js?v=2"></script><canvas width="966" height="389"></canvas>
     <!--<script type="text/javascript" src="./stats.js"></script>
-    <script>
-      var stats = new Stats();
-      document.body.appendChild(stats.dom);
-      stats.dom.style.left = "";
-      stats.dom.style.right = "0px";
-      requestAnimationFrame(function loop() {
-        stats.update();
-        requestAnimationFrame(loop)
-      });
-    </script>-->
+      <script>
+        var stats = new Stats();
+        document.body.appendChild(stats.dom);
+        stats.dom.style.left = "";
+        stats.dom.style.right = "0px";
+        requestAnimationFrame(function loop() {
+          stats.update();
+          requestAnimationFrame(loop)
+        });
+      </script>-->
+
   </body>
 </html>
