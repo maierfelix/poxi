@@ -31,9 +31,13 @@
  - Undo/Redo for all operations
  - Infinite grid
  - Copy by reference
+ 
+I've created this pixel editor because of the lack of smooth pixel editors inside the browser. All current implementations lack of speed and just feel clunky and slow. I've created a whole low-level pixel matrix framework from scratch for this, offering incredible speed, a undo/redo state machine and various basic transformation methods. This allows you to work on images even larger than 8000px á 8000px with very low memory consummation.
 
 ### Coming soon
  - Animations
+ - Selections
+ - Faster bucket filling
 
 ### Contributing
 
